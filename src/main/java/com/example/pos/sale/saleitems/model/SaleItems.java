@@ -36,6 +36,10 @@ public class SaleItems extends BaseEntity {
     private Integer quantity;
     private BigDecimal price;
     private BigDecimal discount;
+    @Column(name = "tax_rate")
+    private BigDecimal taxRate;
+    @Column(name = "taxable_amount")
+    private BigDecimal taxableAmount;
     private BigDecimal tax;
     private BigDecimal total;
 }

@@ -16,18 +16,24 @@ import java.time.LocalDateTime;
 public class TaxResponseDto {
 
     private Long id;
+    private String code;
     private String taxName;
     private String taxDescription;
     private BigDecimal taxRate;
+    private String taxType;
+    private boolean active;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
     public static TaxResponseDto from(Tax tax) {
         return TaxResponseDto.builder()
                 .id(tax.getId())
+                .code(tax.getCode())
                 .taxName(tax.getTaxName())
                 .taxDescription(tax.getTaxDescription())
                 .taxRate(tax.getTaxRate())
+                .taxType(tax.getTaxType() != null ? tax.getTaxType().name() : null)
+                .active(tax.isActive())
                 .createdAt(tax.getCreatedAt())
                 .updatedAt(tax.getUpdatedAt())
                 .build();

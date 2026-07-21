@@ -43,6 +43,8 @@ public class SaleResponseDto {
         private Integer quantity;
         private BigDecimal price;
         private BigDecimal discount;
+        private BigDecimal taxRate;
+        private BigDecimal taxableAmount;
         private BigDecimal tax;
         private BigDecimal total;
     }

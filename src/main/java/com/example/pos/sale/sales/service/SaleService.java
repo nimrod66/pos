@@ -13,6 +13,8 @@ import com.example.pos.inventory.stock.model.Stock;
 import com.example.pos.inventory.stock.repository.StockRepository;
 import com.example.pos.inventory.stockmovements.model.StockMovements;
 import com.example.pos.inventory.stockmovements.service.StockMovementsService;
+import com.example.pos.masterdata.medicine.model.Medicine;
+import com.example.pos.masterdata.tax.model.Tax;
 import com.example.pos.sale.idempotency.model.IdempotencyKey;
 import com.example.pos.sale.idempotency.repository.IdempotencyKeyRepository;
 import com.example.pos.sale.payment.model.Payment;
@@ -33,6 +35,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -125,7 +128,15 @@ public class SaleService {
             si.setDiscount(itemDto.getDiscount() != null ? itemDto.getDiscount() : BigDecimal.ZERO);
             si.setTax(itemDto.getTax() != null ? itemDto.getTax() : BigDecimal.ZERO);
 
-            BigDecimal lineTotal = itemDto.getPrice().multiply(BigDecimal.valueOf(itemDto.getQuantity()))
+            Medicine medicine = batch.getMedicine();
+            Tax taxCategory = medicine != null ? medicine.getTax() : null;
+            BigDecimal taxRate = taxCategory != null ? taxCategory.getTaxRate() : BigDecimal.ZERO;
+            si.setTaxRate(taxRate);
+
+            BigDecimal lineSubtotal = itemDto.getPrice().multiply(BigDecimal.valueOf(itemDto.getQuantity()));
+            si.setTaxableAmount(lineSubtotal.subtract(si.getDiscount()));
+
+            BigDecimal lineTotal = lineSubtotal
                     .subtract(si.getDiscount())
                     .add(si.getTax());
             si.setTotal(lineTotal);
@@ -401,6 +412,8 @@ public class SaleService {
                         .quantity(si.getQuantity())
                         .price(si.getPrice())
                         .discount(si.getDiscount())
+                        .taxRate(si.getTaxRate())
+                        .taxableAmount(si.getTaxableAmount())
                         .tax(si.getTax())
                         .total(si.getTotal())
                         .build());

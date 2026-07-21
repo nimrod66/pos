@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/taxes")
+@RequestMapping("/api/tax-categories")
 public class TaxController {
 
     private final TaxService service;
@@ -26,8 +26,14 @@ public class TaxController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<TaxResponseDto>>> getAll() {
-        return ResponseEntity.ok(ApiResponse.ok(service.getAll().stream().map(TaxResponseDto::from).toList()));
+    public ResponseEntity<ApiResponse<List<TaxResponseDto>>> getAll(@RequestParam(defaultValue = "false") boolean activeOnly) {
+        List<Tax> taxes = activeOnly ? service.getActive() : service.getAll();
+        return ResponseEntity.ok(ApiResponse.ok(taxes.stream().map(TaxResponseDto::from).toList()));
+    }
+
+    @GetMapping("/code/{code}")
+    public ResponseEntity<ApiResponse<TaxResponseDto>> getByCode(@PathVariable String code) {
+        return ResponseEntity.ok(ApiResponse.ok(TaxResponseDto.from(service.getByCode(code))));
     }
 
     @GetMapping("/{id}")
@@ -38,6 +44,11 @@ public class TaxController {
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<TaxResponseDto>> update(@PathVariable Long id, @RequestBody @Valid TaxRequestDto dto) {
         return ResponseEntity.ok(ApiResponse.updated(TaxResponseDto.from(service.update(id, dto))));
+    }
+
+    @PatchMapping("/{id}/toggle")
+    public ResponseEntity<ApiResponse<TaxResponseDto>> toggleActive(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.updated(TaxResponseDto.from(service.toggleActive(id))));
     }
 
     @DeleteMapping("/{id}")
