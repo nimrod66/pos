@@ -235,17 +235,23 @@ All API responses use:
 **UnitRequestDto:** `unitName`*, `unitAbbreviation`
 **UnitResponseDto:** `id`, `unitName`, `unitAbbreviation`, `createdAt`, `updatedAt`
 
-### 13. Taxes
+### 13. Tax Categories
 | Method | Path | Auth |
 |---|---|---|
-| `POST` | `/api/taxes` | OWNER, BRANCH_MANAGER |
-| `GET` | `/api/taxes` | OWNER, BRANCH_MANAGER |
-| `GET` | `/api/taxes/{id}` | OWNER, BRANCH_MANAGER |
-| `PUT` | `/api/taxes/{id}` | OWNER, BRANCH_MANAGER |
-| `DELETE` | `/api/taxes/{id}` | OWNER, BRANCH_MANAGER |
+| `POST` | `/api/tax-categories` | OWNER, BRANCH_MANAGER |
+| `GET` | `/api/tax-categories?activeOnly=` | OWNER, BRANCH_MANAGER |
+| `GET` | `/api/tax-categories/code/{code}` | OWNER, BRANCH_MANAGER |
+| `GET` | `/api/tax-categories/{id}` | OWNER, BRANCH_MANAGER |
+| `PUT` | `/api/tax-categories/{id}` | OWNER, BRANCH_MANAGER |
+| `PATCH` | `/api/tax-categories/{id}/toggle` | OWNER, BRANCH_MANAGER |
+| `DELETE` | `/api/tax-categories/{id}` | OWNER, BRANCH_MANAGER |
 
-**TaxRequestDto:** `taxName`*, `taxDescription`, `taxRate`* (>= 0)
-**TaxResponseDto:** `id`, `taxName`, `taxDescription`, `taxRate`, `createdAt`, `updatedAt`
+**TaxRequestDto:** `code`*, `taxName`*, `taxDescription`, `taxRate`* (>=0), `taxType`* (VAT_STANDARD|VAT_REDUCED|VAT_ZERO|EXEMPT|OUT_OF_SCOPE), `active` (default true)
+
+**TaxResponseDto:** `id`, `code`, `taxName`, `taxDescription`, `taxRate`, `taxType`, `active`, `createdAt`, `updatedAt`
+
+> **PATCH /{id}/toggle**: Toggles the `active` flag. Cannot delete if assigned to any medicines.
+> The `taxRate` and `taxType` are snapshotted into SaleItems and TaxInvoiceItems at sale time — changing them later does not affect historical data.
 
 ### 14. Manufacturers
 | Method | Path | Auth |
@@ -503,22 +509,91 @@ All API responses use:
 
 ---
 
-### 34. Compliance
+### 34. Compliance — Tax Invoices
 | Method | Path | Auth |
 |---|---|---|
+| `POST` | `/api/invoices/issue/{saleId}` | OWNER, BRANCH_MANAGER, CASHIER, PHARMACIST |
+| `GET` | `/api/invoices/{id}` | OWNER, BRANCH_MANAGER, CASHIER, PHARMACIST |
+| `GET` | `/api/invoices/by-sale/{saleId}` | OWNER, BRANCH_MANAGER, CASHIER, PHARMACIST |
+| `GET` | `/api/invoices?branchId=&status=&from=&to=` | OWNER, BRANCH_MANAGER, CASHIER, PHARMACIST |
+| `POST` | `/api/invoices/{id}/cancel` | OWNER, BRANCH_MANAGER |
+| `GET` | `/api/invoices/{id}/history` | OWNER, BRANCH_MANAGER, CASHIER, PHARMACIST |
+| `POST` | `/api/invoices/{id}/credit-notes` | OWNER, BRANCH_MANAGER, FINANCE |
+| `GET` | `/api/invoices/{id}/credit-notes` | OWNER, BRANCH_MANAGER, FINANCE |
+| `POST` | `/api/invoices/{id}/debit-notes` | OWNER, BRANCH_MANAGER, FINANCE |
+| `GET` | `/api/invoices/{id}/debit-notes` | OWNER, BRANCH_MANAGER, FINANCE |
+
+**Issue Invoice:** Creates a `TaxInvoice` from a completed sale. Query params: `customerPin`, `currency`, `actorId`, `actorName`. Each item snapshots `unitPrice`, `taxableAmount`, `taxRate`, `taxType`, `taxAmount` — never recalculated.
+
+**TaxInvoiceResponseDto:** `id`, `saleId`, `invoiceNumber`, `invoiceStatus` (DRAFT|ISSUED|VOID|CREDITED|CLOSED), `subtotal`, `taxAmount`, `discount`, `grandTotal`, `issueDate`, `currency`, `branchId`, `customerId`, `customerName`, `customerPin`, `schemaVersion`, `qrCodeContent`, `qrImagePath`, `verificationUrl`, `items[]`, `history[]`, `createdAt`, `updatedAt`
+
+**TaxInvoiceItemResponse:** `id`, `medicineId`, `medicineName`, `barcode`, `quantity`, `unitPrice`, `taxableAmount`, `taxRate`, `taxType`, `taxAmount`, `discount`, `subtotal`, `total`
+
+**Invoice History Response:** `id`, `historyType` (CREATED|ISSUED|SENT_TO_KRA|ACKNOWLEDGED|REPRINTED|CREDIT_NOTE_ISSUED|DEBIT_NOTE_ISSUED|VOID|CLOSED|TRANSMISSION_FAILED), `description`, `actorId`, `actorName`, `createdAt`
+
+> Invoices are **immutable** after issuance. Use credit/debit notes for corrections. Cannot cancel an invoice already transmitted to KRA.
+
+**CreditNoteResponseDto:** `id`, `originalInvoiceId`, `creditNoteNumber`, `reason`, `amount`, `taxAmount`, `status` (DRAFT|ISSUED|CANCELLED), `issueDate`, `createdBy`, `createdAt`
+
+**DebitNoteResponseDto:** `id`, `originalInvoiceId`, `debitNoteNumber`, `reason`, `amount`, `taxAmount`, `status` (DRAFT|ISSUED|CANCELLED), `issueDate`, `createdBy`, `createdAt`
+
+> Credit note validation: total of all non-cancelled credit notes cannot exceed original invoice grand total.
+
+### 34b. Compliance — eTIMS Transmission
+| Method | Path | Auth |
+|---|---|---|
+| `POST` | `/api/etims/transmit/{invoiceId}` | OWNER, BRANCH_MANAGER, FINANCE |
+| `GET` | `/api/etims/transmissions/{id}` | OWNER, BRANCH_MANAGER, FINANCE |
+| `GET` | `/api/etims/transmissions/by-invoice/{invoiceId}` | OWNER, BRANCH_MANAGER, FINANCE |
+| `POST` | `/api/etims/retry/{transmissionId}` | OWNER, BRANCH_MANAGER, FINANCE |
+| `POST` | `/api/etims/retry-all` | OWNER, BRANCH_MANAGER, FINANCE |
+| `GET` | `/api/etims/health` | OWNER, BRANCH_MANAGER, FINANCE |
+
+**TransmissionResponseDto:** `id`, `invoiceId`, `documentType`, `transmissionStatus` (PENDING|TRANSMITTING|FAILED|TRANSMITTED|CANCELLED), `submittedBy`, `submittedAt`, `requestHash`, `responseHash`, `payloadVersion`, `kraReceiptNumber`, `failureReason`, `nextRetryTime`, `attempts[]`, `createdAt`
+
+**AttemptResponse:** `id`, `attemptNumber`, `sentAt`, `responseAt`, `success`, `statusCode`, `errorMessage`, `durationMs`
+
+> **Flow:** `POST /transmit/{invoiceId}` → Creates Transmission record → Enqueued to in-memory worker → Marked TRANSMITTING → OSCU/VSCU gateway called → On success: TRANSMITTED + KRA receipt stored. On failure: FAILED + exponential backoff retry schedule. Each attempt stored with full request/response payloads and SHA-256 hashes for audit.
+
+### 34c. Compliance — Receipts (Compliance-Grade)
+| Method | Path | Auth |
+|---|---|---|
+| `POST` | `/api/compliance/receipts` | OWNER, BRANCH_MANAGER, CASHIER |
+| `GET` | `/api/compliance/receipts/{id}` | OWNER, BRANCH_MANAGER, CASHIER, PHARMACIST |
+| `GET` | `/api/compliance/receipts/by-sale/{saleId}` | OWNER, BRANCH_MANAGER, CASHIER, PHARMACIST |
+| `POST` | `/api/compliance/receipts/{id}/reprint` | OWNER, BRANCH_MANAGER, CASHIER |
+
+**Receipt entity** stores a permanent snapshot: `saleId`, `receiptNumber`, `invoiceId`, `receiptData` (JSON), `printedDate`, `reprintCount`, `businessName`, `kraPin`, `qrCodeContent`, `verificationUrl`. Never regenerated from product prices — safe to reprint years later.
+
+### 34d. Compliance — Dashboard, Health & Sync
+| Method | Path | Auth |
+|---|---|---|
+| `GET` | `/api/compliance/dashboard` | OWNER, BRANCH_MANAGER, FINANCE |
+| `GET` | `/api/compliance/health` | OWNER, BRANCH_MANAGER, FINANCE |
+| `GET` | `/api/compliance/sync/status` | OWNER, BRANCH_MANAGER, FINANCE |
+| `POST` | `/api/compliance/sync/run?scope=all` | OWNER, BRANCH_MANAGER |
+| `POST` | `/api/compliance/certification/run` | OWNER, BRANCH_MANAGER |
+| `POST` | `/api/compliance/certification/generate-demo-data` | OWNER, BRANCH_MANAGER |
+| `POST` | `/api/compliance/certification/export` | OWNER, BRANCH_MANAGER |
+
+**ComplianceDashboardDto:** `mode` (MOCK|SANDBOX|CERTIFICATION|PRODUCTION), `activeProvider` (OSCU|VSCU), `invoicesToday`, `transmissionsPending`, `transmissionsFailed`, `transmissionsTransmitted`, `deadLetterCount`, `retryQueueSize`, `oscuStatus`, `vscuStatus`, `certificateStatus`, `certificateExpiring`, `lastSuccess`, `lastFailure`, `averageApiTimeMs`
+
+**Health Response:** `{status, mode, activeProvider, transmissionsPending, transmissionsFailed, transmissionsTransmitted, deadLetterCount, oscuHealth, vscuHealth, activeCertificates, certificateWarning?}`
+
+**Sync scopes:** `all`, `CODE`, `ITEM`, `BRANCH`, `PURCHASE`, `STOCK`, `INVOICE` — each runs the corresponding synchronizer independently.
+
+**Certification Suite:** Runs 4 test scenarios (invoice generation, tax calculation, credit note, synchronization). Returns per-scenario PASS/FAIL with timing and details. Export collects invoices, transmissions, and compliance events.
+
+### 34e. Compliance — Controlled Drugs & Expiry
+| Method | Path | Auth |
+|---|---|---|
+| `POST` | `/api/controlled-drugs` | OWNER, PHARMACIST |
+| `GET` | `/api/controlled-drugs` | OWNER, PHARMACIST |
 | `POST` | `/api/expiry-logs` | OWNER, BRANCH_MANAGER, STORE_KEEPER |
 | `GET` | `/api/expiry-logs` | OWNER, BRANCH_MANAGER, STORE_KEEPER |
-| `POST` | `/api/etims/submit?saleId=` | OWNER, BRANCH_MANAGER |
-| `GET` | `/api/controlled-drugs` | OWNER, PHARMACIST |
-| `POST` | `/api/controlled-drugs` | OWNER, PHARMACIST |
-
-**ExpiryLogRequestDto:** `medicineBatchesId`*, `userId`*, `disposalMethod`*
-**ExpiryLogResponseDto:** `id`, `medicineBatchId`, `medicineName`, `batchNumber`, `expirationDate`, `userId`, `disposalMethod`, `disposedAt`
-
-**EtimsResponseDto:** `id`, `saleId`, `invoiceNumber`, `submissionStatus`, `qrCode`, `createdAt`
 
 **ControlledDrugsRequestDto:** `medicineId`*, `prescriptionId`*, `userId`*, `quantityDispensed`*
-**ControlledDrugsResponseDto:** `id`, `medicineId`, `medicineName`, `prescriptionId`, `userId`, `quantityDispensed`, `dispensedAt`
+**ExpiryLogRequestDto:** `medicineBatchesId`*, `userId`*, `disposalMethod`*
 
 ---
 
@@ -863,3 +938,529 @@ Set `pos.sync.central-url` to point to the central server. Each terminal persist
 6. Add `pos.sync.api-key=<key>` to terminal config
 7. Frontend connects to `http://localhost:9090`
 8. The terminal syncs to the central server whenever online — no manual steps needed after initial setup
+
+---
+
+## KRA eTIMS Compliance Architecture
+
+### System Context
+
+```
+┌──────────────┐     ┌────────────────┐     ┌──────────────────┐
+│  Cashier App │────▶│  Pharmacy POS  │────▶│  KRA eTIMS       │
+│  (React)     │     │  (Spring Boot) │     │  (OSCU / VSCU)   │
+└──────────────┘     └───────┬────────┘     └──────────────────┘
+                             │
+                  ┌──────────┴──────────┐
+                  │  Compliance Module  │
+                  ├─────────────────────┤
+                  │  TIS Core           │
+                  │  FiscalGateway      │
+                  │  Sync Engine        │
+                  │  Certification      │
+                  └─────────────────────┘
+```
+
+### Four Bounded Contexts
+
+| Context | Package | Responsibility |
+|---------|---------|---------------|
+| **TIS Core** | `compliance/invoice/`, `compliance/tax/`, `compliance/numbering/`, `compliance/receipt/`, `compliance/validation/`, `compliance/rules/` | Invoice generation, tax calculation, receipt generation, credit/debit notes, validation, document numbering — **certified business logic** |
+| **eTIMS Connector** | `compliance/gateway/`, `compliance/initialization/`, `compliance/transmission/` | OSCU/VSCU REST clients, device initialization, transmission retry/queue/dead-letter — **replaceable without touching TIS** |
+| **Sync Engine** | `compliance/synchronization/` | Independent synchronizers for codes, items, branches, purchases, stock, invoices — **each runs independently** |
+| **Certification** | `compliance/certification/`, `compliance/monitoring/`, `compliance/dashboard/` | Test scenario runner, artifact exporter, demo data generator, dashboard, health checks — **reproducible certification evidence** |
+
+### Compliance Database ERD
+
+```mermaid
+erDiagram
+    tax_category ||--o{ medicine : "assigned to"
+    medicine ||--o{ medicine_batches : "has batches"
+    medicine_batches ||--o{ sales_items : "sold in"
+
+    sales ||--|| tax_invoices : "invoiced as"
+    tax_invoices ||--o{ tax_invoice_items : "contains"
+    tax_invoices ||--o{ invoice_history : "tracks"
+    tax_invoices ||--o| transmissions : "transmitted via"
+    transmissions ||--o{ transmission_attempts : "attempts"
+    transmissions }o--o| dead_letter_records : "exhausted to"
+
+    tax_invoices ||--o{ credit_notes : "credited by"
+    tax_invoices ||--o{ debit_notes : "debited by"
+
+    tax_invoices ||--o| receipts_compliance : "printed as"
+
+    compliance_events }o--o| tax_invoices : "logs"
+    compliance_certificates ||--o| device_registration : "secures"
+
+    document_sequences {
+        bigint id PK
+        string document_type
+        string branch_code
+        string sequence_date
+        bigint last_sequence
+    }
+
+    tax_invoices {
+        bigint id PK
+        bigint sale_id FK "1:1 to sales"
+        string invoice_number UK
+        enum invoice_status "DRAFT|ISSUED|VOID|CREDITED|CLOSED"
+        decimal subtotal
+        decimal tax_amount
+        decimal discount
+        decimal grand_total
+        datetime issue_date
+        string currency
+        bigint branch_id
+        bigint customer_id
+        string customer_pin
+        int schema_version
+        string qr_code_content
+        string verification_url
+    }
+
+    tax_invoice_items {
+        bigint id PK
+        bigint tax_invoice_id FK
+        bigint medicine_id
+        string medicine_name
+        string barcode
+        int quantity
+        decimal unit_price
+        decimal taxable_amount
+        decimal tax_rate
+        string tax_type
+        decimal tax_amount
+        decimal discount
+        decimal subtotal
+        decimal total
+    }
+
+    invoice_history {
+        bigint id PK
+        bigint invoice_id FK
+        enum history_type
+        string description
+        bigint actor_id
+        string actor_name
+    }
+
+    transmissions {
+        bigint id PK
+        bigint invoice_id FK
+        string document_type
+        string idempotency_key UK
+        enum transmission_status "PENDING|TRANSMITTING|FAILED|TRANSMITTED|CANCELLED"
+        bigint submitted_by
+        datetime submitted_at
+        string request_hash
+        string response_hash
+        int payload_version
+        longtext kra_request
+        longtext kra_response
+        string kra_receipt_number
+        datetime next_retry_time
+        string failure_reason
+    }
+
+    transmission_attempts {
+        bigint id PK
+        bigint transmission_id FK
+        int attempt_number
+        datetime sent_at
+        datetime response_at
+        longtext request_payload
+        longtext response_payload
+        bool success
+        int status_code
+        string error_message
+        bigint duration_ms
+    }
+
+    dead_letter_records {
+        bigint id PK
+        bigint transmission_id
+        bigint invoice_id
+        string document_number
+        int attempts_exhausted
+        string failure_reason
+        enum status "PENDING|IN_REVIEW|RETRYING|RESOLVED|DISCARDED"
+        bigint assigned_to
+        string resolution
+        datetime resolved_at
+    }
+
+    credit_notes {
+        bigint id PK
+        bigint original_invoice_id
+        string credit_note_number UK
+        string reason
+        decimal amount
+        decimal tax_amount
+        enum status "DRAFT|ISSUED|CANCELLED"
+        datetime issue_date
+        bigint created_by
+    }
+
+    debit_notes {
+        bigint id PK
+        bigint original_invoice_id
+        string debit_note_number UK
+        string reason
+        decimal amount
+        decimal tax_amount
+        enum status "DRAFT|ISSUED|CANCELLED"
+        datetime issue_date
+        bigint created_by
+    }
+
+    receipts_compliance {
+        bigint id PK
+        bigint sale_id
+        string receipt_number UK
+        bigint invoice_id
+        longtext receipt_data
+        datetime printed_date
+        int reprint_count
+        string business_name
+        string kra_pin
+        string qr_code_content
+        string verification_url
+    }
+
+    compliance_events {
+        bigint id PK
+        bigint invoice_id
+        string document_number
+        enum event_type
+        string description
+        bigint actor_id
+        string actor_name
+        longtext payload
+        string correlation_id
+    }
+
+    compliance_certificates {
+        bigint id PK
+        string serial UK
+        string issuer
+        datetime valid_from
+        datetime valid_to
+        enum status "ACTIVE|EXPIRED|REVOKED|PENDING"
+        longtext encrypted_private_key
+        string thumbprint
+        longtext certificate_data
+    }
+
+    device_registration {
+        bigint id PK
+        string device_serial UK
+        string kra_pin
+        longtext encrypted_cmc_key
+        string registration_status "PENDING|INITIALIZED|ACTIVE|EXPIRED|REVOKED"
+        datetime registered_at
+        datetime last_renewed_at
+        string environment
+    }
+
+    etims_sync_state {
+        bigint id PK
+        string sync_type "CODE|ITEM|BRANCH|PURCHASE|STOCK|INVOICE"
+        datetime last_sync_at
+        string last_sync_status
+        int records_synced
+        int records_failed
+        string error_message
+    }
+```
+
+### Invoice Lifecycle Sequence
+
+```mermaid
+sequenceDiagram
+    participant C as Cashier
+    participant S as SaleService
+    participant I as InvoiceService
+    participant H as InvoiceHistory
+    participant E as EventBus
+    participant T as TransmissionWorker
+    participant G as FiscalDevice
+    participant K as KRA eTIMS
+
+    C->>S: Complete Sale
+    S->>S: Snapshot taxRate, taxableAmount in SaleItems
+    S-->>C: Sale DONE
+
+    C->>I: POST /api/invoices/issue/{saleId}
+    I->>S: Load sale with items
+    I->>I: TaxEngine.calculateTaxAmount()
+    I->>I: DocumentNumberGenerator.generate("INV", branchCode)
+    I->>I: Save TaxInvoice + TaxInvoiceItems
+    I->>H: Record ISSUED event
+    I->>E: Publish InvoiceIssuedEvent
+    I-->>C: TaxInvoiceResponseDto
+
+    E->>T: onInvoiceIssued()
+    T->>T: Create Transmission (PENDING)
+    T->>T: Enqueue to worker thread
+
+    T->>T: Dequeue transmission
+    T->>I: Load invoice
+    T->>G: OscuMapper.toPayload(invoice)
+    T->>G: OscuDevice.submit(invoice, payload)
+    G->>K: POST /invoices (JSON payload)
+    K-->>G: {receiptNumber, status}
+    G-->>T: ComplianceResponse
+
+    alt success
+        T->>T: markTransmitted(receiptNumber)
+        T->>H: Record ACKNOWLEDGED
+    else failure
+        T->>T: markFailed(error, retryTime)
+        T->>H: Record TRANSMISSION_FAILED
+        Note over T: Exponential backoff: 2^attempt minutes
+    end
+```
+
+### Transmission Retry Flow
+
+```mermaid
+sequenceDiagram
+    participant S as TransmissionScheduler
+    participant T as TransmissionService
+    participant Q as TransmissionQueue
+    participant W as TransmissionWorker
+    participant D as DeadLetterService
+
+    S->>T: @Scheduled (every 60s)
+    T->>T: Query FAILED + nextRetryTime <= now
+    T->>Q: Enqueue retry candidates
+
+    W->>Q: Dequeue
+    W->>W: Attempt transmission
+
+    alt success
+        W->>T: markTransmitted()
+    else failure
+        W->>T: markFailed()
+        Note over W: Increment attempt #, calculate backoff
+
+        alt attempts < maxRetries
+            Note over T: nextRetryTime = now + 2^attempts min
+        else attempts >= maxRetries
+            T->>D: createDeadLetter(transmission)
+            D->>D: Status = PENDING, assignedTo = null
+            Note over D: Appears in manager dashboard
+        end
+    end
+```
+
+### Synchronization Engine
+
+```mermaid
+sequenceDiagram
+    participant A as Admin
+    participant D as DashboardController
+    participant SE as SyncEngine
+    participant S1 as CodeSynchronizer
+    participant S2 as ItemSynchronizer
+    participant S3 as BranchSynchronizer
+    participant S4 as PurchaseSynchronizer
+    participant S5 as StockSynchronizer
+    participant S6 as InvoiceSynchronizer
+    participant ST as EtimsSyncState
+
+    A->>D: POST /api/compliance/sync/run?scope=all
+    D->>SE: runAll()
+
+    par Independent Sync
+        SE->>S1: sync()
+        S1->>S1: Query active tax codes
+        S1->>ST: Update sync state
+    and
+        SE->>S2: sync()
+        S2->>S2: Query medicine items
+        S2->>ST: Update sync state
+    and
+        SE->>S3: sync()
+        S3->>S3: Query branches
+        S3->>ST: Update sync state
+    and
+        SE->>S4: sync()
+        S4->>S4: Query purchase orders
+        S4->>ST: Update sync state
+    and
+        SE->>S5: sync()
+        S5->>S5: Query stock movements
+        S5->>ST: Update sync state
+    and
+        SE->>S6: sync()
+        S6->>S6: Query invoices + transmissions
+        S6->>ST: Update sync state
+    end
+
+    D-->>A: Sync completed: all
+```
+
+### Compliance Gateway — Adapter Pattern
+
+```
+                    ┌─────────────────────────┐
+                    │    ComplianceGateway     │
+                    │    (interface)           │
+                    ├─────────────────────────┤
+                    │ + submit(invoice,payload)│
+                    │ + queryStatus(number)    │
+                    │ + getHealth()            │
+                    │ + getProviderName()      │
+                    │ + supports(providerCode) │
+                    └───────────┬─────────────┘
+                                │
+              ┌─────────────────┴─────────────────┐
+              │                                   │
+    ┌─────────┴──────────┐           ┌────────────┴──────────┐
+    │   OscuGateway      │           │   VscuGateway         │
+    │   (OSCU provider)  │           │   (VSCU provider)     │
+    ├────────────────────┤           ├───────────────────────┤
+    │ Individual submit  │           │ Batch submit          │
+    │ Real-time response │           │ Bulk processing       │
+    │ In-memory queue    │           │ BatchProcessor        │
+    └────────────────────┘           └───────────────────────┘
+              │                                   │
+              └─────────────────┬─────────────────┘
+                                │
+                    ┌───────────┴─────────────┐
+                    │  ComplianceGatewayFactory│
+                    │  (auto-discovers beans)  │
+                    └─────────────────────────┘
+```
+
+### Security: Communication Key Management
+
+```mermaid
+sequenceDiagram
+    participant A as Admin
+    participant I as EtimsInitializer
+    participant K as CommunicationKeyManager
+    participant D as DeviceRegistration
+    participant G as FiscalDevice
+
+    Note over A,G: Device Registration (one-time)
+    A->>I: initialize(deviceSerial, kraPin, cmcKey)
+    I->>K: encrypt(plainCmcKey)
+    K->>K: PBKDF2WithHmacSHA256 derive key
+    K->>K: AES-256 encrypt
+    K-->>I: encryptedCmcKey (Base64)
+    I->>D: Save {deviceSerial, kraPin, encryptedCmcKey}
+    D-->>I: DeviceRegistration ACTIVE
+    I-->>A: Device registered
+
+    Note over A,G: Runtime Usage
+    G->>I: getDecryptedKey(deviceSerial)
+    I->>D: Find by deviceSerial
+    I->>K: decrypt(encryptedCmcKey)
+    K->>K: AES-256 decrypt
+    K-->>I: plainCmcKey (in memory only)
+    I-->>G: cmcKey for HTTP header
+    G->>G: Build KRA request with cmcKey
+
+    Note over G: Key never logged. Masked in audit: abc1****wxyz
+```
+
+### Certification Readiness Checklist
+
+The compliance module provides these reproducible artifacts for KRA certification:
+
+| Artifact | Location | How to Generate |
+|----------|----------|----------------|
+| **Architecture diagrams** | `API.md` (this file) | Mermaid ERD, sequence, component diagrams above |
+| **API logs** | `compliance_events` table | Every invoice issue, transmission, retry, credit note records a `ComplianceEvent` with timestamp, actor, payload |
+| **Invoice history** | `invoice_history` table | Full lifecycle: CREATED→ISSUED→SENT_TO_KRA→ACKNOWLEDGED/FAILED→VOID→CLOSED |
+| **Synchronization history** | `etims_sync_state` table | Per-sync-type: last run time, records synced, records failed, error message |
+| **Transmission history** | `transmissions` + `transmission_attempts` tables | Every KRA request/response stored with: full payload, SHA-256 hash, attempt count, duration, status code |
+| **Test data** | `POST /api/compliance/certification/generate-demo-data` | Creates deterministic VAT16, VAT8, VAT0, EXEMPT tax categories |
+| **Audit logs** | `compliance_events` + `audit_logs` tables | Every compliance action logged with actor, timestamp, correlation ID |
+| **Configuration history** | `compliance_certificates` + `device_registration` tables | Certificate rotation, device key renewal all timestamped |
+| **Certification test run** | `POST /api/compliance/certification/run` | Runs 4 scenarios (invoice gen, tax calc, credit note, sync) with PASS/FAIL + timing |
+| **Certification export** | `POST /api/compliance/certification/export` | Exports invoice count, transmission count, event count summary |
+
+### Operational Dashboard (Manager View)
+
+The compliance dashboard at `GET /api/compliance/dashboard` provides real-time operational visibility:
+
+```
+┌────────────────────────────────────────────────────────────┐
+│  eTIMS Compliance Dashboard                                │
+├─────────────┬─────────────┬────────────────┬──────────────┤
+│ Environment │ Provider    │ Certificate    │ Device       │
+│ SANDBOX     │ OSCU        │ ACTIVE         │ POS-001      │
+├─────────────┴─────────────┴────────────────┴──────────────┤
+│  Transmissions         Dead Letter       Retry Queue       │
+│  Pending:  12          Count:  3         Size:    5        │
+│  Failed:    2          Status: PENDING   Processing:       │
+│  Sent:    147                                                │
+├────────────────────────────────────────────────────────────┤
+│  OSCU: SANDBOX          VSCU: NOT_CONFIGURED               │
+│  Average API Time: N/A  Last Success: 2026-07-21 21:00    │
+│  Certificate Expiring: No                                  │
+└────────────────────────────────────────────────────────────┘
+```
+
+### Compliance Configuration Properties
+
+```properties
+# Compliance Mode: MOCK | SANDBOX | CERTIFICATION | PRODUCTION
+compliance.mode=MOCK
+compliance.kra-pin=P051234567A
+compliance.device-serial=POS-001
+compliance.active-provider=OSCU
+compliance.strict-validation=false
+compliance.log-full-payloads=true
+compliance.max-retry-attempts=10
+compliance.retry-interval-ms=60000
+
+# OSCU (Online Sales Control Unit)
+compliance.osuc.api-url=
+compliance.osuc.timeout-seconds=30
+
+# VSCU (Virtual Sales Control Unit)
+compliance.vscu.api-url=
+compliance.vscu.timeout-seconds=30
+
+# Master passphrase for cmcKey encryption (set via JVM property, never in config files)
+# -Dcompliance.master.passphrase=<secure-passphrase>
+```
+
+### Package Structure Summary
+
+```
+com.example.pos.compliance/
+├── invoice/           TaxInvoice, TaxInvoiceItem, InvoiceHistory, CreditNote, DebitNote
+│   ├── event/         SaleCompletedEvent, InvoiceIssuedEvent
+│   ├── service/       InvoiceService, CreditNoteService, DebitNoteService, InvoiceEventListener
+│   └── controller/    InvoiceController
+├── transmission/      Transmission, TransmissionAttempt, DeadLetterRecord
+│   ├── service/       TransmissionService, TransmissionWorker, TransmissionScheduler, TransmissionQueue
+│   └── controller/    TransmissionController
+├── numbering/         DocumentSequence, DocumentNumberGenerator, SequenceStrategy
+├── receipt/           Receipt, ComplianceReceiptService, ComplianceReceiptController
+├── tax/               TaxEngine, DefaultTaxEngine, TaxSnapshot
+├── validation/        ComplianceValidationService, InvoiceValidationReport
+├── rules/             ComplianceRule, RuleEngine, RequiredCustomerPinRule, InvoiceTotalRule
+├── event/             ComplianceEvent, ComplianceEventType, ComplianceEventRepository
+├── gateway/           ComplianceGateway, FiscalDevice, ComplianceGatewayFactory
+│   ├── oscu/          OscuGateway, OscuMapper
+│   └── vscu/          VscuGateway
+├── batch/             Batch, BatchItem, BatchProcessor
+├── initialization/    EtimsInitializer, CommunicationKeyManager, DeviceRegistration
+├── synchronization/   SyncEngine, CodeSynchronizer, ItemSynchronizer, BranchSynchronizer,
+│                      PurchaseSynchronizer, StockSynchronizer, InvoiceSynchronizer, EtimsSyncState
+├── reconciliation/    ReconciliationService, ReconciliationResult
+├── certification/     CertificationService, TestScenarioRunner, ArtifactExporter, DemoDataGenerator
+├── tis/               TraderInvoicingSystem, TisFacade, TisWorkflow
+├── config/            ComplianceConfiguration, ComplianceMode, FiscalYear, TaxPeriod
+├── health/            ComplianceHealthIndicator, ComplianceHealthService
+├── monitoring/        ComplianceDashboardService
+└── dashboard/         DashboardController, ComplianceDashboardDto
+```
