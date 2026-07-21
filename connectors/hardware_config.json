@@ -1,0 +1,24 @@
+{
+  "printer": {
+    "type": "network",
+    "host": "192.168.1.100",
+    "port": 9100,
+    "width": 42
+  },
+  "scanner": {
+    "mode": "keyboard_wedge"
+  },
+  "cash_drawer": {
+    "mode": "printer",
+    "printer_host": "192.168.1.100",
+    "printer_port": 9100,
+    "pin": 2
+  },
+  "display": {
+    "enabled": false,
+    "com_port": "COM5",
+    "baud_rate": 9600,
+    "lines": 2,
+    "columns": 20
+  }
+}

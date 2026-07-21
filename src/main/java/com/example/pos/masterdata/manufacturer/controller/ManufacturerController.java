@@ -1,0 +1,48 @@
+package com.example.pos.masterdata.manufacturer.controller;
+
+import com.example.pos.common.dto.ApiResponse;
+import com.example.pos.masterdata.manufacturer.dto.ManufacturerRequestDto;
+import com.example.pos.masterdata.manufacturer.dto.ManufacturerResponseDto;
+import com.example.pos.masterdata.manufacturer.model.Manufacturer;
+import com.example.pos.masterdata.manufacturer.service.ManufacturerService;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/manufacturers")
+public class ManufacturerController {
+
+    private final ManufacturerService service;
+    public ManufacturerController(ManufacturerService service) { this.service = service; }
+
+    @PostMapping
+    public ResponseEntity<ApiResponse<ManufacturerResponseDto>> create(@RequestBody @Valid ManufacturerRequestDto dto) {
+        Manufacturer m = service.create(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.created(ManufacturerResponseDto.from(m)));
+    }
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<ManufacturerResponseDto>>> getAll() {
+        return ResponseEntity.ok(ApiResponse.ok(service.getAll().stream().map(ManufacturerResponseDto::from).toList()));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<ManufacturerResponseDto>> getById(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.ok(ManufacturerResponseDto.from(service.getById(id))));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<ManufacturerResponseDto>> update(@PathVariable Long id, @RequestBody @Valid ManufacturerRequestDto dto) {
+        return ResponseEntity.ok(ApiResponse.updated(ManufacturerResponseDto.from(service.update(id, dto))));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
+        service.delete(id);
+        return ResponseEntity.ok(ApiResponse.deleted());
+    }
+}

@@ -1,0 +1,21 @@
+type Query {
+    dashboard(branchId: ID!): DashboardData
+    sale(id: ID!): Sale
+}
+
+type DashboardData {
+    todaySalesCount: Int!
+    todaySalesTotal: Float!
+    lowStockCount: Int!
+    totalStockItems: Int!
+}
+
+type Sale {
+    id: ID!
+    invoiceNumber: String
+    total: Float
+    tax: Float
+    subtotal: Float
+    saleStatus: String
+    paymentStatus: String
+}
