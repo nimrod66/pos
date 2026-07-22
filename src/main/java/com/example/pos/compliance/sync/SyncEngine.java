@@ -2,11 +2,13 @@ package com.example.pos.compliance.sync;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 
+@Service
 public class SyncEngine {
 
     private static final Logger log = LoggerFactory.getLogger(SyncEngine.class);
