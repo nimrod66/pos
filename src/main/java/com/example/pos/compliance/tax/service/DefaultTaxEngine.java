@@ -1,23 +1,19 @@
 package com.example.pos.compliance.tax.service;
 
 import com.example.pos.compliance.tax.dto.TaxSnapshot;
-import com.example.pos.masterdata.tax.model.Tax;
-import lombok.AllArgsConstructor;
-import lombok.Data;
+import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
-@Data
-@AllArgsConstructor
+@Service
 public class DefaultTaxEngine implements TaxEngine {
 
     @Override
-    public BigDecimal calculateTaxAmount(BigDecimal taxableAmount, Tax taxCategory) {
+    public BigDecimal calculateTaxAmount(BigDecimal taxableAmount, TaxSnapshot taxCategory) {
         if (taxCategory == null || taxableAmount == null) return BigDecimal.ZERO;
-        if (!taxCategory.isActive()) return BigDecimal.ZERO;
 
-        BigDecimal rate = taxCategory.getTaxRate();
+        BigDecimal rate = taxCategory.taxRate();
         return taxableAmount.multiply(rate)
                 .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
     }
@@ -30,16 +26,10 @@ public class DefaultTaxEngine implements TaxEngine {
     }
 
     @Override
-    public Tax getApplicableTax(Long medicineId) {
-        return null;
-    }
-
-    @Override
-    public TaxSnapshot snapshot(Tax tax) {
-        if (tax == null) {
-            return new TaxSnapshot(BigDecimal.ZERO, null, null);
-        }
-        return new TaxSnapshot(tax.getTaxRate(), tax.getCode(),
-                tax.getTaxType() != null ? tax.getTaxType().name() : null);
+    public TaxSnapshot snapshot(BigDecimal taxRate, String taxCode, String taxType) {
+        return new TaxSnapshot(
+                taxRate != null ? taxRate : BigDecimal.ZERO,
+                taxCode,
+                taxType);
     }
 }

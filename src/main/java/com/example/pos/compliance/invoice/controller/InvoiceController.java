@@ -3,6 +3,7 @@ package com.example.pos.compliance.invoice.controller;
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.compliance.invoice.dto.CreditNoteResponseDto;
 import com.example.pos.compliance.invoice.dto.DebitNoteResponseDto;
+import com.example.pos.compliance.invoice.dto.SaleFiscalData;
 import com.example.pos.compliance.invoice.dto.TaxInvoiceResponseDto;
 import com.example.pos.compliance.invoice.model.*;
 import com.example.pos.compliance.invoice.service.*;
@@ -31,14 +32,12 @@ public class InvoiceController {
         this.debitNoteService = debitNoteService;
     }
 
-    @PostMapping("/issue/{saleId}")
+    @PostMapping("/issue")
     public ResponseEntity<ApiResponse<TaxInvoiceResponseDto>> issue(
-            @PathVariable Long saleId,
-            @RequestParam(required = false) String customerPin,
-            @RequestParam(required = false) String currency,
+            @RequestBody SaleFiscalData saleData,
             @RequestParam(required = false) Long actorId,
             @RequestParam(required = false) String actorName) {
-        TaxInvoice invoice = invoiceService.issueFromSale(saleId, customerPin, currency, actorId, actorName);
+        TaxInvoice invoice = invoiceService.issueFromSale(saleData, actorId, actorName);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created(TaxInvoiceResponseDto.from(invoice)));
     }

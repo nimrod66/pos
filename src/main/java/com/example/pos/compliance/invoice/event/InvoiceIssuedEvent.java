@@ -12,7 +12,7 @@ public class InvoiceIssuedEvent extends ApplicationEvent {
     public InvoiceIssuedEvent(Object source, TaxInvoice invoice) {
         super(source);
         this.invoiceId = invoice.getId();
-        this.saleId = invoice.getSale() != null ? invoice.getSale().getId() : null;
+        this.saleId = invoice.getSaleId();
         this.invoiceNumber = invoice.getInvoiceNumber();
     }
 

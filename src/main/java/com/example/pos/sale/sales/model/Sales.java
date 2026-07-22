@@ -1,7 +1,6 @@
 package com.example.pos.sale.sales.model;
 
 import com.example.pos.common.BaseEntity;
-import com.example.pos.compliance.etims.model.Etims;
 import com.example.pos.core.branch.model.Branch;
 import com.example.pos.customer.model.Customer;
 import com.example.pos.sale.idempotency.model.IdempotencyKey;
@@ -45,9 +44,6 @@ public class Sales extends BaseEntity {
 
     @OneToMany(mappedBy = "sales", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<SaleReturns> saleReturns;
-
-    @OneToMany(mappedBy = "sales", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
-    private List<Etims> etims;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "branch_id")

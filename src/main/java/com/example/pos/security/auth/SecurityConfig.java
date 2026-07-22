@@ -1,6 +1,7 @@
 package com.example.pos.security.auth;
 
 import com.example.pos.sync.auth.TerminalAuthFilter;
+import com.example.pos.terminal.auth.TerminalAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -27,13 +28,17 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtFilter;
     private final TerminalAuthFilter terminalAuthFilter;
+    private final TerminalAuthenticationFilter terminalAuthenticationFilter;
 
     @Value("${pos.security.csrf-enabled:true}")
     private boolean csrfEnabled;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtFilter, TerminalAuthFilter terminalAuthFilter) {
+    public SecurityConfig(JwtAuthenticationFilter jwtFilter,
+                          TerminalAuthFilter terminalAuthFilter,
+                          TerminalAuthenticationFilter terminalAuthenticationFilter) {
         this.jwtFilter = jwtFilter;
         this.terminalAuthFilter = terminalAuthFilter;
+        this.terminalAuthenticationFilter = terminalAuthenticationFilter;
     }
 
     @Bean
@@ -58,6 +63,7 @@ public class SecurityConfig {
                 }
             })
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .addFilterBefore(terminalAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(terminalAuthFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
             .authorizeHttpRequests(auth -> auth
@@ -111,6 +117,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/receipts/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "CASHIER", "PHARMACIST")
                 .requestMatchers("/api/hardware/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "CASHIER")
                 .requestMatchers("/api/sync/terminals/**").hasAnyRole("OWNER", "PLATFORM_ADMIN")
+                .requestMatchers("/api/terminals/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "CASHIER", "PHARMACIST", "PLATFORM_ADMIN")
                 .requestMatchers("/api/sync/**").authenticated()
                 .anyRequest().authenticated());
 

@@ -3,14 +3,14 @@ package com.example.pos.compliance.tis;
 import com.example.pos.compliance.config.ComplianceConfiguration;
 import com.example.pos.compliance.gateway.ComplianceGateway;
 import com.example.pos.compliance.gateway.ComplianceGatewayFactory;
-import com.example.pos.compliance.health.ComplianceHealthService;
+import com.example.pos.compliance.monitoring.health.ComplianceHealthService;
 import com.example.pos.compliance.invoice.model.TaxInvoice;
 import com.example.pos.compliance.invoice.service.InvoiceService;
 import com.example.pos.compliance.numbering.service.DocumentNumberGenerator;
-import com.example.pos.compliance.reconciliation.service.ReconciliationService;
-import com.example.pos.compliance.receipt.service.ComplianceReceiptService;
+import com.example.pos.compliance.monitoring.reconciliation.service.ReconciliationService;
+import com.example.pos.compliance.invoice.service.ComplianceReceiptService;
 import com.example.pos.compliance.transmission.service.TransmissionService;
-import com.example.pos.compliance.validation.ComplianceValidationService;
+import com.example.pos.compliance.invoice.validation.ComplianceValidationService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,7 +52,11 @@ public class TisFacade implements TraderInvoicingSystem {
 
     @Override
     public TaxInvoice generateInvoice(Long saleId, String customerPin) {
-        return invoiceService.issueFromSale(saleId, customerPin, "KES", null, "TIS");
+        return invoiceService.issueFromSale(
+                new com.example.pos.compliance.invoice.dto.SaleFiscalData(
+                        saleId, false, null, "BR001",
+                        java.math.BigDecimal.ZERO, null, null, customerPin, "KES", java.util.List.of()),
+                null, "TIS");
     }
 
     @Override

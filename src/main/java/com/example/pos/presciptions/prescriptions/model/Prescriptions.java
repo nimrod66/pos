@@ -1,7 +1,7 @@
 package com.example.pos.presciptions.prescriptions.model;
 
 import com.example.pos.common.BaseEntity;
-import com.example.pos.compliance.controlledrugs.model.ControlledDrugs;
+import com.example.pos.pharmacy.regulatory.controlledrugs.model.ControlledDrugs;
 import com.example.pos.presciptions.prescriptionitems.model.PrescriptionItems;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;

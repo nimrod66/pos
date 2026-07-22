@@ -70,7 +70,7 @@ public class TaxInvoiceResponseDto {
     public static TaxInvoiceResponseDto from(TaxInvoice invoice) {
         var builder = TaxInvoiceResponseDto.builder()
                 .id(invoice.getId())
-                .saleId(invoice.getSale() != null ? invoice.getSale().getId() : null)
+                .saleId(invoice.getSaleId())
                 .invoiceNumber(invoice.getInvoiceNumber())
                 .invoiceStatus(invoice.getInvoiceStatus() != null ? invoice.getInvoiceStatus().name() : null)
                 .subtotal(invoice.getSubtotal())

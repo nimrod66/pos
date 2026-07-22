@@ -3,7 +3,7 @@ package com.example.pos.compliance.certification;
 import com.example.pos.compliance.config.ComplianceConfiguration;
 import com.example.pos.compliance.invoice.model.TaxInvoice;
 import com.example.pos.compliance.invoice.service.InvoiceService;
-import com.example.pos.compliance.synchronization.SyncEngine;
+import com.example.pos.compliance.sync.SyncEngine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;

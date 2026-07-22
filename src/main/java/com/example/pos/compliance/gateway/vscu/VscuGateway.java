@@ -1,6 +1,6 @@
 package com.example.pos.compliance.gateway.vscu;
 
-import com.example.pos.compliance.batch.model.Batch;
+import com.example.pos.compliance.transmission.batch.model.Batch;
 import com.example.pos.compliance.gateway.ComplianceGateway;
 import com.example.pos.compliance.gateway.ComplianceResponse;
 import com.example.pos.compliance.invoice.model.TaxInvoice;

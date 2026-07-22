@@ -1,11 +1,11 @@
 package com.example.pos.compliance.monitoring;
 
 import com.example.pos.compliance.config.ComplianceConfiguration;
-import com.example.pos.compliance.dashboard.dto.ComplianceDashboardDto;
+import com.example.pos.compliance.monitoring.dto.ComplianceDashboardDto;
 import com.example.pos.compliance.gateway.ComplianceGatewayFactory;
 import com.example.pos.compliance.initialization.EtimsInitializer;
-import com.example.pos.compliance.synchronization.model.EtimsSyncState;
-import com.example.pos.compliance.synchronization.repository.EtimsSyncStateRepository;
+import com.example.pos.compliance.sync.SyncState;
+import com.example.pos.compliance.sync.SyncStateRepository;
 import com.example.pos.compliance.transmission.model.TransmissionStatus;
 import com.example.pos.compliance.transmission.repository.DeadLetterRecordRepository;
 import com.example.pos.compliance.transmission.repository.TransmissionRepository;
@@ -24,14 +24,14 @@ public class ComplianceDashboardService {
     private final ComplianceGatewayFactory gatewayFactory;
     private final ComplianceConfiguration config;
     private final InMemoryTransmissionQueue queue;
-    private final EtimsSyncStateRepository syncStateRepo;
+    private final SyncStateRepository syncStateRepo;
 
     public ComplianceDashboardService(TransmissionRepository transmissionRepo,
                                       DeadLetterRecordRepository deadLetterRepo,
                                       ComplianceGatewayFactory gatewayFactory,
                                       ComplianceConfiguration config,
                                       InMemoryTransmissionQueue queue,
-                                      EtimsSyncStateRepository syncStateRepo) {
+                                      SyncStateRepository syncStateRepo) {
         this.transmissionRepo = transmissionRepo;
         this.deadLetterRepo = deadLetterRepo;
         this.gatewayFactory = gatewayFactory;
@@ -51,7 +51,7 @@ public class ComplianceDashboardService {
         String vscuStatus = gatewayFactory.hasProvider("VSCU")
                 ? getHealthString("VSCU") : "NOT_CONFIGURED";
 
-        List<EtimsSyncState> syncStates = syncStateRepo.findAll();
+        List<SyncState> syncStates = syncStateRepo.findAll();
 
         ComplianceDashboardDto dto = new ComplianceDashboardDto();
         dto.setMode(config.getMode().name());
@@ -73,7 +73,7 @@ public class ComplianceDashboardService {
         return dto;
     }
 
-    public List<EtimsSyncState> getSyncStatus() {
+    public List<SyncState> getSyncStatus() {
         return syncStateRepo.findAll();
     }
 

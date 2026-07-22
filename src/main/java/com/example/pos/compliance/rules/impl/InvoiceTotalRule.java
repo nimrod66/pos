@@ -2,7 +2,7 @@ package com.example.pos.compliance.rules.impl;
 
 import com.example.pos.compliance.invoice.model.TaxInvoice;
 import com.example.pos.compliance.rules.ComplianceRule;
-import com.example.pos.compliance.validation.InvoiceValidationReport;
+import com.example.pos.compliance.invoice.validation.InvoiceValidationReport;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 

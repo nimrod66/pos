@@ -1,7 +1,6 @@
 package com.example.pos.compliance.invoice.model;
 
 import com.example.pos.common.BaseEntity;
-import com.example.pos.sale.sales.model.Sales;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -21,9 +20,11 @@ import java.util.List;
 })
 public class TaxInvoice extends BaseEntity {
 
-    @OneToOne(fetch = FetchType.LAZY, cascade = {})
-    @JoinColumn(name = "sale_id", unique = true)
-    private Sales sale;
+    @Column(name = "sale_id", unique = true)
+    private Long saleId;
+
+    @Column(name = "branch_code", length = 30)
+    private String branchCode;
 
     @Column(name = "invoice_number", unique = true, nullable = false, length = 50)
     private String invoiceNumber;

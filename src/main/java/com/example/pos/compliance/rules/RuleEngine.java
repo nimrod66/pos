@@ -1,7 +1,7 @@
 package com.example.pos.compliance.rules;
 
 import com.example.pos.compliance.invoice.model.TaxInvoice;
-import com.example.pos.compliance.validation.InvoiceValidationReport;
+import com.example.pos.compliance.invoice.validation.InvoiceValidationReport;
 import org.springframework.stereotype.Component;
 
 import java.util.Comparator;

@@ -1,7 +1,7 @@
 package com.example.pos.masterdata.medicine.model;
 
 import com.example.pos.common.BaseEntity;
-import com.example.pos.compliance.controlledrugs.model.ControlledDrugs;
+import com.example.pos.pharmacy.regulatory.controlledrugs.model.ControlledDrugs;
 import com.example.pos.inventory.batches.model.MedicineBatches;
 import com.example.pos.masterdata.categories.model.MedicineCategories;
 import com.example.pos.masterdata.dosage.model.DosageForm;

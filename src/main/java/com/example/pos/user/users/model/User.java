@@ -1,8 +1,8 @@
 package com.example.pos.user.users.model;
 
 import com.example.pos.audit.model.AuditLog;
-import com.example.pos.compliance.controlledrugs.model.ControlledDrugs;
-import com.example.pos.compliance.expiry.model.ExpiryLogs;
+import com.example.pos.pharmacy.regulatory.controlledrugs.model.ControlledDrugs;
+import com.example.pos.pharmacy.regulatory.expiry.model.ExpiryLogs;
 import com.example.pos.core.branch.model.Branch;
 import com.example.pos.finance.expenses.model.Expenses;
 import com.example.pos.inventory.stockmovements.model.StockMovements;

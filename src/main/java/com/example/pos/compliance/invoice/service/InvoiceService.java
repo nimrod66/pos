@@ -2,16 +2,14 @@ package com.example.pos.compliance.invoice.service;
 
 import com.example.pos.common.exception.BadRequestException;
 import com.example.pos.common.exception.ResourceNotFoundException;
+import com.example.pos.compliance.invoice.dto.SaleFiscalData;
+import com.example.pos.compliance.invoice.dto.SaleFiscalItemData;
 import com.example.pos.compliance.invoice.event.InvoiceIssuedEvent;
 import com.example.pos.compliance.invoice.model.*;
 import com.example.pos.compliance.invoice.repository.*;
 import com.example.pos.compliance.numbering.service.DocumentNumberGenerator;
+import com.example.pos.compliance.tax.dto.TaxSnapshot;
 import com.example.pos.compliance.tax.service.TaxEngine;
-import com.example.pos.masterdata.medicine.model.Medicine;
-import com.example.pos.masterdata.tax.model.Tax;
-import com.example.pos.sale.sales.model.Sales;
-import com.example.pos.sale.sales.repository.SalesRepository;
-import com.example.pos.sale.saleitems.model.SaleItems;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,7 +27,6 @@ public class InvoiceService {
     private final TaxInvoiceRepository invoiceRepo;
     private final TaxInvoiceItemRepository itemRepo;
     private final InvoiceHistoryRepository historyRepo;
-    private final SalesRepository salesRepo;
     private final DocumentNumberGenerator numberGenerator;
     private final TaxEngine taxEngine;
     private final ApplicationEventPublisher eventPublisher;
@@ -37,60 +34,53 @@ public class InvoiceService {
     public InvoiceService(TaxInvoiceRepository invoiceRepo,
                           TaxInvoiceItemRepository itemRepo,
                           InvoiceHistoryRepository historyRepo,
-                          SalesRepository salesRepo,
                           DocumentNumberGenerator numberGenerator,
                           TaxEngine taxEngine,
                           ApplicationEventPublisher eventPublisher) {
         this.invoiceRepo = invoiceRepo;
         this.itemRepo = itemRepo;
         this.historyRepo = historyRepo;
-        this.salesRepo = salesRepo;
         this.numberGenerator = numberGenerator;
         this.taxEngine = taxEngine;
         this.eventPublisher = eventPublisher;
     }
 
-    public TaxInvoice issueFromSale(Long saleId, String customerPin, String currency, Long actorId, String actorName) {
-        Sales sale = salesRepo.findById(saleId)
-                .orElseThrow(() -> new ResourceNotFoundException("Sale", saleId));
-
-        if (invoiceRepo.findBySaleId(sale.getId()).isPresent()) {
-            throw new BadRequestException("An invoice already exists for sale " + sale.getId());
+    public TaxInvoice issueFromSale(SaleFiscalData saleData, Long actorId, String actorName) {
+        if (invoiceRepo.findBySaleId(saleData.saleId()).isPresent()) {
+            throw new BadRequestException("An invoice already exists for sale " + saleData.saleId());
         }
 
-        if (sale.getSaleStatus() == Sales.SaleStatus.CANCELLED) {
+        if (saleData.cancelled()) {
             throw new BadRequestException("Cannot issue invoice for a cancelled sale");
         }
 
-        if (sale.getBranch() == null) {
-            throw new BadRequestException("Sale has no associated branch");
+        if (saleData.branchCode() == null) {
+            throw new BadRequestException("Sale has no associated branch code");
         }
 
-        String branchCode = sale.getBranch().getBranchCode() != null
-                ? sale.getBranch().getBranchCode()
-                : "BR" + String.format("%03d", sale.getBranch().getId());
+        String branchCode = saleData.branchCode();
 
         TaxInvoice invoice = new TaxInvoice();
-        invoice.setSale(sale);
+        invoice.setSaleId(saleData.saleId());
+        invoice.setBranchCode(branchCode);
         invoice.setInvoiceNumber(numberGenerator.generate("INV", branchCode));
         invoice.setInvoiceStatus(InvoiceStatus.ISSUED);
         invoice.setIssueDate(LocalDateTime.now());
-        invoice.setCurrency(currency != null ? currency : "KES");
-        invoice.setBranchId(sale.getBranch().getId());
-        invoice.setSubtotal(sale.getSubtotal());
+        invoice.setCurrency(saleData.currency() != null ? saleData.currency() : "KES");
+        invoice.setBranchId(saleData.branchId());
+        invoice.setSubtotal(saleData.subtotal());
 
-        if (sale.getCustomer() != null) {
-            invoice.setCustomerId(sale.getCustomer().getId());
-            invoice.setCustomerName(sale.getCustomer().getFirstName()
-                    + (sale.getCustomer().getLastName() != null ? " " + sale.getCustomer().getLastName() : ""));
+        if (saleData.customerId() != null) {
+            invoice.setCustomerId(saleData.customerId());
+            invoice.setCustomerName(saleData.customerName());
         }
-        invoice.setCustomerPin(customerPin);
+        invoice.setCustomerPin(saleData.customerPin());
 
         BigDecimal totalTax = BigDecimal.ZERO;
         BigDecimal totalDiscount = BigDecimal.ZERO;
         List<TaxInvoiceItem> items = new ArrayList<>();
 
-        for (SaleItems si : sale.getSaleItems()) {
+        for (SaleFiscalItemData si : saleData.items()) {
             TaxInvoiceItem item = buildInvoiceItem(invoice, si);
             items.add(item);
             totalTax = totalTax.add(item.getTaxAmount());
@@ -112,7 +102,7 @@ public class InvoiceService {
         }
         invoice.setItems(items);
 
-        recordHistory(invoice, InvoiceHistoryType.ISSUED, "Invoice issued from sale " + saleId, actorId, actorName);
+        recordHistory(invoice, InvoiceHistoryType.ISSUED, "Invoice issued from sale " + saleData.saleId(), actorId, actorName);
 
         eventPublisher.publishEvent(new InvoiceIssuedEvent(this, invoice));
 
@@ -206,27 +196,24 @@ public class InvoiceService {
         historyRepo.save(history);
     }
 
-    private TaxInvoiceItem buildInvoiceItem(TaxInvoice invoice, SaleItems si) {
-        Medicine medicine = si.getMedicineBatches() != null ? si.getMedicineBatches().getMedicine() : null;
-        Tax taxCategory = medicine != null ? medicine.getTax() : null;
-
-        BigDecimal lineSubtotal = si.getPrice().multiply(BigDecimal.valueOf(si.getQuantity()));
-        BigDecimal lineDiscount = si.getDiscount() != null ? si.getDiscount() : BigDecimal.ZERO;
-        BigDecimal taxableAmount = taxEngine.calculateTaxableAmount(si.getPrice(), si.getQuantity(), lineDiscount);
-        BigDecimal taxRate = taxCategory != null ? taxCategory.getTaxRate() : BigDecimal.ZERO;
-        BigDecimal lineTax = si.getTax() != null ? si.getTax() : BigDecimal.ZERO;
+    private TaxInvoiceItem buildInvoiceItem(TaxInvoice invoice, SaleFiscalItemData si) {
+        BigDecimal lineSubtotal = si.unitPrice().multiply(BigDecimal.valueOf(si.quantity()));
+        BigDecimal lineDiscount = si.discount() != null ? si.discount() : BigDecimal.ZERO;
+        BigDecimal taxableAmount = taxEngine.calculateTaxableAmount(si.unitPrice(), si.quantity(), lineDiscount);
+        BigDecimal taxRate = si.taxRate() != null ? si.taxRate() : BigDecimal.ZERO;
+        BigDecimal lineTax = si.taxAmount() != null ? si.taxAmount() : BigDecimal.ZERO;
         BigDecimal lineTotal = lineSubtotal.subtract(lineDiscount).add(lineTax);
 
         return TaxInvoiceItem.builder()
                 .taxInvoice(invoice)
-                .medicineId(medicine != null ? medicine.getId() : null)
-                .medicineName(medicine != null ? medicine.getBrandName() : null)
-                .barcode(medicine != null ? medicine.getBarcode() : null)
-                .quantity(si.getQuantity())
-                .unitPrice(si.getPrice())
+                .medicineId(si.medicineId())
+                .medicineName(si.medicineName())
+                .barcode(si.barcode())
+                .quantity(si.quantity())
+                .unitPrice(si.unitPrice())
                 .taxableAmount(taxableAmount)
                 .taxRate(taxRate)
-                .taxType(taxCategory != null ? taxCategory.getCode() : null)
+                .taxType(si.taxCode())
                 .taxAmount(lineTax)
                 .discount(lineDiscount)
                 .subtotal(lineSubtotal)

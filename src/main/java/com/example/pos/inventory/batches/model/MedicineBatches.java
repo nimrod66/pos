@@ -1,7 +1,7 @@
 package com.example.pos.inventory.batches.model;
 
 import com.example.pos.common.BaseEntity;
-import com.example.pos.compliance.expiry.model.ExpiryLogs;
+import com.example.pos.pharmacy.regulatory.expiry.model.ExpiryLogs;
 import com.example.pos.inventory.stock.model.Stock;
 import com.example.pos.inventory.stockmovements.model.StockMovements;
 import com.example.pos.masterdata.medicine.model.Medicine;
