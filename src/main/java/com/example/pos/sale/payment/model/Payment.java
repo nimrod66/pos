@@ -33,7 +33,7 @@ public class Payment extends BaseEntity {
     private LocalDateTime paymentDate;
 
     public enum PaymentMethod {
-        M_PESA, CASH, CARD
+        M_PESA, CASH, CARD, STRIPE
     }
 
 }

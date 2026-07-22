@@ -47,6 +47,9 @@ public class PaymentService {
     @Value("${mpesa.callback-replay-window-seconds:300}")
     private int replayWindowSeconds;
 
+    @Value("${stripe.webhook-secret:}")
+    private String stripeWebhookSecret; 
+
     public PaymentService(PaymentRepository paymentRepository,
                           SalesRepository salesRepository,
                           PaymentGatewayFactory gatewayFactory,
@@ -293,6 +296,59 @@ public class PaymentService {
             payment.setPaymentStatus("FAILED");
             payment.setDescription("Paystack: " + event);
         }
+        paymentRepository.save(payment);
+    }
+
+    public void handleStripeCallback(Map<String, Object> event) {
+        log.info("Stripe webhook received");
+
+        String eventType = (String) event.get("type");
+        Map<String, Object> dataObj = (Map<String, Object>) event.get("data");
+        if (dataObj == null) return;
+        Map<String, Object> object = (Map<String, Object>) dataObj.get("object");
+        if (object == null) return;
+
+        String paymentIntentId = (String) object.get("id");
+        if (paymentIntentId == null) return;
+
+        if (!PROCESSED_CALLBACKS.add("STRIPE:" + paymentIntentId)) {
+            log.info("Stripe callback already processed: {}", paymentIntentId);
+            return;
+        }
+
+        if (PROCESSED_CALLBACKS.size() > MAX_PROCESSED_CALLBACKS) {
+            PROCESSED_CALLBACKS.clear();
+        }
+
+        Payment payment = paymentRepository.findByTransactionReference(paymentIntentId)
+                .orElse(null);
+        if (payment == null) {
+            log.warn("No payment found for Stripe PaymentIntent: {}", paymentIntentId);
+            return;
+        }
+
+        if ("COMPLETED".equals(payment.getPaymentStatus())
+                || "FAILED".equals(payment.getPaymentStatus())) {
+            log.info("Stripe callback: payment {} already finalized", payment.getId());
+            return;
+        }
+
+        if ("payment_intent.succeeded".equals(eventType)) {
+            payment.setPaymentStatus("COMPLETED");
+            recalculateSalePaymentStatus(payment.getSales());
+
+            syncService.writeOutboxEvent(EventType.PAYMENT_RECEIVED, "PAYMENT",
+                    payment.getId().toString(),
+                    "{\"amount\":" + payment.getAmount()
+                            + ",\"method\":\"STRIPE\""
+                            + ",\"ref\":\"" + paymentIntentId + "\""
+                            + ",\"saleId\":" + payment.getSales().getId()
+                            + ",\"terminalId\":\"" + terminalConfig.getTerminalId() + "\"}");
+        } else if ("payment_intent.payment_failed".equals(eventType)) {
+            payment.setPaymentStatus("FAILED");
+            payment.setDescription("Stripe: " + eventType);
+        }
+
         paymentRepository.save(payment);
     }
 

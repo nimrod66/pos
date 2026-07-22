@@ -79,6 +79,12 @@ public class PaymentController {
         return ResponseEntity.ok(ApiResponse.ok(null));
     }
 
+    @PostMapping("/stripe/callback")
+    public ResponseEntity<ApiResponse<Void>> stripeCallback(@RequestBody Map<String, Object> payload) {
+        paymentService.handleStripeCallback(payload);
+        return ResponseEntity.ok(ApiResponse.ok(null));
+    }
+
     @PostMapping("/{id}/refund")
     public ResponseEntity<ApiResponse<PaymentGatewayResponse>> refundPayment(@PathVariable Long id) {
         PaymentGatewayResponse response = paymentService.refundPayment(id);
