@@ -2019,3 +2019,124 @@ com.example.pos.integration/
     ├── SmsAdapter, AfricasTalkingSmsAdapter
     └── dto/v1/           SmsRequest, SmsResponse
 ```
+
+---
+
+## 59. Insurance Module
+
+Kenyan pharmacy insurance — NHIF, private insurers, and corporate schemes. Tracks claims per sale with co-pay calculation, batch submission, and settlement tracking. Lives at `insurance/` (peer to `sale/`, not under `integration/`).
+
+### Insurer Types
+
+| Type | Examples | Behavior |
+|------|----------|----------|
+| **GOVERNMENT** | SHA (Social Health Authority), NHIF legacy | Government healthcare. Claims submitted monthly. |
+| **PRIVATE** | AAR, Jubilee, Resolution, CIC, Britam | Pre-auth required. Patient pays co-pay. Claims submitted in batches. |
+| **CORPORATE** | Employer contracts | Employee presents staff ID. Pharmacy bills employer monthly. |
+| **SELF_PAY** | No insurance | Default. No claim generated. Customer pays full amount. |
+
+### Insurer Endpoints
+
+| Method | Path | Auth |
+|---|---|---|
+| `GET` | `/api/insurance/insurers?type=` | OWNER, BRANCH_MANAGER |
+| `GET` | `/api/insurance/insurers/active` | CASHIER, PHARMACIST |
+| `GET` | `/api/insurance/insurers/{id}` | OWNER, BRANCH_MANAGER |
+| `POST` | `/api/insurance/insurers` | OWNER, BRANCH_MANAGER |
+| `PUT` | `/api/insurance/insurers/{id}` | OWNER, BRANCH_MANAGER |
+| `DELETE` | `/api/insurance/insurers/{id}` | OWNER (soft-deletes to INACTIVE) |
+
+**InsurerRequestDto:** `name`*, `code`*, `insurerType`* (NHIF|PRIVATE|CORPORATE|CASH_ONLY), `contactPerson`, `phoneNumber`, `email`, `claimSubmissionEmail`, `preauthPhone`, `defaultCoPayPercentage`, `defaultCoPayFlat`, `requiresPreauth`, `maxClaimAmount`, `status`
+
+### Co-Pay Calculation
+
+When a claim is created, the system calculates the patient's co-pay:
+1. If `maxClaimAmount` is set and claim exceeds it → co-pay = sale total - max claim
+2. `defaultCoPayPercentage` → co-pay = sale total × percentage ÷ 100
+3. `defaultCoPayFlat` → co-pay = fixed amount
+4. Higher of percentage-based or flat co-pay used
+5. Co-pay is capped so claim + co-pay ≤ sale total
+6. Caller can override by passing `coPayAmount` in the claim request
+
+### Claim Endpoints
+
+| Method | Path | Auth |
+|---|---|---|
+| `GET` | `/api/insurance/claims?insurerId=&status=` | OWNER, BRANCH_MANAGER |
+| `GET` | `/api/insurance/claims/{id}` | OWNER, BRANCH_MANAGER |
+| `GET` | `/api/insurance/claims/by-sale/{saleId}` | CASHIER, PHARMACIST |
+| `POST` | `/api/insurance/claims` | CASHIER, PHARMACIST |
+| `PATCH` | `/api/insurance/claims/{id}/status` | OWNER, BRANCH_MANAGER |
+| `POST` | `/api/insurance/batches/submit` | OWNER, BRANCH_MANAGER |
+| `GET` | `/api/insurance/reports/{insurerId}` | OWNER, BRANCH_MANAGER |
+
+**InsuranceClaimRequestDto:** `saleId`*, `insurerId`*, `patientName`, `patientMembershipId`, `claimAmount`*, `saleTotal`*, `coPayAmount` (optional override), `preauthCode`, `notes`
+
+**InsuranceClaimResponseDto:** `id`, `insurerId`, `insurerName`, `saleId`, `patientName`, `patientMembershipId`, `claimAmount`, `coPayAmount`, `saleTotal`, `claimReference`, `claimStatus`, `preauthCode`, `batchReference`, `submittedAt`, `settledAt`, `settledAmount`, `rejectionReason`, `notes`
+
+### Claim Status Lifecycle
+
+```
+PENDING ──preauth──→ PREAUTH_OBTAINED
+    │                    │
+    └──── batch submit ──┘
+              │
+              ▼
+          SUBMITTED
+              │
+     ┌───────┼────────┐
+     ▼       ▼        ▼
+  PAID   REJECTED   PARTIALLY_PAID
+            │
+            ▼
+         APPEALED
+```
+
+### Batch Claims Submission
+
+End-of-month: submit all pending claims for an insurer as a batch.
+
+```
+POST /api/insurance/batches/submit
+{"insurerId": 1}
+→ {"insurerId": 1, "submittedCount": 47}
+```
+
+All PENDING + PREAUTH_OBTAINED claims are grouped with a batch reference like `BTCH-AAR-20260722-143000`. Status changes to `SUBMITTED`.
+
+### Claim Report
+
+```
+GET /api/insurance/reports/{insurerId}
+→ {
+    "insurer": "AAR Insurance",
+    "insurerCode": "AAR",
+    "totalClaims": 47,
+    "totalClaimed": 235000.00,
+    "totalSettled": 189000.00,
+    "totalCoPayCollected": 12400.00,
+    "outstanding": 46000.00,
+    "claims": [...]
+}
+```
+
+### Frontend Flow at Sale Time
+
+1. Cashier selects insurer from active list (`GET /api/insurance/insurers/active`)
+2. Enters patient membership ID
+3. System shows co-pay amount vs. claim amount
+4. If insurer requires pre-auth → cashier calls `preauthPhone`, enters code
+5. Sale completes → `POST /api/insurance/claims` creates claim
+6. Customer pays co-pay only; insurer pays claim amount later
+
+### Insurance Package Structure
+
+```
+com.example.pos.insurance/
+├── model/               Insurer, InsuranceClaim, ClaimStatus
+├── repository/          InsurerRepository, InsuranceClaimRepository
+├── dto/                 InsurerRequestDto, InsurerResponseDto,
+│                        InsuranceClaimRequestDto, InsuranceClaimResponseDto
+├── service/             InsuranceService
+└── controller/          InsuranceController
+```
