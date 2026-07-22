@@ -1730,3 +1730,292 @@ KRA eTIMS
 ```
 
 Frontend is responsible for populating these fields when calling `POST /api/invoices/issue`. The Medicine entity stores them as the source of truth.
+
+---
+
+## 52. Integration Layer Architecture
+
+The `integration/` package is the boundary between the POS domain and external systems. Each integration follows the same pattern: versioned DTOs, adapter interface, one or more implementations, and health monitoring.
+
+```
+integration/
+├── fiscal/        KRA eTIMS / fiscal service boundary
+├── payment/       Payment gateways (M-Pesa, CARD, STRIPE, CASH)
+├── email/         SMTP email delivery
+├── sms/           SMS via Africa's Talking
+└── config/        Feature flags, shared configuration
+```
+
+### Architecture Pattern (same for all integrations)
+
+```
+PosFeatureFlag
+    ↓
+Adapter Interface (PaymentClient, EmailAdapter, SmsAdapter)
+    ↓
+Implementation (LocalPaymentRouter, SmtpEmailAdapter, AfricasTalkingSmsAdapter)
+    ↓
+External System (Safaricom, Stripe, SMTP, AT)
+```
+
+All integrations are:
+- **Versioned from day 1** — DTOs live in `dto/v1/`
+- **Feature-flagged** — controlled via `pos.features.*`
+- **Replaceable** — interface-based, swap implementations without changing business code
+
+---
+
+## 53. Feature Flags
+
+Centralized capability management in `application.properties`:
+
+```properties
+pos.features.fiscal=true     # eTIMS fiscal integration
+pos.features.payment=true    # M-Pesa, CARD, STRIPE, CASH
+pos.features.devices=true    # Terminal/scanner/printer platform
+pos.features.offline=true    # Offline sync mode
+pos.features.email=false     # SMTP email delivery
+pos.features.sms=false       # Africa's Talking SMS
+```
+
+Query feature status at runtime:
+```
+GET /api/system/fiscal     → includes enabled/disabled status
+```
+
+The `FeatureFlagService` is the single source of truth. Use it in conditionals instead of scattering `@Value` or `@ConditionalOnProperty` across business code.
+
+---
+
+## 54. Fiscal Integration
+
+Fiscal integration has three operating modes controlled via `pos.fiscal.mode`:
+
+| Mode | Behavior | Use Case |
+|------|----------|----------|
+| **OFF** | All fiscal operations no-op (logs only) | Non-registered pharmacies, demo mode |
+| **LOCAL** | Embedded TisFacade handles compliance directly | Certification testing, single deployment |
+| **REMOTE** | HTTP calls to a separate fiscal microservice | Production with extracted compliance service |
+
+### Configuration
+
+```properties
+pos.fiscal.enabled=true
+pos.fiscal.mode=LOCAL
+pos.fiscal.remote-url=http://fiscal-service:8081
+pos.fiscal.api-key=change-me
+pos.fiscal.retry.max-attempts=5
+pos.fiscal.retry.initial-backoff-ms=5000
+pos.fiscal.retry.max-backoff-ms=300000
+pos.fiscal.retry.poll-interval-ms=30000
+```
+
+### Fiscal Health Endpoint
+
+```
+GET /api/system/fiscal
+```
+
+Response:
+```json
+{
+  "success": true,
+  "data": {
+    "status": "CONNECTED",
+    "mode": "LOCAL",
+    "remoteUrl": null,
+    "latencyMs": 0
+  }
+}
+```
+
+Status values: `CONNECTED`, `OFFLINE`, `DEGRADED`, `DISABLED`
+
+### Fiscal REST Contract (Microservice API)
+
+When `mode=REMOTE`, the POS sends these payloads to the fiscal service:
+
+**v1 DTOs** at `integration/fiscal/dto/v1/`:
+- `FiscalSaleRequest` — sale data for invoice generation
+- `FiscalSaleResponse` — invoice confirmation with KRA receipt number
+- `FiscalHealthResponse` — health status
+
+### Fiscal Sale Snapshot (Receipt Assembler)
+
+The `ReceiptAssembler` now accepts a `FiscalSaleSnapshot` record instead of directly reading `Sales`, `Payment`, `SaleItems`, `Branch`, and `Pharmacy` JPA entities. This removes all cross-module JPA coupling from the compliance receipt layer.
+
+The `UnifiedReceiptController` builds the snapshot from entity data, then passes it to the assembler — keeping JPA reads at the controller boundary.
+
+---
+
+## 55. Payment Integration
+
+Payments route through `integration/payment/` to the existing gateway implementations. Frontend usage is unchanged.
+
+| Method | Path | Auth |
+|---|---|---|
+| `POST` | `/api/payments` | CASHIER |
+| `POST` | `/api/payments/{id}/process` | CASHIER |
+| `GET` | `/api/payments/{id}/status` | CASHIER |
+| `GET` | `/api/payments?saleId=` | CASHIER |
+| `POST` | `/api/payments/mpesa/callback` | **No auth** |
+| `POST` | `/api/payments/paystack/callback` | **No auth** |
+| `POST` | `/api/payments/stripe/callback` | **No auth** |
+| `POST` | `/api/payments/{id}/refund` | BRANCH_MANAGER |
+
+### Supported Payment Methods
+
+| Method | PaymentMethod Enum | Adapter | Gateway |
+|--------|-------------------|---------|---------|
+| `CASH` | `PaymentMethod.CASH` | `CashPaymentAdapter` | `CashPaymentGateway` (instant) |
+| `M_PESA` | `PaymentMethod.M_PESA` | `MpesaPaymentAdapter` | `MpesaPaymentGateway` (Safaricom Daraja) |
+| `CARD` | `PaymentMethod.CARD` | `PaystackPaymentAdapter` | `PaystackPaymentGateway` or `CardPaymentGateway` |
+| `STRIPE` | `PaymentMethod.STRIPE` | `StripePaymentAdapter` | `StripePaymentGateway` |
+
+### Payment Request
+```
+POST /api/payments
+{"saleId": 42, "paymentMethod": "M_PESA", "amount": 1500.00, "phoneNumber": "0712345678"}
+```
+
+### Sandbox Test Keys
+
+| Gateway | Config Key | Where to Get |
+|---------|-----------|-------------|
+| **M-Pesa** | `mpesa.consumer-key`, `mpesa.consumer-secret`, `mpesa.passkey` | [Safaricom Developer Portal](https://developer.safaricom.co.ke) |
+| **Stripe** | `stripe.secret-key`, `stripe.publishable-key` | [Stripe Dashboard → Test Keys](https://dashboard.stripe.com/test/apikeys) |
+| **Paystack** | `paystack.secret-key`, `paystack.public-key` | [Paystack Dashboard](https://dashboard.paystack.com) |
+
+M-Pesa sandbox keys are pre-configured. Stripe/Paystack use placeholder values — replace with real test keys to activate.
+
+### Webhook Endpoints
+
+| Gateway | Callback URL | Payload |
+|---------|-------------|---------|
+| **M-Pesa** | `POST /api/payments/mpesa/callback` | STK Push result (Safaricom format) |
+| **Paystack** | `POST /api/payments/paystack/callback` | Paystack event (charge.success) |
+| **Stripe** | `POST /api/payments/stripe/callback` | Stripe event (payment_intent.succeeded) |
+
+---
+
+## 56. Email Integration
+
+Email delivery via SMTP. Disabled by default (`pos.features.email=false`).
+
+### Configuration
+
+```properties
+pos.features.email=true
+spring.mail.host=smtp.gmail.com
+spring.mail.port=587
+spring.mail.username=your-email@gmail.com
+spring.mail.password=your-app-password
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.starttls.enable=true
+```
+
+### Email DTOs (v1)
+
+**EmailRequest:**
+```json
+{
+  "to": "customer@example.com",
+  "subject": "Your Receipt",
+  "body": "<h1>Receipt</h1>...",
+  "html": true,
+  "attachments": []
+}
+```
+
+**EmailResponse:** `{success: true, messageId: "uuid"}` or `{success: false, error: "reason"}`
+
+The `EmailAdapter` interface allows swapping in SendGrid, Mailgun, or any other provider without changing business code. The default implementation is `SmtpEmailAdapter`.
+
+---
+
+## 57. SMS Integration
+
+SMS delivery via Africa's Talking. Disabled by default (`pos.features.sms=false`).
+
+### Configuration
+
+```properties
+pos.features.sms=true
+africastalking.api-key=your-api-key
+africastalking.username=sandbox
+africastalking.sender-id=MyPharmacy
+```
+
+### SMS DTOs (v1)
+
+**SmsRequest:**
+```json
+{
+  "to": "+254712345678",
+  "message": "Your prescription is ready for pickup",
+  "senderId": "MyPharmacy"
+}
+```
+
+**SmsResponse:** `{success: true, messageId: "uuid"}` or `{success: false, error: "reason"}`
+
+The `SmsAdapter` interface allows swapping in Twilio, Infobip, or any other provider. The default implementation is `AfricasTalkingSmsAdapter`.
+
+---
+
+## 58. System Health
+
+| Method | Path | Auth |
+|---|---|---|
+| `GET` | `/api/system/fiscal` | Authenticated |
+
+Response:
+```json
+{
+  "success": true,
+  "data": {
+    "status": "CONNECTED",
+    "mode": "LOCAL",
+    "remoteUrl": null,
+    "latencyMs": 0
+  }
+}
+```
+
+Status values:
+- `CONNECTED` — Fiscal integration active and responsive
+- `OFFLINE` — Remote fiscal service unreachable
+- `DEGRADED` — Connected but certificate expiring or retries active
+- `DISABLED` — `pos.fiscal.mode=OFF` or `pos.fiscal.enabled=false`
+
+Frontend can show: 🟢 Fiscal Ready | 🔴 Fiscal Offline | ⚪ Fiscal Disabled
+
+---
+
+## Updated Package Structure
+
+```
+com.example.pos.integration/
+├── config/               FeatureFlags, FeatureFlagService
+├── fiscal/
+│   ├── config/           FiscalMode, FiscalProperties, FiscalConfiguration
+│   ├── client/           FiscalClient, RestFiscalClient
+│   ├── implementation/   NoOpTraderInvoicingSystem, LocalTraderInvoicingSystem,
+│   │                     RemoteTraderInvoicingSystem
+│   ├── dto/v1/           FiscalSaleRequest, FiscalSaleResponse, FiscalHealthResponse
+│   ├── retry/            FiscalRetryPolicy
+│   ├── monitoring/       FiscalHealthService, FiscalHealthController
+│   └── snapshot/         FiscalSaleSnapshot
+├── payment/
+│   ├── client/           PaymentClient, LocalPaymentRouter
+│   ├── adapter/          PaymentAdapter, CashPaymentAdapter, MpesaPaymentAdapter,
+│   │                     PaystackPaymentAdapter, StripePaymentAdapter
+│   ├── dto/v1/           PaymentRequest, PaymentResponse
+│   └── monitoring/       PaymentHealthService
+├── email/
+│   ├── EmailAdapter, SmtpEmailAdapter
+│   └── dto/v1/           EmailRequest, EmailResponse
+└── sms/
+    ├── SmsAdapter, AfricasTalkingSmsAdapter
+    └── dto/v1/           SmsRequest, SmsResponse
+```
