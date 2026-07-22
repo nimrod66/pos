@@ -209,6 +209,8 @@ public class InvoiceService {
                 .medicineId(si.medicineId())
                 .medicineName(si.medicineName())
                 .barcode(si.barcode())
+                .barcodeType(si.barcodeType())
+                .etimsClassificationCode(si.etimsClassificationCode())
                 .quantity(si.quantity())
                 .unitPrice(si.unitPrice())
                 .taxableAmount(taxableAmount)

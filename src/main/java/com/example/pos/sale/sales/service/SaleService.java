@@ -29,6 +29,7 @@ import com.example.pos.sale.sales.repository.SalesRepository;
 import com.example.pos.sync.config.TerminalConfig;
 import com.example.pos.sync.event.EventType;
 import com.example.pos.sync.service.SyncService;
+import com.example.pos.terminal.auth.TerminalContext;
 import com.example.pos.user.users.model.User;
 import com.example.pos.user.users.repository.UserRepository;
 import org.springframework.stereotype.Service;
@@ -154,7 +155,7 @@ public class SaleService {
         sale.setTax(totalTax);
         sale.setTotal(subtotal.subtract(BigDecimal.ZERO).add(totalTax));
         sale.setSaleStatus(Sales.SaleStatus.DONE);
-        sale.setTerminalId(terminalConfig.getTerminalId());
+        sale.setTerminalId(getEffectiveTerminalId());
         sale.setSynced(!terminalConfig.isOffline());
 
         List<Payment> payments = new ArrayList<>();
@@ -442,5 +443,13 @@ public class SaleService {
                         ? sale.getCustomer().getLastName() : "")
                 : null);
         return dto;
+    }
+
+    private String getEffectiveTerminalId() {
+        String newTerminalId = TerminalContext.getCurrentTerminalId();
+        if (newTerminalId != null) {
+            return newTerminalId;
+        }
+        return terminalConfig.getTerminalId();
     }
 }

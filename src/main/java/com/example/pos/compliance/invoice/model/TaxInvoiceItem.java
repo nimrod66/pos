@@ -27,6 +27,12 @@ public class TaxInvoiceItem extends BaseEntity {
 
     private String barcode;
 
+    @Column(name = "barcode_type", length = 20)
+    private String barcodeType;
+
+    @Column(name = "etims_classification_code", length = 50)
+    private String etimsClassificationCode;
+
     @Column(nullable = false)
     private Integer quantity;
 

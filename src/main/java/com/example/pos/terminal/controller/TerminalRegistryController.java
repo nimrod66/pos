@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/terminals")
@@ -102,9 +103,53 @@ public class TerminalRegistryController {
                 registrationService.getTerminalEntity(terminalId).getId())));
     }
 
+    @PostMapping("/{terminalId}/sessions")
+    public ResponseEntity<ApiResponse<TerminalSessionResponseDto>> createSession(
+            @PathVariable String terminalId,
+            @RequestHeader("Authorization") String authorization,
+            @RequestParam(required = false) Long cashierId) {
+        String token = authorization != null && authorization.startsWith("Bearer ")
+                ? authorization.substring(7) : "";
+        var terminal = registrationService.getTerminalEntity(terminalId);
+        var session = sessionService.createSession(terminal, token,
+                null, null, cashierId,
+                TerminalSessionService.DEFAULT_SESSION_TIMEOUT_MINUTES);
+        return ResponseEntity.ok(ApiResponse.created(session));
+    }
+
     @PostMapping("/{terminalId}/logout")
     public ResponseEntity<ApiResponse<Void>> logout(@PathVariable String terminalId) {
         sessionService.expireAllSessions(registrationService.getTerminalEntity(terminalId).getId());
         return ResponseEntity.ok(ApiResponse.ok(null, "All sessions expired"));
+    }
+
+    @GetMapping("/outdated")
+    public ResponseEntity<ApiResponse<List<TerminalResponseDto>>> listOutdated() {
+        List<TerminalResponseDto> outdated = registrationService.listAll().stream()
+                .filter(t -> t.getMinimumBackendVersion() != null
+                        && t.getAppVersion() != null
+                        && compareVersions(t.getAppVersion(), t.getMinimumBackendVersion()) < 0)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(ApiResponse.ok(outdated));
+    }
+
+    private int compareVersions(String v1, String v2) {
+        String[] parts1 = v1.split("\\.");
+        String[] parts2 = v2.split("\\.");
+        int len = Math.max(parts1.length, parts2.length);
+        for (int i = 0; i < len; i++) {
+            int p1 = i < parts1.length ? parseVersionPart(parts1[i]) : 0;
+            int p2 = i < parts2.length ? parseVersionPart(parts2[i]) : 0;
+            if (p1 != p2) return Integer.compare(p1, p2);
+        }
+        return 0;
+    }
+
+    private int parseVersionPart(String part) {
+        try {
+            return Integer.parseInt(part.replaceAll("[^0-9]", ""));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
     }
 }

@@ -44,4 +44,10 @@ public class ComplianceEvent extends BaseEntity {
 
     @Column(name = "correlation_id", length = 64)
     private String correlationId;
+
+    @Column(name = "terminal_id", length = 36)
+    private String terminalId;
+
+    @Column(name = "terminal_name", length = 100)
+    private String terminalName;
 }

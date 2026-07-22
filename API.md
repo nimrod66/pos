@@ -275,8 +275,9 @@ All API responses use:
 | `PUT` | `/api/medicines/{id}` | OWNER, BRANCH_MANAGER, PHARMACIST, STORE_KEEPER |
 | `DELETE` | `/api/medicines/{id}` | OWNER, BRANCH_MANAGER, PHARMACIST, STORE_KEEPER |
 
-**MedicineRequestDto:** `barcode`*, `sku`, `brandName`*, `genericName`*, `strength`, `manufacturerId`*, `medicineCategoriesId`*, `dosageFormId`, `unitId`, `taxId`, `requiresPrescription`, `description`, `maximumDispenseQuantity`, `minimumAge`, `requiresRefrigeration`, `isControlledDrug`, `status`
-**MedicineResponseDto:** `id`, `barcode`, `sku`, `brandName`, `genericName`, `strength`, `status`, `manufacturerId`, `manufacturerName`, `medicineCategoriesId`, `categoryName`, `dosageFormId`, `dosageFormName`, `unitId`, `unitName`, `taxId`, `taxName`, `requiresPrescription`, `description`, `maximumDispenseQuantity`, `minimumAge`, `requiresRefrigeration`, `isControlledDrug`, `createdAt`, `updatedAt`
+**MedicineRequestDto:** `barcode`*, `manufacturerBarcode`, `internalBarcode`, `barcodeType` (EAN13|EAN8|UPC_A|UPC_E|CODE128|CODE39|CODE93|ITF14|QR_CODE|GS1_DATAMATRIX|GS1_128|CODABAR|PDF417), `barcodeSource` (MANUFACTURER|SYSTEM_GENERATED|KEMSA|MEDS|PPB|CUSTOM|WHOLESALER), `kemsaCode`, `ppbCode`, `etimsItemCode`, `gs1CompanyPrefix`, `trackSerialNumber`, `trackBatch`, `trackExpiry`, `sku`, `brandName`*, `genericName`*, `strength`, `manufacturerId`*, `medicineCategoriesId`*, `dosageFormId`, `unitId`, `taxId`, `requiresPrescription`, `description`, `maximumDispenseQuantity`, `minimumAge`, `requiresRefrigeration`, `isControlledDrug`, `status`
+
+**MedicineResponseDto:** `id`, `barcode`, `manufacturerBarcode`, `internalBarcode`, `barcodeType`, `barcodeSource`, `kemsaCode`, `ppbCode`, `etimsItemCode`, `gs1CompanyPrefix`, `trackSerialNumber`, `trackBatch`, `trackExpiry`, `sku`, `brandName`, `genericName`, `strength`, `status`, `manufacturerId`, `manufacturerName`, `medicineCategoriesId`, `categoryName`, `dosageFormId`, `dosageFormName`, `unitId`, `unitName`, `taxId`, `taxName`, `requiresPrescription`, `description`, `maximumDispenseQuantity`, `minimumAge`, `requiresRefrigeration`, `isControlledDrug`, `createdAt`, `updatedAt`
 
 ---
 
@@ -527,7 +528,7 @@ All API responses use:
 
 **TaxInvoiceResponseDto:** `id`, `saleId`, `invoiceNumber`, `invoiceStatus` (DRAFT|ISSUED|VOID|CREDITED|CLOSED), `subtotal`, `taxAmount`, `discount`, `grandTotal`, `issueDate`, `currency`, `branchId`, `customerId`, `customerName`, `customerPin`, `schemaVersion`, `qrCodeContent`, `qrImagePath`, `verificationUrl`, `items[]`, `history[]`, `createdAt`, `updatedAt`
 
-**TaxInvoiceItemResponse:** `id`, `medicineId`, `medicineName`, `barcode`, `quantity`, `unitPrice`, `taxableAmount`, `taxRate`, `taxType`, `taxAmount`, `discount`, `subtotal`, `total`
+**TaxInvoiceItemResponse:** `id`, `medicineId`, `medicineName`, `barcode`, `barcodeType`, `etimsClassificationCode`, `quantity`, `unitPrice`, `taxableAmount`, `taxRate`, `taxType`, `taxAmount`, `discount`, `subtotal`, `total`
 
 **Invoice History Response:** `id`, `historyType` (CREATED|ISSUED|SENT_TO_KRA|ACKNOWLEDGED|REPRINTED|CREDIT_NOTE_ISSUED|DEBIT_NOTE_ISSUED|VOID|CLOSED|TRANSMISSION_FAILED), `description`, `actorId`, `actorName`, `createdAt`
 
@@ -1435,6 +1436,29 @@ compliance.vscu.timeout-seconds=30
 ### Package Structure Summary
 
 ```
+com.example.pos.terminal/
+├── barcode/           BarcodeType, BarcodeSource, BarcodeSymbology, BarcodeValidator,
+│                      BarcodeParser, BarcodeGenerator, BarcodeService
+├── scanner/           ScannerProvider, ScanResult, ScannerService,
+│                      KeyboardScanner, CameraScanner, SunmiScanner, ZktecoScanner,
+│                      HoneywellScanner, ZebraScanner, BluebirdScanner
+├── printer/           LabelTemplate, BarcodePrintJob, LabelPrinter, ReceiptPrinter,
+│                      PrintService
+│   └── adapter/       ZplLabelAdapter, TsplLabelAdapter
+├── model/             Terminal, HardwarePeripheral, TerminalSession, TerminalHeartbeat,
+│                      TerminalConfiguration, TerminalType, TerminalStatus, PeripheralType
+├── auth/              TerminalAuthenticationFilter, TerminalContext, TerminalPrincipal
+├── controller/        TerminalRegistryController, HeartbeatController, ScanController
+└── service/           TerminalRegistrationService, TerminalSessionService,
+                       TerminalHeartbeatService, TerminalMigrationService
+
+com.example.pos.catalog/
+├── Catalog, CatalogItem, CatalogRepository, CatalogItemRepository
+├── CatalogProvider, CatalogImporter
+├── KemsaCatalogProvider, MedsCatalogProvider, PpbCatalogProvider, GenericCatalogProvider
+├── CsvCatalogImporter, ExcelCatalogImporter
+├── CatalogService, ProductMatcher, CatalogController
+
 com.example.pos.compliance/
 ├── invoice/           TaxInvoice, TaxInvoiceItem, InvoiceHistory, CreditNote, DebitNote
 │   ├── event/         SaleCompletedEvent, InvoiceIssuedEvent
@@ -1464,3 +1488,245 @@ com.example.pos.compliance/
 ├── monitoring/        ComplianceDashboardService
 └── dashboard/         DashboardController, ComplianceDashboardDto
 ```
+
+---
+
+## 48. Terminal — Barcode Scanner
+
+Barcode scanning is terminal capability. The backend parses and validates — no images, no hardware SDKs.
+
+| Method | Path | Auth |
+|---|---|---|
+| `POST` | `/api/terminals/{terminalId}/scan` | Terminal API key OR Authenticated |
+| `GET` | `/api/terminals/{terminalId}/scanner-types` | Authenticated |
+
+### POST /{terminalId}/scan
+
+Request body:
+```json
+{
+  "barcode": "6161000000125",
+  "scannerType": "KEYBOARD_WEDGE"
+}
+```
+
+`scannerType` is optional — defaults to `KEYBOARD_WEDGE`. Valid types: `KEYBOARD_WEDGE`, `CAMERA`, `SUNMI`, `ZKTECO`, `HONEYWELL`, `ZEBRA`, `BLUEBIRD`.
+
+Response:
+```json
+{
+  "success": true,
+  "data": {
+    "barcode": "6161000000125",
+    "barcodeType": "EAN13",
+    "symbology": "EAN13",
+    "scannerType": "KEYBOARD_WEDGE",
+    "terminalId": "T-A1B2C3D4",
+    "timestamp": "2026-07-22T11:15:00Z",
+    "medicine": {
+      "id": 42,
+      "barcode": "6161000000125",
+      "brandName": "Amoxicillin",
+      "genericName": "Amoxicillin Trihydrate",
+      "strength": "500mg",
+      "barcodeType": "EAN13",
+      "barcodeSource": "MANUFACTURER"
+    },
+    "found": true
+  }
+}
+```
+
+If barcode not found in medicine database, `medicine` is null and `found` is false.
+
+### GET /{terminalId}/scanner-types
+
+Returns list of available scanner types for the terminal.
+
+### Scanner Detection Logic
+
+The `BarcodeParser` auto-detects symbology by matching length and character patterns against the `BarcodeSymbology` registry (13 types supported). Unknown formats return `found: false` with an error.
+
+---
+
+## 49. Terminal — Label & Receipt Printing
+
+The backend generates printer command strings (ZPL, TSPL, ESC/POS). The terminal client sends these to the physical printer. No printer SDK runs in the backend.
+
+### Label Templates
+
+| Template | Size |
+|---|---|
+| `SMALL_25x15` | 25mm x 15mm |
+| `STANDARD_50x25` | 50mm x 25mm |
+| `LARGE_75x50` | 75mm x 50mm |
+| `SHELF_100x30` | 100mm x 30mm |
+
+### BarcodePrintJob fields
+
+| Field | Description |
+|---|---|
+| `template` | LabelTemplate enum |
+| `copies` | Number of copies to print |
+| `barcodeValue` | The barcode string to encode |
+| `barcodeType` | BarcodeType enum (controls symbology choice) |
+| `medicineName` | Drug name printed on label |
+| `genericName` | Generic/INN name |
+| `strength` | Dosage strength |
+| `price` | Retail price |
+| `batchNumber` | Batch/lot number |
+| `expiryDate` | Expiration date |
+| `additionalText` | Free-text field |
+| `additionalLines` | Extra label/value pairs |
+
+### Supported Printer Languages
+
+| Language | Adapter | Barcodes Supported |
+|---|---|---|
+| **ZPL** | `ZplLabelAdapter` | CODE128, CODE39, EAN13, EAN8, UPC_A, QR_CODE, GS1_DATAMATRIX, PDF417, ITF14 |
+| **TSPL** | `TsplLabelAdapter` | CODE128, CODE39, EAN13, EAN8, UPC_A, QR_CODE, ITF14, CODABAR |
+| **ESC/POS** | Receipt printing only | Thermal receipt (via `ReceiptPrinter` interface) |
+
+### Print Flow
+
+```
+Backend                           Terminal Client                  Hardware
+───────                           ───────────────                  ────────
+BarcodePrintJob
+    ↓
+PrintService.renderLabel(job)
+    ↓
+ZplLabelAdapter.render(job)
+    ↓
+Returns ZPL string ──────────→    POSTs to Zebra printer ──────→   Prints label
+                                  via localhost:9100 or TCP
+```
+
+The `PrintService` auto-discovers all `LabelPrinter` and `ReceiptPrinter` beans at startup. Callers can request a specific language or let the service choose.
+
+---
+
+## 50. Catalog Module
+
+Supplier product catalogues — KEMSA, MEDS, PPB, and custom CSV/Excel imports. Matches catalogue items to internal Medicine entities.
+
+| Method | Path | Auth |
+|---|---|---|
+| `GET` | `/api/catalog?supplier=` | OWNER, BRANCH_MANAGER, STORE_KEEPER |
+| `GET` | `/api/catalog/{id}` | OWNER, BRANCH_MANAGER, STORE_KEEPER |
+| `GET` | `/api/catalog/{id}/items?unmatchedOnly=` | OWNER, BRANCH_MANAGER, STORE_KEEPER |
+| `GET` | `/api/catalog/search?code=` | OWNER, BRANCH_MANAGER, STORE_KEEPER |
+| `POST` | `/api/catalog` | OWNER, BRANCH_MANAGER |
+| `POST` | `/api/catalog/import/provider` | OWNER, BRANCH_MANAGER |
+| `POST` | `/api/catalog/{id}/import/file` | OWNER, BRANCH_MANAGER |
+| `POST` | `/api/catalog/items/{itemId}/match` | OWNER, BRANCH_MANAGER |
+| `POST` | `/api/catalog/{id}/match-all` | OWNER, BRANCH_MANAGER |
+| `GET` | `/api/catalog/providers` | OWNER, BRANCH_MANAGER |
+| `GET` | `/api/catalog/importers` | OWNER, BRANCH_MANAGER |
+
+### Create Empty Catalog
+```
+POST /api/catalog
+{"name": "KEMSA Master 2024", "supplier": "KEMSA", "version": "2.5"}
+```
+
+### Import from CSV/Excel
+```
+POST /api/catalog/{id}/import/file
+Content-Type: multipart/form-data
+file: kemsa_catalogue.csv
+```
+
+The `CsvCatalogImporter` auto-detects columns by header name: `code`/`item_code`, `product_name`/`name`, `generic_name`, `dosage_form`, `strength`, `pack_size`, `unit`, `manufacturer`, `barcode`, `price`, `atc_code`, `etims_code`.
+
+### Product Matching
+
+`ProductMatcher` scores matches by:
+1. **Barcode** — exact match → HIGH confidence
+2. **Supplier code** vs `Medicine.kemsaCode`/`ppbCode` → HIGH
+3. **Brand name + generic name + strength** → MEDIUM/LOW scored
+
+**Match endpoint response:**
+```json
+{
+  "medicineId": 42,
+  "medicineName": "Amoxicillin 500mg",
+  "confidence": "HIGH",
+  "matched": true
+}
+```
+
+**Batch match:** `POST /{id}/match-all` returns `{"matched": 247}` — number of items successfully matched.
+
+### CatalogItem entity fields
+
+| Field | Description |
+|---|---|
+| `supplierCode` | Supplier's product code (e.g. "PM03AMX015") |
+| `productName` | Trade/brand name |
+| `genericName` | INN/generic name |
+| `dosageForm` | Capsule, Tablet, Syrup, etc. |
+| `strength` | "500mg" |
+| `packSize` | "100" |
+| `unitOfMeasure` | Pack, Box, Bottle |
+| `manufacturerName` | Supplier's manufacturer |
+| `manufacturerCountry` | Country of origin |
+| `etimsClassificationCode` | KRA eTIMS item classification |
+| `barcode` | Supplier barcode |
+| `unitPrice` | Supplier price |
+| `atcCode` | WHO ATC code |
+| `matchedMedicineId` | Link to internal Medicine |
+| `matchConfidence` | HIGH, MEDIUM, LOW, NONE |
+
+### Supported Providers
+
+| Provider | Supplier Code | Interface |
+|---|---|---|
+| **KEMSA** | KEMSA | `KemsaCatalogProvider` |
+| **MEDS** | MEDS | `MedsCatalogProvider` |
+| **PPB** | PPB | `PpbCatalogProvider` |
+| **Custom/Wholesaler** | CUSTOM | `GenericCatalogProvider` |
+
+### Supported Import Formats
+
+| Format | Importer |
+|---|---|
+| **CSV** | `CsvCatalogImporter` — header-aware parsing |
+| **Excel (.xlsx/.xls)** | `ExcelCatalogImporter` (stub — ready for Apache POI) |
+
+---
+
+## 51. eTIMS Barcode Integration
+
+When a `TaxInvoice` is transmitted to KRA, the `OscuMapper` now includes enhanced barcode metadata per item:
+
+```json
+{
+  "itemCode": "6161000000125",
+  "itemBarcodeType": "EAN13",
+  "itemClassificationCode": "0201-01",
+  "itemName": "Amoxicillin 500mg",
+  "quantity": 2,
+  "unitPrice": 150.00,
+  "taxableAmount": 300.00,
+  "taxRate": 16.00,
+  "taxAmount": 48.00,
+  "total": 348.00
+}
+```
+
+The `SaleFiscalItemData` record was extended with `barcodeType` and `etimsClassificationCode` fields. These flow through:
+
+```
+Medicine (barcodeType, etimsItemCode)
+    ↓
+SaleFiscalItemData (barcodeType, etimsClassificationCode)
+    ↓
+InvoiceService → TaxInvoiceItem (barcodeType, etimsClassificationCode)
+    ↓
+OscuMapper → OscuPayload (itemBarcodeType, itemClassificationCode)
+    ↓
+KRA eTIMS
+```
+
+Frontend is responsible for populating these fields when calling `POST /api/invoices/issue`. The Medicine entity stores them as the source of truth.

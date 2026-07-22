@@ -16,6 +16,8 @@ import com.example.pos.masterdata.tax.model.Tax;
 import com.example.pos.masterdata.tax.repository.TaxRepository;
 import com.example.pos.masterdata.units.model.Unit;
 import com.example.pos.masterdata.units.repository.UnitRepository;
+import com.example.pos.terminal.barcode.BarcodeSource;
+import com.example.pos.terminal.barcode.BarcodeType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -143,6 +145,29 @@ public class MedicineService {
 
     private void mapToEntity(MedicineRequestDto dto, Medicine medicine) {
         medicine.setBarcode(dto.getBarcode());
+        medicine.setManufacturerBarcode(dto.getManufacturerBarcode());
+        medicine.setInternalBarcode(dto.getInternalBarcode());
+        medicine.setKemsaCode(dto.getKemsaCode());
+        medicine.setPpbCode(dto.getPpbCode());
+        medicine.setEtimsItemCode(dto.getEtimsItemCode());
+        medicine.setGs1CompanyPrefix(dto.getGs1CompanyPrefix());
+        if (dto.getBarcodeType() != null) {
+            try {
+                medicine.setBarcodeType(BarcodeType.valueOf(dto.getBarcodeType().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new BadRequestException("Invalid barcode type: " + dto.getBarcodeType());
+            }
+        }
+        if (dto.getBarcodeSource() != null) {
+            try {
+                medicine.setBarcodeSource(BarcodeSource.valueOf(dto.getBarcodeSource().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new BadRequestException("Invalid barcode source: " + dto.getBarcodeSource());
+            }
+        }
+        medicine.setTrackSerialNumber(dto.isTrackSerialNumber());
+        medicine.setTrackBatch(dto.isTrackBatch());
+        medicine.setTrackExpiry(dto.isTrackExpiry());
         medicine.setSku(dto.getSku());
         medicine.setBrandName(dto.getBrandName());
         medicine.setGenericName(dto.getGenericName());

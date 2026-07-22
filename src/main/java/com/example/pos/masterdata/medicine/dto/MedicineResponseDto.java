@@ -16,6 +16,17 @@ public class MedicineResponseDto {
 
     private Long id;
     private String barcode;
+    private String manufacturerBarcode;
+    private String internalBarcode;
+    private String barcodeType;
+    private String barcodeSource;
+    private String kemsaCode;
+    private String ppbCode;
+    private String etimsItemCode;
+    private String gs1CompanyPrefix;
+    private boolean trackSerialNumber;
+    private boolean trackBatch;
+    private boolean trackExpiry;
     private String sku;
     private String brandName;
     private String genericName;
@@ -44,6 +55,17 @@ public class MedicineResponseDto {
         return MedicineResponseDto.builder()
                 .id(medicine.getId())
                 .barcode(medicine.getBarcode())
+                .manufacturerBarcode(medicine.getManufacturerBarcode())
+                .internalBarcode(medicine.getInternalBarcode())
+                .barcodeType(medicine.getBarcodeType() != null ? medicine.getBarcodeType().name() : null)
+                .barcodeSource(medicine.getBarcodeSource() != null ? medicine.getBarcodeSource().name() : null)
+                .kemsaCode(medicine.getKemsaCode())
+                .ppbCode(medicine.getPpbCode())
+                .etimsItemCode(medicine.getEtimsItemCode())
+                .gs1CompanyPrefix(medicine.getGs1CompanyPrefix())
+                .trackSerialNumber(medicine.isTrackSerialNumber())
+                .trackBatch(medicine.isTrackBatch())
+                .trackExpiry(medicine.isTrackExpiry())
                 .sku(medicine.getSku())
                 .brandName(medicine.getBrandName())
                 .genericName(medicine.getGenericName())

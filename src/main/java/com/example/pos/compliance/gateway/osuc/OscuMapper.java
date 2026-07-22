@@ -37,6 +37,8 @@ public class OscuMapper {
     private OscuPayload.OscuPayloadItem toItem(TaxInvoiceItem item) {
         return OscuPayload.OscuPayloadItem.builder()
                 .itemCode(item.getBarcode())
+                .itemBarcodeType(item.getBarcodeType())
+                .itemClassificationCode(item.getEtimsClassificationCode())
                 .itemName(item.getMedicineName())
                 .quantity(item.getQuantity())
                 .unitPrice(item.getUnitPrice())

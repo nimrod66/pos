@@ -14,6 +14,28 @@ public class MedicineRequestDto {
     @NotBlank(message = "Barcode is required")
     private String barcode;
 
+    private String manufacturerBarcode;
+
+    private String internalBarcode;
+
+    private String barcodeType;
+
+    private String barcodeSource;
+
+    private String kemsaCode;
+
+    private String ppbCode;
+
+    private String etimsItemCode;
+
+    private String gs1CompanyPrefix;
+
+    private boolean trackSerialNumber;
+
+    private boolean trackBatch = true;
+
+    private boolean trackExpiry = true;
+
     private String sku;
 
     @NotBlank(message = "Brand name is required")

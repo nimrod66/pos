@@ -6,6 +6,8 @@ public record SaleFiscalItemData(
         Long medicineId,
         String medicineName,
         String barcode,
+        String barcodeType,
+        String etimsClassificationCode,
         Integer quantity,
         BigDecimal unitPrice,
         BigDecimal discount,

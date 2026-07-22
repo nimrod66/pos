@@ -15,6 +15,7 @@ public class TerminalSessionResponseDto {
 
     private String sessionId;
     private String terminalId;
+    private String token;
     private String ipAddress;
     private String userAgent;
     private Long cashierId;

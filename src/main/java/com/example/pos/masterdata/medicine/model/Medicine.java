@@ -11,6 +11,8 @@ import com.example.pos.masterdata.units.model.Unit;
 import com.example.pos.presciptions.prescriptionitems.model.PrescriptionItems;
 import com.example.pos.procurement.pricehistory.model.PriceHistory;
 import com.example.pos.procurement.purchaseorderitems.model.PurchaseOrderItems;
+import com.example.pos.terminal.barcode.BarcodeSource;
+import com.example.pos.terminal.barcode.BarcodeType;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -68,6 +70,44 @@ public class Medicine extends BaseEntity {
     private Set<ControlledDrugs> controlledDrugs = new HashSet<>();
 
     private String barcode;
+
+    @Column(name = "manufacturer_barcode", length = 50)
+    private String manufacturerBarcode;
+
+    @Column(name = "internal_barcode", length = 50)
+    private String internalBarcode;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "barcode_type", length = 20)
+    private BarcodeType barcodeType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "barcode_source", length = 20)
+    private BarcodeSource barcodeSource;
+
+    @Column(name = "kemsa_code", length = 50)
+    private String kemsaCode;
+
+    @Column(name = "ppb_code", length = 50)
+    private String ppbCode;
+
+    @Column(name = "etims_item_code", length = 50)
+    private String etimsItemCode;
+
+    @Column(name = "gs1_company_prefix", length = 20)
+    private String gs1CompanyPrefix;
+
+    @Column(name = "track_serial_number")
+    private boolean trackSerialNumber;
+
+    @Column(name = "track_batch")
+    @Builder.Default
+    private boolean trackBatch = true;
+
+    @Column(name = "track_expiry")
+    @Builder.Default
+    private boolean trackExpiry = true;
+
     private String sku;
     private String brandName;
     private String genericName;

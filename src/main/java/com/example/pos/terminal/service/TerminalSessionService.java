@@ -85,6 +85,15 @@ public class TerminalSessionService {
         });
     }
 
+    public void refreshByToken(String token) {
+        sessionRepository.findByToken(token).ifPresent(session -> {
+            if (session.isActive()) {
+                session.setLastActivityAt(LocalDateTime.now());
+                sessionRepository.save(session);
+            }
+        });
+    }
+
     public void expireSession(String sessionId) {
         sessionRepository.findBySessionId(sessionId).ifPresent(session -> {
             session.setActive(false);
@@ -120,6 +129,7 @@ public class TerminalSessionService {
         return TerminalSessionResponseDto.builder()
                 .sessionId(session.getSessionId())
                 .terminalId(session.getTerminal().getTerminalId())
+                .token(session.getToken())
                 .ipAddress(session.getIpAddress())
                 .userAgent(session.getUserAgent())
                 .cashierId(session.getCashierId())

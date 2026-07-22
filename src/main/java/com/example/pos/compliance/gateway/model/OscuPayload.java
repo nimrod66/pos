@@ -28,6 +28,8 @@ public class OscuPayload {
     @Data @NoArgsConstructor @AllArgsConstructor @Builder
     public static class OscuPayloadItem {
         private String itemCode;
+        private String itemBarcodeType;
+        private String itemClassificationCode;
         private String itemName;
         private Integer quantity;
         private BigDecimal unitPrice;
