@@ -1,12 +1,16 @@
 package com.example.pos.inventory.stock.controller;
 
 import com.example.pos.common.dto.ApiResponse;
+import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.inventory.stock.dto.StockAdjustmentDto;
 import com.example.pos.inventory.stock.dto.StockRequestDto;
 import com.example.pos.inventory.stock.dto.StockResponseDto;
 import com.example.pos.inventory.stock.model.Stock;
 import com.example.pos.inventory.stock.service.StockService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -32,18 +36,11 @@ public class StockController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<StockResponseDto>>> getAll(
+    public ResponseEntity<ApiResponse<PagedResponse<StockResponseDto>>> getAll(
+            @PageableDefault(size = 20) Pageable pageable,
             @RequestParam(required = false) Long branchId) {
-        List<Stock> stockList;
-        if (branchId != null) {
-            stockList = stockService.getStockByBranch(branchId);
-        } else {
-            stockList = List.of();
-        }
-        List<StockResponseDto> response = stockList.stream()
-                .map(StockResponseDto::from)
-                .toList();
-        return ResponseEntity.ok(ApiResponse.ok(response));
+        Page<Stock> page = stockService.getStockByBranch(branchId, pageable);
+        return ResponseEntity.ok(ApiResponse.ok(PagedResponse.from(page, StockResponseDto::from)));
     }
 
     @GetMapping("/low")

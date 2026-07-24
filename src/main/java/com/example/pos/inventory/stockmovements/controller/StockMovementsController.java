@@ -1,18 +1,21 @@
 package com.example.pos.inventory.stockmovements.controller;
 
 import com.example.pos.common.dto.ApiResponse;
+import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.inventory.stockmovements.dto.StockMovementRequestDto;
 import com.example.pos.inventory.stockmovements.dto.StockMovementResponseDto;
 import com.example.pos.inventory.stockmovements.model.StockMovements;
 import com.example.pos.inventory.stockmovements.service.StockMovementsService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/stock-movements")
@@ -33,25 +36,23 @@ public class StockMovementsController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<StockMovementResponseDto>>> getAll(
+    public ResponseEntity<ApiResponse<PagedResponse<StockMovementResponseDto>>> getAll(
+            @PageableDefault(size = 20) Pageable pageable,
             @RequestParam(required = false) Long batchId,
             @RequestParam(required = false) Long branchId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end) {
-        List<StockMovements> movements;
+        Page<StockMovements> page;
         if (branchId != null && start != null && end != null) {
-            movements = movementsService.getMovementsByBranchAndDateRange(branchId, start, end);
+            page = movementsService.getMovementsByBranchAndDateRange(branchId, start, end, pageable);
         } else if (batchId != null) {
-            movements = movementsService.getMovementsByBatch(batchId);
+            page = movementsService.getMovementsByBatch(batchId, pageable);
         } else if (branchId != null) {
-            movements = movementsService.getMovementsByBranch(branchId);
+            page = movementsService.getMovementsByBranch(branchId, pageable);
         } else {
-            movements = List.of();
+            page = Page.empty();
         }
-        List<StockMovementResponseDto> response = movements.stream()
-                .map(StockMovementResponseDto::from)
-                .toList();
-        return ResponseEntity.ok(ApiResponse.ok(response));
+        return ResponseEntity.ok(ApiResponse.ok(PagedResponse.from(page, StockMovementResponseDto::from)));
     }
 
     @GetMapping("/{id}")

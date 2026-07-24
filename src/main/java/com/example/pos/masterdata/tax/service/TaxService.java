@@ -6,10 +6,10 @@ import com.example.pos.common.exception.ResourceNotFoundException;
 import com.example.pos.masterdata.tax.dto.TaxRequestDto;
 import com.example.pos.masterdata.tax.model.Tax;
 import com.example.pos.masterdata.tax.repository.TaxRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 @Transactional
@@ -35,10 +35,10 @@ public class TaxService {
     }
 
     @Transactional(readOnly = true)
-    public List<Tax> getAll() { return repository.findAll(); }
+    public Page<Tax> getAll(Pageable pageable) { return repository.findAll(pageable); }
 
     @Transactional(readOnly = true)
-    public List<Tax> getActive() { return repository.findByActiveTrue(); }
+    public Page<Tax> getActive(Pageable pageable) { return repository.findByActiveTrue(pageable); }
 
     @Transactional(readOnly = true)
     public Tax getById(Long id) {

@@ -1,12 +1,16 @@
 package com.example.pos.compliance.invoice.controller;
 
 import com.example.pos.common.dto.ApiResponse;
+import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.compliance.invoice.dto.CreditNoteResponseDto;
 import com.example.pos.compliance.invoice.dto.DebitNoteResponseDto;
 import com.example.pos.compliance.invoice.dto.SaleFiscalData;
 import com.example.pos.compliance.invoice.dto.TaxInvoiceResponseDto;
 import com.example.pos.compliance.invoice.model.*;
 import com.example.pos.compliance.invoice.service.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -57,23 +61,22 @@ public class InvoiceController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<TaxInvoiceResponseDto>>> getByBranch(
+    public ResponseEntity<ApiResponse<PagedResponse<TaxInvoiceResponseDto>>> getByBranch(
+            @PageableDefault(size = 20) Pageable pageable,
             @RequestParam Long branchId,
             @RequestParam(required = false) List<String> status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
-        List<TaxInvoice> invoices;
+        Page<TaxInvoice> page;
         if (from != null && to != null) {
-            invoices = invoiceService.getByBranchAndDate(branchId, from, to);
+            page = invoiceService.getByBranchAndDate(branchId, from, to, pageable);
         } else {
             List<InvoiceStatus> statuses = status != null
                     ? status.stream().map(InvoiceStatus::valueOf).toList()
                     : null;
-            invoices = invoiceService.getByBranch(branchId, statuses);
+            page = invoiceService.getByBranch(branchId, statuses, pageable);
         }
-        List<TaxInvoiceResponseDto> dtos = invoices.stream()
-                .map(TaxInvoiceResponseDto::from).toList();
-        return ResponseEntity.ok(ApiResponse.ok(dtos));
+        return ResponseEntity.ok(ApiResponse.ok(PagedResponse.from(page, TaxInvoiceResponseDto::from)));
     }
 
     @PostMapping("/{id}/cancel")

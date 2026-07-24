@@ -1,6 +1,8 @@
 package com.example.pos.masterdata.tax.repository;
 
 import com.example.pos.masterdata.tax.model.Tax;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -21,4 +23,6 @@ public interface TaxRepository extends JpaRepository<Tax, Long> {
     boolean existsByCodeAndIdNot(String code, Long id);
 
     List<Tax> findByActiveTrue();
+
+    Page<Tax> findByActiveTrue(Pageable pageable);
 }

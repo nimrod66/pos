@@ -2,6 +2,9 @@ package com.example.pos.procurement.pricehistory.service;
 
 import com.example.pos.procurement.pricehistory.model.PriceHistory;
 import com.example.pos.procurement.pricehistory.repository.PriceHistoryRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,11 +20,13 @@ public class PriceHistoryService {
         this.repo = repo;
     }
 
-    public List<PriceHistory> getByMedicine(Long medicineId) {
-        return repo.findByMedicineId(medicineId);
+    public Page<PriceHistory> getByMedicine(Long medicineId, Pageable pageable) {
+        List<PriceHistory> list = repo.findByMedicineId(medicineId);
+        return new PageImpl<>(list, pageable, list.size());
     }
 
-    public List<PriceHistory> getByBatch(Long batchId) {
-        return repo.findByMedicineBatchesId(batchId);
+    public Page<PriceHistory> getByBatch(Long batchId, Pageable pageable) {
+        List<PriceHistory> list = repo.findByMedicineBatchesId(batchId);
+        return new PageImpl<>(list, pageable, list.size());
     }
 }

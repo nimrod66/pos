@@ -5,10 +5,10 @@ import com.example.pos.common.exception.ResourceNotFoundException;
 import com.example.pos.masterdata.categories.dto.CategoryRequestDto;
 import com.example.pos.masterdata.categories.model.MedicineCategories;
 import com.example.pos.masterdata.categories.repository.MedicineCategoriesRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 @Transactional
@@ -31,8 +31,8 @@ public class CategoryService {
     }
 
     @Transactional(readOnly = true)
-    public List<MedicineCategories> getAll() {
-        return repository.findAll();
+    public Page<MedicineCategories> getAll(Pageable pageable) {
+        return repository.findAll(pageable);
     }
 
     @Transactional(readOnly = true)

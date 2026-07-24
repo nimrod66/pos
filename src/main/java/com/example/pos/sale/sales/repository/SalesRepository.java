@@ -1,6 +1,8 @@
 package com.example.pos.sale.sales.repository;
 
 import com.example.pos.sale.sales.model.Sales;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDateTime;
@@ -12,6 +14,8 @@ public interface SalesRepository extends JpaRepository<Sales, Long> {
     Optional<Sales> findByInvoiceNumber(String invoiceNumber);
 
     List<Sales> findByBranchId(Long branchId);
+
+    Page<Sales> findByBranchId(Long branchId, Pageable pageable);
 
     List<Sales> findByUserId(Long userId);
 

@@ -7,6 +7,9 @@ import com.example.pos.finance.cashdrawers.model.CashDrawers;
 import com.example.pos.finance.cashdrawers.repository.CashDrawersRepository;
 import com.example.pos.user.staffshifts.model.StaffShifts;
 import com.example.pos.user.staffshifts.repository.StaffShiftsRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -55,7 +58,10 @@ public class CashDrawersService {
     }
 
     @Transactional(readOnly = true)
-    public List<CashDrawers> getByShift(Long shiftId) { return repo.findByStaffShiftsId(shiftId); }
+    public Page<CashDrawers> getByShift(Long shiftId, Pageable pageable) {
+        List<CashDrawers> list = repo.findByStaffShiftsId(shiftId);
+        return new PageImpl<>(list, pageable, list.size());
+    }
 
     @Transactional(readOnly = true)
     public CashDrawers getById(Long id) {

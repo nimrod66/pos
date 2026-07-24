@@ -8,7 +8,7 @@ import com.example.pos.masterdata.dosage.model.DosageForm;
 import com.example.pos.masterdata.manufacturer.model.Manufacturer;
 import com.example.pos.masterdata.tax.model.Tax;
 import com.example.pos.masterdata.units.model.Unit;
-import com.example.pos.presciptions.prescriptionitems.model.PrescriptionItems;
+import com.example.pos.prescriptions.prescriptionitems.model.PrescriptionItems;
 import com.example.pos.procurement.pricehistory.model.PriceHistory;
 import com.example.pos.procurement.purchaseorderitems.model.PurchaseOrderItems;
 import com.example.pos.terminal.barcode.BarcodeSource;

@@ -11,6 +11,9 @@ import com.example.pos.compliance.numbering.service.DocumentNumberGenerator;
 import com.example.pos.compliance.tax.dto.TaxSnapshot;
 import com.example.pos.compliance.tax.service.TaxEngine;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -126,22 +129,24 @@ public class InvoiceService {
     }
 
     @Transactional(readOnly = true)
-    public List<TaxInvoice> getByBranch(Long branchId, List<InvoiceStatus> statuses) {
-        List<TaxInvoice> invoices;
+    public Page<TaxInvoice> getByBranch(Long branchId, List<InvoiceStatus> statuses, Pageable pageable) {
+        Page<TaxInvoice> page;
         if (statuses != null && !statuses.isEmpty()) {
-            invoices = invoiceRepo.findByBranchIdAndInvoiceStatusIn(branchId, statuses);
+            List<TaxInvoice> invoices = invoiceRepo.findByBranchIdAndInvoiceStatusIn(branchId, statuses);
+            page = new PageImpl<>(invoices, pageable, invoices.size());
         } else {
-            invoices = invoiceRepo.findAll();
+            page = invoiceRepo.findAll(pageable);
         }
-        invoices.forEach(inv -> inv.setItems(itemRepo.findByTaxInvoiceId(inv.getId())));
-        return invoices;
+        page.getContent().forEach(inv -> inv.setItems(itemRepo.findByTaxInvoiceId(inv.getId())));
+        return page;
     }
 
     @Transactional(readOnly = true)
-    public List<TaxInvoice> getByBranchAndDate(Long branchId, LocalDateTime start, LocalDateTime end) {
+    public Page<TaxInvoice> getByBranchAndDate(Long branchId, LocalDateTime start, LocalDateTime end, Pageable pageable) {
         List<TaxInvoice> invoices = invoiceRepo.findByBranchIdAndCreatedAtBetween(branchId, start, end);
-        invoices.forEach(inv -> inv.setItems(itemRepo.findByTaxInvoiceId(inv.getId())));
-        return invoices;
+        Page<TaxInvoice> page = new PageImpl<>(invoices, pageable, invoices.size());
+        page.getContent().forEach(inv -> inv.setItems(itemRepo.findByTaxInvoiceId(inv.getId())));
+        return page;
     }
 
     @Transactional(readOnly = true)

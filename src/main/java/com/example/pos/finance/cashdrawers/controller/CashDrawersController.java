@@ -1,16 +1,18 @@
 package com.example.pos.finance.cashdrawers.controller;
 
 import com.example.pos.common.dto.ApiResponse;
+import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.finance.cashdrawers.dto.CashDrawerRequestDto;
 import com.example.pos.finance.cashdrawers.dto.CashDrawerResponseDto;
 import com.example.pos.finance.cashdrawers.model.CashDrawers;
 import com.example.pos.finance.cashdrawers.service.CashDrawersService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/cash-drawers")
@@ -31,8 +33,11 @@ public class CashDrawersController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<CashDrawerResponseDto>>> getByShift(@RequestParam Long shiftId) {
-        return ResponseEntity.ok(ApiResponse.ok(service.getByShift(shiftId).stream().map(CashDrawerResponseDto::from).toList()));
+    public ResponseEntity<ApiResponse<PagedResponse<CashDrawerResponseDto>>> getByShift(
+            @PageableDefault(size = 20) Pageable pageable,
+            @RequestParam Long shiftId) {
+        Page<CashDrawers> page = service.getByShift(shiftId, pageable);
+        return ResponseEntity.ok(ApiResponse.ok(PagedResponse.from(page, CashDrawerResponseDto::from)));
     }
 
     @GetMapping("/{id}")

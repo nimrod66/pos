@@ -16,6 +16,8 @@ import com.example.pos.sale.sales.model.Sales;
 import com.example.pos.sale.sales.repository.SalesRepository;
 import com.example.pos.user.users.model.User;
 import com.example.pos.user.users.repository.UserRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -88,8 +90,8 @@ public class SaleReturnsService {
     }
 
     @Transactional(readOnly = true)
-    public List<SaleReturns> getReturnsBySale(Long saleId) {
-        return returnsRepository.findBySalesId(saleId);
+    public Page<SaleReturns> getReturnsBySale(Long saleId, Pageable pageable) {
+        return returnsRepository.findBySalesId(saleId, pageable);
     }
 
     @Transactional(readOnly = true)

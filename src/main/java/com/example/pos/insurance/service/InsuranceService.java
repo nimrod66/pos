@@ -1,14 +1,19 @@
 package com.example.pos.insurance.service;
 
+import com.example.pos.common.annotation.Auditable;
 import com.example.pos.common.exception.BadRequestException;
 import com.example.pos.common.exception.ResourceNotFoundException;
 import com.example.pos.insurance.adapter.InsuranceProviderAdapter;
 import com.example.pos.insurance.dto.InsuranceClaimRequestDto;
+import com.example.pos.insurance.dto.InsuranceClaimResponseDto;
 import com.example.pos.insurance.dto.InsurerRequestDto;
 import com.example.pos.insurance.model.*;
 import com.example.pos.insurance.repository.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +23,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+
+import com.example.pos.insurance.dto.InsuranceClaimResponseDto;
 
 @Service
 @Transactional
@@ -61,11 +68,14 @@ public class InsuranceService {
     // ========== Insurers ==========
 
     @Transactional(readOnly = true)
-    public List<Insurer> listInsurers(String type) {
+    public Page<Insurer> listInsurers(String type, Pageable pageable) {
+        List<Insurer> list;
         if (type != null && !type.isBlank()) {
-            return insurerRepository.findByInsurerType(Insurer.InsurerType.valueOf(type.toUpperCase()));
+            list = insurerRepository.findByInsurerType(Insurer.InsurerType.valueOf(type.toUpperCase()));
+        } else {
+            list = insurerRepository.findAll();
         }
-        return insurerRepository.findAll();
+        return new PageImpl<>(list, pageable, list.size());
     }
 
     @Transactional(readOnly = true)
@@ -79,6 +89,7 @@ public class InsuranceService {
                 .orElseThrow(() -> new ResourceNotFoundException("Insurer", id));
     }
 
+    @Auditable(action = "CREATE_INSURER", entity = "Insurer")
     public Insurer createInsurer(InsurerRequestDto dto) {
         if (insurerRepository.existsByCode(dto.getCode())) {
             throw new BadRequestException("Insurer code already exists: " + dto.getCode());
@@ -102,6 +113,7 @@ public class InsuranceService {
         return insurerRepository.save(insurer);
     }
 
+    @Auditable(action = "UPDATE_INSURER", entity = "Insurer")
     public Insurer updateInsurer(Long id, InsurerRequestDto dto) {
         Insurer insurer = getInsurer(id);
         if (dto.getName() != null) insurer.setName(dto.getName());
@@ -120,6 +132,7 @@ public class InsuranceService {
         return insurerRepository.save(insurer);
     }
 
+    @Auditable(action = "DELETE_INSURER", entity = "Insurer")
     public void deleteInsurer(Long id) {
         Insurer insurer = getInsurer(id);
         insurer.setStatus(Insurer.Status.INACTIVE);
@@ -129,11 +142,14 @@ public class InsuranceService {
     // ========== Schemes ==========
 
     @Transactional(readOnly = true)
-    public List<InsuranceScheme> listSchemes(Long insurerId) {
-        if (insurerId != null) return schemeRepository.findByInsurerId(insurerId);
-        return schemeRepository.findAll();
+    public Page<InsuranceScheme> listSchemes(Long insurerId, Pageable pageable) {
+        List<InsuranceScheme> list;
+        if (insurerId != null) list = schemeRepository.findByInsurerId(insurerId);
+        else list = schemeRepository.findAll();
+        return new PageImpl<>(list, pageable, list.size());
     }
 
+    @Auditable(action = "CREATE_SCHEME", entity = "InsuranceScheme")
     public InsuranceScheme createScheme(Long insurerId, InsuranceScheme scheme) {
         Insurer insurer = getInsurer(insurerId);
         scheme.setInsurer(insurer);
@@ -143,9 +159,11 @@ public class InsuranceService {
     // ========== Members ==========
 
     @Transactional(readOnly = true)
-    public List<InsuranceMember> listMembers(Long insurerId) {
-        if (insurerId != null) return memberRepository.findByInsurerId(insurerId);
-        return memberRepository.findAll();
+    public Page<InsuranceMember> listMembers(Long insurerId, Pageable pageable) {
+        List<InsuranceMember> list;
+        if (insurerId != null) list = memberRepository.findByInsurerId(insurerId);
+        else list = memberRepository.findAll();
+        return new PageImpl<>(list, pageable, list.size());
     }
 
     @Transactional(readOnly = true)
@@ -154,6 +172,7 @@ public class InsuranceService {
                 .orElseThrow(() -> new ResourceNotFoundException("Member " + membershipNumber));
     }
 
+    @Auditable(action = "CREATE_MEMBER", entity = "InsuranceMember")
     public InsuranceMember createMember(Long insurerId, InsuranceMember member) {
         Insurer insurer = getInsurer(insurerId);
         member.setInsurer(insurer);
@@ -163,9 +182,11 @@ public class InsuranceService {
     // ========== Authorizations ==========
 
     @Transactional(readOnly = true)
-    public List<Authorization> listAuthorizations(Long insurerId) {
-        if (insurerId != null) return authorizationRepository.findByInsurerId(insurerId);
-        return authorizationRepository.findAll();
+    public Page<Authorization> listAuthorizations(Long insurerId, Pageable pageable) {
+        List<Authorization> list;
+        if (insurerId != null) list = authorizationRepository.findByInsurerId(insurerId);
+        else list = authorizationRepository.findAll();
+        return new PageImpl<>(list, pageable, list.size());
     }
 
     @Transactional(readOnly = true)
@@ -174,6 +195,7 @@ public class InsuranceService {
                 .orElseThrow(() -> new ResourceNotFoundException("Authorization", id));
     }
 
+    @Auditable(action = "CREATE_AUTHORIZATION", entity = "Authorization")
     public Authorization createAuthorization(Long insurerId, Authorization auth) {
         Insurer insurer = getInsurer(insurerId);
         auth.setInsurer(insurer);
@@ -186,6 +208,7 @@ public class InsuranceService {
 
     // ========== Claims ==========
 
+    @Auditable(action = "CREATE_CLAIM", entity = "InsuranceClaim")
     public InsuranceClaim createClaim(InsuranceClaimRequestDto dto) {
         Insurer insurer = getInsurer(dto.getInsurerId());
 
@@ -257,13 +280,18 @@ public class InsuranceService {
     }
 
     @Transactional(readOnly = true)
-    public List<InsuranceClaim> listClaims(Long insurerId, String status) {
+    public Page<InsuranceClaim> listClaims(Long insurerId, String status, Pageable pageable) {
+        List<InsuranceClaim> list;
         if (insurerId != null && status != null) {
-            return claimRepository.findByInsurerIdAndClaimStatus(insurerId, ClaimStatus.valueOf(status.toUpperCase()));
+            list = claimRepository.findByInsurerIdAndClaimStatus(insurerId, ClaimStatus.valueOf(status.toUpperCase()));
+        } else if (insurerId != null) {
+            list = claimRepository.findByInsurerId(insurerId);
+        } else if (status != null) {
+            list = claimRepository.findByClaimStatus(ClaimStatus.valueOf(status.toUpperCase()));
+        } else {
+            list = claimRepository.findAll();
         }
-        if (insurerId != null) return claimRepository.findByInsurerId(insurerId);
-        if (status != null) return claimRepository.findByClaimStatus(ClaimStatus.valueOf(status.toUpperCase()));
-        return claimRepository.findAll();
+        return new PageImpl<>(list, pageable, list.size());
     }
 
     @Transactional(readOnly = true)
@@ -277,6 +305,7 @@ public class InsuranceService {
         return claimRepository.findBySaleId(saleId);
     }
 
+    @Auditable(action = "UPDATE_CLAIM_STATUS", entity = "InsuranceClaim")
     public InsuranceClaim updateClaimStatus(Long id, String status, String reason, BigDecimal approved, BigDecimal rejected) {
         InsuranceClaim claim = getClaim(id);
         ClaimStatus newStatus = ClaimStatus.valueOf(status.toUpperCase());
@@ -291,8 +320,9 @@ public class InsuranceService {
     // ========== Claim Attachments ==========
 
     @Transactional(readOnly = true)
-    public List<ClaimAttachment> listAttachments(Long claimId) {
-        return attachmentRepository.findByClaimId(claimId);
+    public Page<ClaimAttachment> listAttachments(Long claimId, Pageable pageable) {
+        List<ClaimAttachment> list = attachmentRepository.findByClaimId(claimId);
+        return new PageImpl<>(list, pageable, list.size());
     }
 
     public ClaimAttachment addAttachment(Long claimId, ClaimAttachment attachment) {
@@ -304,11 +334,14 @@ public class InsuranceService {
     // ========== Batches ==========
 
     @Transactional(readOnly = true)
-    public List<ClaimBatch> listBatches(Long insurerId) {
-        if (insurerId != null) return batchRepository.findByInsurerId(insurerId);
-        return batchRepository.findAll();
+    public Page<ClaimBatch> listBatches(Long insurerId, Pageable pageable) {
+        List<ClaimBatch> list;
+        if (insurerId != null) list = batchRepository.findByInsurerId(insurerId);
+        else list = batchRepository.findAll();
+        return new PageImpl<>(list, pageable, list.size());
     }
 
+    @Auditable(action = "CREATE_BATCH", entity = "ClaimBatch")
     public ClaimBatch createBatch(Long insurerId) {
         Insurer insurer = getInsurer(insurerId);
         List<InsuranceClaim> pending = claimRepository.findByInsurerIdAndClaimStatus(
@@ -341,6 +374,7 @@ public class InsuranceService {
         return batch;
     }
 
+    @Auditable(action = "SUBMIT_BATCH", entity = "ClaimBatch")
     public ClaimBatch submitBatch(Long batchId) {
         ClaimBatch batch = batchRepository.findById(batchId)
                 .orElseThrow(() -> new ResourceNotFoundException("ClaimBatch", batchId));
@@ -368,11 +402,14 @@ public class InsuranceService {
     // ========== Payments ==========
 
     @Transactional(readOnly = true)
-    public List<InsurancePayment> listPayments(Long insurerId) {
-        if (insurerId != null) return paymentRepository.findByInsurerId(insurerId);
-        return paymentRepository.findAll();
+    public Page<InsurancePayment> listPayments(Long insurerId, Pageable pageable) {
+        List<InsurancePayment> list;
+        if (insurerId != null) list = paymentRepository.findByInsurerId(insurerId);
+        else list = paymentRepository.findAll();
+        return new PageImpl<>(list, pageable, list.size());
     }
 
+    @Auditable(action = "RECORD_PAYMENT", entity = "InsurancePayment")
     public InsurancePayment recordPayment(Long insurerId, InsurancePayment payment) {
         Insurer insurer = getInsurer(insurerId);
         payment.setInsurer(insurer);
@@ -439,9 +476,42 @@ public class InsuranceService {
     }
 
     @Transactional(readOnly = true)
-    public List<ClaimReconciliation> listReconciliations(Long insurerId) {
-        if (insurerId != null) return reconciliationRepository.findByInsurerId(insurerId);
-        return reconciliationRepository.findAll();
+    public Page<ClaimReconciliation> listReconciliations(Long insurerId, Pageable pageable) {
+        List<ClaimReconciliation> list;
+        if (insurerId != null) list = reconciliationRepository.findByInsurerId(insurerId);
+        else list = reconciliationRepository.findAll();
+        return new PageImpl<>(list, pageable, list.size());
+    }
+
+    // ========== Reports ==========
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> generateInsurerReport(Long insurerId) {
+        Insurer insurer = getInsurer(insurerId);
+        List<InsuranceClaim> claims = claimRepository.findByInsurerId(insurerId);
+
+        BigDecimal totalClaimed = claims.stream()
+                .map(InsuranceClaim::getClaimAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalApproved = claims.stream()
+                .map(InsuranceClaim::getApprovedAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalCoPay = claims.stream()
+                .map(c -> c.getCoPayAmount() != null ? c.getCoPayAmount() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        long settledCount = claims.stream()
+                .filter(c -> c.getClaimStatus() == ClaimStatus.PAID
+                        || c.getClaimStatus() == ClaimStatus.PARTIALLY_PAID).count();
+
+        Map<String, Object> report = new LinkedHashMap<>();
+        report.put("insurer", insurer.getName());
+        report.put("insurerCode", insurer.getCode());
+        report.put("totalClaims", claims.size());
+        report.put("totalClaimed", totalClaimed);
+        report.put("totalApproved", totalApproved);
+        report.put("totalCoPayCollected", totalCoPay);
+        report.put("settledCount", settledCount);
+        report.put("outstanding", totalApproved);
+        report.put("claims", claims.stream().map(InsuranceClaimResponseDto::from).toList());
+        return report;
     }
 
     // ========== Helpers ==========

@@ -1,16 +1,18 @@
 package com.example.pos.masterdata.categories.controller;
 
 import com.example.pos.common.dto.ApiResponse;
+import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.masterdata.categories.dto.CategoryRequestDto;
 import com.example.pos.masterdata.categories.dto.CategoryResponseDto;
 import com.example.pos.masterdata.categories.model.MedicineCategories;
 import com.example.pos.masterdata.categories.service.CategoryService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/categories")
@@ -29,9 +31,10 @@ public class CategoryController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<CategoryResponseDto>>> getAll() {
-        List<CategoryResponseDto> list = service.getAll().stream().map(CategoryResponseDto::from).toList();
-        return ResponseEntity.ok(ApiResponse.ok(list));
+    public ResponseEntity<ApiResponse<PagedResponse<CategoryResponseDto>>> getAll(
+            @PageableDefault(size = 20) Pageable pageable) {
+        Page<MedicineCategories> page = service.getAll(pageable);
+        return ResponseEntity.ok(ApiResponse.ok(PagedResponse.from(page, CategoryResponseDto::from)));
     }
 
     @GetMapping("/{id}")

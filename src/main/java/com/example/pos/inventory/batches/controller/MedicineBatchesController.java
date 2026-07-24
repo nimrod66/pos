@@ -1,17 +1,20 @@
 package com.example.pos.inventory.batches.controller;
 
 import com.example.pos.common.dto.ApiResponse;
+import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.inventory.batches.dto.MedicineBatchRequestDto;
 import com.example.pos.inventory.batches.dto.MedicineBatchResponseDto;
 import com.example.pos.inventory.batches.model.MedicineBatches;
 import com.example.pos.inventory.batches.service.MedicineBatchesService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/batches")
@@ -32,22 +35,20 @@ public class MedicineBatchesController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<MedicineBatchResponseDto>>> getAll(
+    public ResponseEntity<ApiResponse<PagedResponse<MedicineBatchResponseDto>>> getAll(
+            @PageableDefault(size = 20) Pageable pageable,
             @RequestParam(required = false) Long medicineId,
             @RequestParam(required = false) Boolean expiring,
             @RequestParam(required = false) LocalDate before) {
-        List<MedicineBatches> batches;
+        Page<MedicineBatches> page;
         if (expiring != null && expiring) {
-            batches = batchService.getBatchesExpiringBefore(before != null ? before : LocalDate.now().plusDays(90));
+            page = batchService.getBatchesExpiringBefore(before != null ? before : LocalDate.now().plusDays(90), pageable);
         } else if (medicineId != null) {
-            batches = batchService.getBatchesByMedicine(medicineId);
+            page = batchService.getBatchesByMedicine(medicineId, pageable);
         } else {
-            batches = batchService.getAllBatches();
+            page = batchService.getAllBatches(pageable);
         }
-        List<MedicineBatchResponseDto> response = batches.stream()
-                .map(MedicineBatchResponseDto::from)
-                .toList();
-        return ResponseEntity.ok(ApiResponse.ok(response));
+        return ResponseEntity.ok(ApiResponse.ok(PagedResponse.from(page, MedicineBatchResponseDto::from)));
     }
 
     @GetMapping("/{id}")

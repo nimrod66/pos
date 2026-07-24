@@ -13,6 +13,8 @@ import com.example.pos.inventory.stock.repository.StockRepository;
 import com.example.pos.sync.config.TerminalConfig;
 import com.example.pos.sync.event.EventType;
 import com.example.pos.sync.service.SyncService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -62,8 +64,8 @@ public class StockService {
     }
 
     @Transactional(readOnly = true)
-    public List<Stock> getStockByBranch(Long branchId) {
-        return stockRepository.findByBranchId(branchId);
+    public Page<Stock> getStockByBranch(Long branchId, Pageable pageable) {
+        return branchId != null ? stockRepository.findByBranchId(branchId, pageable) : Page.empty();
     }
 
     @Transactional(readOnly = true)

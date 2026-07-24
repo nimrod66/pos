@@ -5,10 +5,10 @@ import com.example.pos.common.exception.ResourceNotFoundException;
 import com.example.pos.finance.expensecategory.dto.ExpenseCategoryRequestDto;
 import com.example.pos.finance.expensecategory.model.ExpenseCategory;
 import com.example.pos.finance.expensecategory.repository.ExpenseCategoryRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 @Transactional
@@ -27,7 +27,7 @@ public class ExpenseCategoryService {
     }
 
     @Transactional(readOnly = true)
-    public List<ExpenseCategory> getAll() { return repo.findAll(); }
+    public Page<ExpenseCategory> getAll(Pageable pageable) { return repo.findAll(pageable); }
 
     @Transactional(readOnly = true)
     public ExpenseCategory getById(Long id) {

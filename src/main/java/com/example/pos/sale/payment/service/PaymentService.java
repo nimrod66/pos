@@ -16,6 +16,8 @@ import com.example.pos.sync.event.EventType;
 import com.example.pos.sync.service.SyncService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -353,8 +355,8 @@ public class PaymentService {
     }
 
     @Transactional(readOnly = true)
-    public List<Payment> getPaymentsBySale(Long saleId) {
-        return paymentRepository.findBySalesId(saleId);
+    public Page<Payment> getPaymentsBySale(Long saleId, Pageable pageable) {
+        return paymentRepository.findBySalesId(saleId, pageable);
     }
 
     private void recalculateSalePaymentStatus(Sales sale) {

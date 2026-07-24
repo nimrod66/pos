@@ -21,4 +21,6 @@ public class AuditLog extends BaseEntity {
     private String tableName;
     private String recordId;
     private String action;
+    private String oldValue;
+    private String newValue;
 }

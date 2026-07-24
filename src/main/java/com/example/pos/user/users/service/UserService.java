@@ -11,6 +11,9 @@ import com.example.pos.user.users.dto.UpdateStatusRequestDto;
 import com.example.pos.user.users.dto.UserRequestDto;
 import com.example.pos.user.users.model.User;
 import com.example.pos.user.users.repository.UserRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -58,13 +61,19 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public List<User> getAllUsers() {
-        return userRepository.findAll();
+    public Page<User> getAllUsers(Pageable pageable) {
+        return userRepository.findAll(pageable);
     }
 
     @Transactional(readOnly = true)
-    public List<User> getUsersByBranch(Long branchId) {
-        return userRepository.findByBranchId(branchId);
+    public Page<User> getUsersByBranch(Long branchId, Pageable pageable) {
+        List<User> users = userRepository.findByBranchId(branchId);
+        return new PageImpl<>(users, pageable, users.size());
+    }
+
+    @Transactional(readOnly = true)
+    public Page<User> search(String q, Pageable pageable) {
+        return userRepository.search(q, pageable);
     }
 
     @Transactional(readOnly = true)

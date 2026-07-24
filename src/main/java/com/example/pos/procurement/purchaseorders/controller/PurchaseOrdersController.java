@@ -1,16 +1,18 @@
 package com.example.pos.procurement.purchaseorders.controller;
 
 import com.example.pos.common.dto.ApiResponse;
+import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.procurement.purchaseorders.dto.PurchaseOrderRequestDto;
 import com.example.pos.procurement.purchaseorders.dto.PurchaseOrderResponseDto;
 import com.example.pos.procurement.purchaseorders.model.PurchaseOrders;
 import com.example.pos.procurement.purchaseorders.service.PurchaseOrdersService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/purchase-orders")
@@ -25,11 +27,12 @@ public class PurchaseOrdersController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<PurchaseOrderResponseDto>>> getAll(
+    public ResponseEntity<ApiResponse<PagedResponse<PurchaseOrderResponseDto>>> getAll(
+            @PageableDefault(size = 20) Pageable pageable,
             @RequestParam(required = false) Long branchId, @RequestParam(required = false) Long supplierId) {
-        List<PurchaseOrders> list = branchId != null ? service.getByBranch(branchId)
-                : supplierId != null ? service.getBySupplier(supplierId) : List.of();
-        return ResponseEntity.ok(ApiResponse.ok(list.stream().map(service::toDto).toList()));
+        Page<PurchaseOrders> page = branchId != null ? service.getByBranch(branchId, pageable)
+                : supplierId != null ? service.getBySupplier(supplierId, pageable) : Page.empty();
+        return ResponseEntity.ok(ApiResponse.ok(PagedResponse.from(page, service::toDto)));
     }
 
     @GetMapping("/{id}")

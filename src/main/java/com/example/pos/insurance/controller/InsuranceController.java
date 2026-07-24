@@ -1,6 +1,7 @@
 package com.example.pos.insurance.controller;
 
 import com.example.pos.common.dto.ApiResponse;
+import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.insurance.dto.InsuranceClaimRequestDto;
 import com.example.pos.insurance.dto.InsuranceClaimResponseDto;
 import com.example.pos.insurance.dto.InsurerRequestDto;
@@ -8,12 +9,16 @@ import com.example.pos.insurance.dto.InsurerResponseDto;
 import com.example.pos.insurance.model.*;
 import com.example.pos.insurance.service.InsuranceService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -30,10 +35,11 @@ public class InsuranceController {
     // ========== Insurers ==========
 
     @GetMapping("/insurers")
-    public ResponseEntity<ApiResponse<List<InsurerResponseDto>>> listInsurers(
+    public ResponseEntity<ApiResponse<PagedResponse<InsurerResponseDto>>> listInsurers(
+            @PageableDefault(size = 20) Pageable pageable,
             @RequestParam(required = false) String type) {
-        var list = insuranceService.listInsurers(type).stream().map(InsurerResponseDto::from).toList();
-        return ResponseEntity.ok(ApiResponse.ok(list));
+        Page<Insurer> page = insuranceService.listInsurers(type, pageable);
+        return ResponseEntity.ok(ApiResponse.ok(PagedResponse.from(page, InsurerResponseDto::from)));
     }
 
     @GetMapping("/insurers/active")
@@ -68,9 +74,11 @@ public class InsuranceController {
     // ========== Schemes ==========
 
     @GetMapping("/schemes")
-    public ResponseEntity<ApiResponse<List<InsuranceScheme>>> listSchemes(
+    public ResponseEntity<ApiResponse<PagedResponse<InsuranceScheme>>> listSchemes(
+            @PageableDefault(size = 20) Pageable pageable,
             @RequestParam(required = false) Long insurerId) {
-        return ResponseEntity.ok(ApiResponse.ok(insuranceService.listSchemes(insurerId)));
+        Page<InsuranceScheme> page = insuranceService.listSchemes(insurerId, pageable);
+        return ResponseEntity.ok(ApiResponse.ok(PagedResponse.fromPage(page)));
     }
 
     @PostMapping("/insurers/{insurerId}/schemes")
@@ -83,9 +91,11 @@ public class InsuranceController {
     // ========== Members ==========
 
     @GetMapping("/members")
-    public ResponseEntity<ApiResponse<List<InsuranceMember>>> listMembers(
+    public ResponseEntity<ApiResponse<PagedResponse<InsuranceMember>>> listMembers(
+            @PageableDefault(size = 20) Pageable pageable,
             @RequestParam(required = false) Long insurerId) {
-        return ResponseEntity.ok(ApiResponse.ok(insuranceService.listMembers(insurerId)));
+        Page<InsuranceMember> page = insuranceService.listMembers(insurerId, pageable);
+        return ResponseEntity.ok(ApiResponse.ok(PagedResponse.fromPage(page)));
     }
 
     @GetMapping("/members/lookup")
@@ -104,9 +114,11 @@ public class InsuranceController {
     // ========== Authorizations ==========
 
     @GetMapping("/authorizations")
-    public ResponseEntity<ApiResponse<List<Authorization>>> listAuthorizations(
+    public ResponseEntity<ApiResponse<PagedResponse<Authorization>>> listAuthorizations(
+            @PageableDefault(size = 20) Pageable pageable,
             @RequestParam(required = false) Long insurerId) {
-        return ResponseEntity.ok(ApiResponse.ok(insuranceService.listAuthorizations(insurerId)));
+        Page<Authorization> page = insuranceService.listAuthorizations(insurerId, pageable);
+        return ResponseEntity.ok(ApiResponse.ok(PagedResponse.fromPage(page)));
     }
 
     @GetMapping("/authorizations/{id}")
@@ -124,12 +136,12 @@ public class InsuranceController {
     // ========== Claims ==========
 
     @GetMapping("/claims")
-    public ResponseEntity<ApiResponse<List<InsuranceClaimResponseDto>>> listClaims(
+    public ResponseEntity<ApiResponse<PagedResponse<InsuranceClaimResponseDto>>> listClaims(
+            @PageableDefault(size = 20) Pageable pageable,
             @RequestParam(required = false) Long insurerId,
             @RequestParam(required = false) String status) {
-        var list = insuranceService.listClaims(insurerId, status).stream()
-                .map(InsuranceClaimResponseDto::from).toList();
-        return ResponseEntity.ok(ApiResponse.ok(list));
+        Page<InsuranceClaim> page = insuranceService.listClaims(insurerId, status, pageable);
+        return ResponseEntity.ok(ApiResponse.ok(PagedResponse.from(page, InsuranceClaimResponseDto::from)));
     }
 
     @GetMapping("/claims/{id}")
@@ -168,8 +180,11 @@ public class InsuranceController {
     // ========== Attachments ==========
 
     @GetMapping("/claims/{claimId}/attachments")
-    public ResponseEntity<ApiResponse<List<ClaimAttachment>>> listAttachments(@PathVariable Long claimId) {
-        return ResponseEntity.ok(ApiResponse.ok(insuranceService.listAttachments(claimId)));
+    public ResponseEntity<ApiResponse<PagedResponse<ClaimAttachment>>> listAttachments(
+            @PageableDefault(size = 20) Pageable pageable,
+            @PathVariable Long claimId) {
+        Page<ClaimAttachment> page = insuranceService.listAttachments(claimId, pageable);
+        return ResponseEntity.ok(ApiResponse.ok(PagedResponse.fromPage(page)));
     }
 
     @PostMapping("/claims/{claimId}/attachments")
@@ -182,9 +197,11 @@ public class InsuranceController {
     // ========== Batches ==========
 
     @GetMapping("/batches")
-    public ResponseEntity<ApiResponse<List<ClaimBatch>>> listBatches(
+    public ResponseEntity<ApiResponse<PagedResponse<ClaimBatch>>> listBatches(
+            @PageableDefault(size = 20) Pageable pageable,
             @RequestParam(required = false) Long insurerId) {
-        return ResponseEntity.ok(ApiResponse.ok(insuranceService.listBatches(insurerId)));
+        Page<ClaimBatch> page = insuranceService.listBatches(insurerId, pageable);
+        return ResponseEntity.ok(ApiResponse.ok(PagedResponse.fromPage(page)));
     }
 
     @PostMapping("/insurers/{insurerId}/batches")
@@ -201,9 +218,11 @@ public class InsuranceController {
     // ========== Payments ==========
 
     @GetMapping("/payments")
-    public ResponseEntity<ApiResponse<List<InsurancePayment>>> listPayments(
+    public ResponseEntity<ApiResponse<PagedResponse<InsurancePayment>>> listPayments(
+            @PageableDefault(size = 20) Pageable pageable,
             @RequestParam(required = false) Long insurerId) {
-        return ResponseEntity.ok(ApiResponse.ok(insuranceService.listPayments(insurerId)));
+        Page<InsurancePayment> page = insuranceService.listPayments(insurerId, pageable);
+        return ResponseEntity.ok(ApiResponse.ok(PagedResponse.fromPage(page)));
     }
 
     @PostMapping("/insurers/{insurerId}/payments")
@@ -220,12 +239,21 @@ public class InsuranceController {
         return ResponseEntity.ok(ApiResponse.ok(null, "Payment linked to claims"));
     }
 
+    // ========== Reports ==========
+
+    @GetMapping("/reports/{insurerId}")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getInsurerReport(@PathVariable Long insurerId) {
+        return ResponseEntity.ok(ApiResponse.ok(insuranceService.generateInsurerReport(insurerId)));
+    }
+
     // ========== Reconciliation ==========
 
     @GetMapping("/reconciliations")
-    public ResponseEntity<ApiResponse<List<ClaimReconciliation>>> listReconciliations(
+    public ResponseEntity<ApiResponse<PagedResponse<ClaimReconciliation>>> listReconciliations(
+            @PageableDefault(size = 20) Pageable pageable,
             @RequestParam(required = false) Long insurerId) {
-        return ResponseEntity.ok(ApiResponse.ok(insuranceService.listReconciliations(insurerId)));
+        Page<ClaimReconciliation> page = insuranceService.listReconciliations(insurerId, pageable);
+        return ResponseEntity.ok(ApiResponse.ok(PagedResponse.fromPage(page)));
     }
 
     @PostMapping("/reconcile")

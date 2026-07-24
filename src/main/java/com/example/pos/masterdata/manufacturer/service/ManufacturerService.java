@@ -5,10 +5,10 @@ import com.example.pos.common.exception.ResourceNotFoundException;
 import com.example.pos.masterdata.manufacturer.dto.ManufacturerRequestDto;
 import com.example.pos.masterdata.manufacturer.model.Manufacturer;
 import com.example.pos.masterdata.manufacturer.repository.ManufacturerRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 @Transactional
@@ -29,7 +29,7 @@ public class ManufacturerService {
     }
 
     @Transactional(readOnly = true)
-    public List<Manufacturer> getAll() { return repository.findAll(); }
+    public Page<Manufacturer> getAll(Pageable pageable) { return repository.findAll(pageable); }
 
     @Transactional(readOnly = true)
     public Manufacturer getById(Long id) {

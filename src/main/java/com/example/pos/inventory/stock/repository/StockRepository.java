@@ -1,6 +1,8 @@
 package com.example.pos.inventory.stock.repository;
 
 import com.example.pos.inventory.stock.model.Stock;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -9,6 +11,8 @@ import java.util.Optional;
 public interface StockRepository extends JpaRepository<Stock, Long> {
 
     List<Stock> findByBranchId(Long branchId);
+
+    Page<Stock> findByBranchId(Long branchId, Pageable pageable);
 
     List<Stock> findByMedicineBatchesId(Long batchId);
 

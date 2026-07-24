@@ -6,7 +6,7 @@ import com.example.pos.pharmacy.regulatory.expiry.model.ExpiryLogs;
 import com.example.pos.core.branch.model.Branch;
 import com.example.pos.finance.expenses.model.Expenses;
 import com.example.pos.inventory.stockmovements.model.StockMovements;
-import com.example.pos.presciptions.dispensary.model.Dispensary;
+import com.example.pos.prescriptions.dispensary.model.Dispensary;
 import com.example.pos.procurement.goodsreceived.model.GoodsReceivedNotes;
 import com.example.pos.procurement.pricehistory.model.PriceHistory;
 import com.example.pos.procurement.purchaseorders.model.PurchaseOrders;

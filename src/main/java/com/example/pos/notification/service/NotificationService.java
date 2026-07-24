@@ -3,6 +3,9 @@ package com.example.pos.notification.service;
 import com.example.pos.common.exception.ResourceNotFoundException;
 import com.example.pos.notification.model.Notification;
 import com.example.pos.notification.repository.NotificationRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,13 +28,15 @@ public class NotificationService {
     }
 
     @Transactional(readOnly = true)
-    public List<Notification> getByBranch(Long branchId) {
-        return repo.findByBranchIdOrderByCreatedAtDesc(branchId);
+    public Page<Notification> getByBranch(Long branchId, Pageable pageable) {
+        List<Notification> list = repo.findByBranchIdOrderByCreatedAtDesc(branchId);
+        return new PageImpl<>(list, pageable, list.size());
     }
 
     @Transactional(readOnly = true)
-    public List<Notification> getUnreadByBranch(Long branchId) {
-        return repo.findByBranchIdAndStatusOrderByCreatedAtDesc(branchId, Notification.Status.UNREAD);
+    public Page<Notification> getUnreadByBranch(Long branchId, Pageable pageable) {
+        List<Notification> list = repo.findByBranchIdAndStatusOrderByCreatedAtDesc(branchId, Notification.Status.UNREAD);
+        return new PageImpl<>(list, pageable, list.size());
     }
 
     public Notification markRead(Long id) {

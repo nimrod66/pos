@@ -1,5 +1,6 @@
 package com.example.pos.sale.sales.service;
 
+import com.example.pos.common.annotation.Auditable;
 import com.example.pos.common.exception.BadRequestException;
 import com.example.pos.common.exception.ConflictException;
 import com.example.pos.common.exception.ResourceNotFoundException;
@@ -34,6 +35,9 @@ import com.example.pos.user.users.model.User;
 import com.example.pos.user.users.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -81,6 +85,7 @@ public class SaleService {
         this.stockMovementsService = stockMovementsService;
     }
 
+    @Auditable(action = "CREATE_SALE", entity = "Sale")
     public Sales createSale(SaleRequestDto dto) {
         if (dto.getIdempotencyKey() != null && idempotencyRepository.existsByIdempotencyKey(dto.getIdempotencyKey())) {
             throw new ConflictException("Duplicate transaction detected");
@@ -223,8 +228,8 @@ public class SaleService {
     }
 
     @Transactional(readOnly = true)
-    public List<Sales> getSalesByBranch(Long branchId) {
-        return salesRepository.findByBranchId(branchId);
+    public Page<Sales> getSalesByBranch(Long branchId, Pageable pageable) {
+        return salesRepository.findByBranchId(branchId, pageable);
     }
 
     @Transactional(readOnly = true)
@@ -233,6 +238,7 @@ public class SaleService {
                 .orElseThrow(() -> new ResourceNotFoundException("Sale", id));
     }
 
+    @Auditable(action = "CANCEL_SALE", entity = "Sale")
     public Sales cancelSale(Long id) {
         Sales sale = getSaleById(id);
         if (sale.getSaleStatus() == Sales.SaleStatus.CANCELLED) {

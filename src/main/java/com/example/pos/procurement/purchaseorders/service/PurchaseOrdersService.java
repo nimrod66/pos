@@ -14,6 +14,9 @@ import com.example.pos.procurement.suppliers.model.Suppliers;
 import com.example.pos.procurement.suppliers.repository.SupplierRepository;
 import com.example.pos.user.users.model.User;
 import com.example.pos.user.users.repository.UserRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -80,10 +83,16 @@ public class PurchaseOrdersService {
     }
 
     @Transactional(readOnly = true)
-    public List<PurchaseOrders> getByBranch(Long branchId) { return poRepo.findByBranchId(branchId); }
+    public Page<PurchaseOrders> getByBranch(Long branchId, Pageable pageable) {
+        List<PurchaseOrders> list = poRepo.findByBranchId(branchId);
+        return new PageImpl<>(list, pageable, list.size());
+    }
 
     @Transactional(readOnly = true)
-    public List<PurchaseOrders> getBySupplier(Long supplierId) { return poRepo.findBySupplierId(supplierId); }
+    public Page<PurchaseOrders> getBySupplier(Long supplierId, Pageable pageable) {
+        List<PurchaseOrders> list = poRepo.findBySupplierId(supplierId);
+        return new PageImpl<>(list, pageable, list.size());
+    }
 
     @Transactional(readOnly = true)
     public PurchaseOrders getById(Long id) {

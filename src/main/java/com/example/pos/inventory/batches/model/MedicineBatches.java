@@ -5,7 +5,7 @@ import com.example.pos.pharmacy.regulatory.expiry.model.ExpiryLogs;
 import com.example.pos.inventory.stock.model.Stock;
 import com.example.pos.inventory.stockmovements.model.StockMovements;
 import com.example.pos.masterdata.medicine.model.Medicine;
-import com.example.pos.presciptions.dispensary.model.Dispensary;
+import com.example.pos.prescriptions.dispensary.model.Dispensary;
 import com.example.pos.procurement.pricehistory.model.PriceHistory;
 import com.example.pos.sale.saleitems.model.SaleItems;
 import com.example.pos.sale.salereturnitems.model.SaleReturnItems;

@@ -7,6 +7,8 @@ import com.example.pos.inventory.batches.model.MedicineBatches;
 import com.example.pos.inventory.batches.repository.MedicineBatchesRepository;
 import com.example.pos.masterdata.medicine.model.Medicine;
 import com.example.pos.masterdata.medicine.repository.MedicineRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,18 +43,18 @@ public class MedicineBatchesService {
     }
 
     @Transactional(readOnly = true)
-    public List<MedicineBatches> getAllBatches() {
-        return batchRepository.findAll();
+    public Page<MedicineBatches> getAllBatches(Pageable pageable) {
+        return batchRepository.findAll(pageable);
     }
 
     @Transactional(readOnly = true)
-    public List<MedicineBatches> getBatchesByMedicine(Long medicineId) {
-        return batchRepository.findByMedicineId(medicineId);
+    public Page<MedicineBatches> getBatchesByMedicine(Long medicineId, Pageable pageable) {
+        return batchRepository.findByMedicineId(medicineId, pageable);
     }
 
     @Transactional(readOnly = true)
-    public List<MedicineBatches> getBatchesExpiringBefore(LocalDate date) {
-        return batchRepository.findByExpirationDateBefore(date);
+    public Page<MedicineBatches> getBatchesExpiringBefore(LocalDate date, Pageable pageable) {
+        return batchRepository.findByExpirationDateBefore(date, pageable);
     }
 
     @Transactional(readOnly = true)

@@ -5,10 +5,10 @@ import com.example.pos.common.exception.ResourceNotFoundException;
 import com.example.pos.masterdata.units.dto.UnitRequestDto;
 import com.example.pos.masterdata.units.model.Unit;
 import com.example.pos.masterdata.units.repository.UnitRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 @Transactional
@@ -28,7 +28,7 @@ public class UnitService {
     }
 
     @Transactional(readOnly = true)
-    public List<Unit> getAll() { return repository.findAll(); }
+    public Page<Unit> getAll(Pageable pageable) { return repository.findAll(pageable); }
 
     @Transactional(readOnly = true)
     public Unit getById(Long id) {

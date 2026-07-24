@@ -1,16 +1,18 @@
 package com.example.pos.masterdata.medicine.controller;
 
 import com.example.pos.common.dto.ApiResponse;
+import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.masterdata.medicine.dto.MedicineRequestDto;
 import com.example.pos.masterdata.medicine.dto.MedicineResponseDto;
 import com.example.pos.masterdata.medicine.model.Medicine;
 import com.example.pos.masterdata.medicine.service.MedicineService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/medicines")
@@ -31,24 +33,22 @@ public class MedicineController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<MedicineResponseDto>>> getAll(
+    public ResponseEntity<ApiResponse<PagedResponse<MedicineResponseDto>>> getAll(
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) Long manufacturerId,
-            @RequestParam(required = false) Boolean controlled) {
-        List<Medicine> medicines;
+            @RequestParam(required = false) Boolean controlled,
+            @PageableDefault(size = 20) Pageable pageable) {
+        Page<Medicine> page;
         if (controlled != null && controlled) {
-            medicines = medicineService.getControlledDrugs();
+            page = medicineService.getControlledDrugs(pageable);
         } else if (categoryId != null) {
-            medicines = medicineService.getMedicinesByCategory(categoryId);
+            page = medicineService.getMedicinesByCategory(categoryId, pageable);
         } else if (manufacturerId != null) {
-            medicines = medicineService.getMedicinesByManufacturer(manufacturerId);
+            page = medicineService.getMedicinesByManufacturer(manufacturerId, pageable);
         } else {
-            medicines = medicineService.getAllMedicines();
+            page = medicineService.getAllMedicines(pageable);
         }
-        List<MedicineResponseDto> response = medicines.stream()
-                .map(MedicineResponseDto::from)
-                .toList();
-        return ResponseEntity.ok(ApiResponse.ok(response));
+        return ResponseEntity.ok(ApiResponse.ok(PagedResponse.from(page, MedicineResponseDto::from)));
     }
 
     @GetMapping("/barcode/{barcode}")
@@ -56,6 +56,14 @@ public class MedicineController {
             @PathVariable String barcode) {
         Medicine medicine = medicineService.getMedicineByBarcode(barcode);
         return ResponseEntity.ok(ApiResponse.ok(MedicineResponseDto.from(medicine)));
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<PagedResponse<MedicineResponseDto>>> search(
+            @RequestParam String q,
+            @PageableDefault(size = 20) Pageable pageable) {
+        Page<Medicine> page = medicineService.search(q, pageable);
+        return ResponseEntity.ok(ApiResponse.ok(PagedResponse.from(page, MedicineResponseDto::from)));
     }
 
     @GetMapping("/{id}")

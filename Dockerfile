@@ -10,8 +10,11 @@ RUN ./mvnw package -DskipTests -B
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 RUN addgroup -S pos && adduser -S pos -G pos
-RUN mkdir -p /pos-data && chown pos:pos /pos-data
+RUN apk add --no-cache wget
+RUN mkdir -p /pos-data /connectors && chown pos:pos /pos-data /connectors
 COPY --from=build /app/target/*.jar app.jar
+COPY connectors/ /connectors/
+EXPOSE 9090
+HEALTHCHECK --interval=30s --timeout=3s --retries=3 CMD wget -qO- http://localhost:9090/actuator/health || exit 1
 USER pos
-EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]

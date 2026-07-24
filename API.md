@@ -298,10 +298,13 @@ All API responses use:
 | Method | Path | Auth |
 |---|---|---|
 | `POST` | `/api/stock` | OWNER, BRANCH_MANAGER, STORE_KEEPER |
-| `GET` | `/api/stock` | OWNER, BRANCH_MANAGER, STORE_KEEPER |
+| `GET` | `/api/stock?branchId=` | OWNER, BRANCH_MANAGER, STORE_KEEPER |
+| `GET` | `/api/stock/{id}` | OWNER, BRANCH_MANAGER, STORE_KEEPER |
+| `PUT` | `/api/stock/{id}` | OWNER, BRANCH_MANAGER, STORE_KEEPER |
+| `DELETE` | `/api/stock/{id}` | OWNER, BRANCH_MANAGER, STORE_KEEPER |
 | `POST` | `/api/stock/receive` | OWNER, BRANCH_MANAGER, STORE_KEEPER |
 | `POST` | `/api/stock/deduct` | OWNER, BRANCH_MANAGER, STORE_KEEPER |
-| `GET` | `/api/stock/low-stock` | OWNER, BRANCH_MANAGER, STORE_KEEPER |
+| `GET` | `/api/stock/low` | OWNER, BRANCH_MANAGER, STORE_KEEPER |
 
 **StockRequestDto:** `medicineBatchesId`*, `branchId`*, `quantityAvailable` (>=0), `reservedQuantity` (>=0), `minimumStock` (>=0), `maximumStock` (>=0), `reorderLevel` (>=0), `shelfLocation`, `lastStockDate`
 **StockAdjustmentDto:** `branchId`*, `medicineBatchesId`*, `quantity`* (>0)
@@ -346,7 +349,9 @@ All API responses use:
 ### 20. Sale Returns
 | Method | Path | Auth |
 |---|---|---|
-| `POST` | `/api/sales/returns` | OWNER, BRANCH_MANAGER, CASHIER |
+| `POST` | `/api/sale-returns` | OWNER, BRANCH_MANAGER, CASHIER |
+| `GET` | `/api/sale-returns?saleId=` | OWNER, BRANCH_MANAGER, CASHIER |
+| `GET` | `/api/sale-returns/{id}` | OWNER, BRANCH_MANAGER, CASHIER |
 
 **SaleReturnRequestDto:** `saleId`*, `userId`*, `reason`*, `items`* (array of `{medicineId, batchId, quantity}`)
 **SaleReturnResponseDto:** `id`, `saleId`, `invoiceNumber`, `userId`, `reason`, `totalRefund`, `items`, `createdAt`
@@ -392,10 +397,10 @@ All API responses use:
 | Method | Path | Auth |
 |---|---|---|
 | `POST` | `/api/purchase-orders` | OWNER, BRANCH_MANAGER, STORE_KEEPER |
-| `GET` | `/api/purchase-orders?status=&supplierId=` | OWNER, BRANCH_MANAGER, STORE_KEEPER |
+| `GET` | `/api/purchase-orders?branchId=&supplierId=` | OWNER, BRANCH_MANAGER, STORE_KEEPER |
 | `GET` | `/api/purchase-orders/{id}` | OWNER, BRANCH_MANAGER, STORE_KEEPER |
-| `PUT` | `/api/purchase-orders/{id}/approve` | OWNER, BRANCH_MANAGER |
-| `PUT` | `/api/purchase-orders/{id}/deliver` | OWNER, BRANCH_MANAGER, STORE_KEEPER |
+| `PATCH` | `/api/purchase-orders/{id}/approve` | OWNER, BRANCH_MANAGER |
+| `PATCH` | `/api/purchase-orders/{id}/deliver` | OWNER, BRANCH_MANAGER, STORE_KEEPER |
 
 **PurchaseOrderRequestDto:** `supplierId`*, `branchId`*, `orderedById`*, `expectedDeliveryDate`, `items`* (array of `{medicineId, batchId, quantity, unitPrice}`)
 
@@ -451,6 +456,8 @@ All API responses use:
 | `POST` | `/api/expenses` | OWNER, BRANCH_MANAGER |
 | `GET` | `/api/expenses?categoryId=&branchId=` | OWNER, BRANCH_MANAGER |
 | `GET` | `/api/expenses/{id}` | OWNER, BRANCH_MANAGER |
+| `PUT` | `/api/expenses/{id}` | OWNER, BRANCH_MANAGER |
+| `DELETE` | `/api/expenses/{id}` | OWNER, BRANCH_MANAGER |
 
 **ExpensesRequestDto:** `expenseCategoryId`*, `cashDrawersId`, `userId`*, `amount`* (>0), `description`
 **ExpensesResponseDto:** `id`, `expenseCategoryId`, `categoryName`, `cashDrawersId`, `userId`, `userName`, `amount`, `description`, `createdAt`
@@ -471,8 +478,9 @@ All API responses use:
 | Method | Path | Auth |
 |---|---|---|
 | `POST` | `/api/cash-drawers` | OWNER, BRANCH_MANAGER, CASHIER |
-| `GET` | `/api/cash-drawers?branchId=&status=` | OWNER, BRANCH_MANAGER, CASHIER |
-| `PUT` | `/api/cash-drawers/{id}/close` | OWNER, BRANCH_MANAGER |
+| `GET` | `/api/cash-drawers?shiftId=` | OWNER, BRANCH_MANAGER, CASHIER |
+| `GET` | `/api/cash-drawers/{id}` | OWNER, BRANCH_MANAGER, CASHIER |
+| `PATCH` | `/api/cash-drawers/{id}/close` | OWNER, BRANCH_MANAGER |
 
 **CashDrawerRequestDto:** `staffShiftsId`*, `openingBalance`, `expectedClosingBalance`, `actualClosingBalance`, `variance`
 **CashDrawerResponseDto:** `id`, `staffShiftsId`, `openingBalance`, `expectedClosingBalance`, `actualClosingBalance`, `variance`, `status` (OPEN|CLOSED), `createdAt`
@@ -502,7 +510,7 @@ All API responses use:
 | Method | Path | Auth |
 |---|---|---|
 | `POST` | `/api/dispensary` | OWNER, PHARMACIST |
-| `GET` | `/api/dispensary` | OWNER, PHARMACIST |
+| `GET` | `/api/dispensary?batchId=&userId=` | OWNER, PHARMACIST |
 | `GET` | `/api/dispensary/{id}` | OWNER, PHARMACIST |
 
 **DispensaryRequestDto:** `medicineBatchesId`*, `userId`*, `prescriptionItemsId`*, `dispensedQuantity`* (>0)
@@ -513,7 +521,7 @@ All API responses use:
 ### 34. Compliance — Tax Invoices
 | Method | Path | Auth |
 |---|---|---|
-| `POST` | `/api/invoices/issue/{saleId}` | OWNER, BRANCH_MANAGER, CASHIER, PHARMACIST |
+| `POST` | `/api/invoices/issue` | OWNER, BRANCH_MANAGER, CASHIER, PHARMACIST |
 | `GET` | `/api/invoices/{id}` | OWNER, BRANCH_MANAGER, CASHIER, PHARMACIST |
 | `GET` | `/api/invoices/by-sale/{saleId}` | OWNER, BRANCH_MANAGER, CASHIER, PHARMACIST |
 | `GET` | `/api/invoices?branchId=&status=&from=&to=` | OWNER, BRANCH_MANAGER, CASHIER, PHARMACIST |
@@ -524,7 +532,7 @@ All API responses use:
 | `POST` | `/api/invoices/{id}/debit-notes` | OWNER, BRANCH_MANAGER, FINANCE |
 | `GET` | `/api/invoices/{id}/debit-notes` | OWNER, BRANCH_MANAGER, FINANCE |
 
-**Issue Invoice:** Creates a `TaxInvoice` from a completed sale. Query params: `customerPin`, `currency`, `actorId`, `actorName`. Each item snapshots `unitPrice`, `taxableAmount`, `taxRate`, `taxType`, `taxAmount` — never recalculated.
+**Issue Invoice:** Body accepts `SaleFiscalData` record containing `saleId`, `branchId`, `branchCode`, `subtotal`, `customerId`, `customerName`, `customerPin`, `currency`, `items[]`. Query params: `actorId`, `actorName`.
 
 **TaxInvoiceResponseDto:** `id`, `saleId`, `invoiceNumber`, `invoiceStatus` (DRAFT|ISSUED|VOID|CREDITED|CLOSED), `subtotal`, `taxAmount`, `discount`, `grandTotal`, `issueDate`, `currency`, `branchId`, `customerId`, `customerName`, `customerPin`, `schemaVersion`, `qrCodeContent`, `qrImagePath`, `verificationUrl`, `items[]`, `history[]`, `createdAt`, `updatedAt`
 
@@ -2058,6 +2066,35 @@ When a claim is created, the system calculates the patient's co-pay:
 5. Co-pay is capped so claim + co-pay ≤ sale total
 6. Caller can override by passing `coPayAmount` in the claim request
 
+### Schemes Endpoints
+
+| Method | Path | Auth |
+|---|---|---|
+| `GET` | `/api/insurance/schemes?insurerId=` | OWNER, BRANCH_MANAGER |
+| `POST` | `/api/insurance/insurers/{insurerId}/schemes` | OWNER, BRANCH_MANAGER |
+
+**InsuranceScheme:** `id`, `insurerId`, `schemeName`, `schemeCode`, `coPayPercentage`, `coPayFlat`, `requiresPreauth`, `maxClaimAmount`, `active`
+
+### Members Endpoints
+
+| Method | Path | Auth |
+|---|---|---|
+| `GET` | `/api/insurance/members?insurerId=` | OWNER, BRANCH_MANAGER |
+| `GET` | `/api/insurance/members/lookup?membershipNumber=&insurerId=` | CASHIER, PHARMACIST |
+| `POST` | `/api/insurance/insurers/{insurerId}/members` | CASHIER, PHARMACIST |
+
+**InsuranceMember:** `id`, `insurerId`, `memberName`, `membershipNumber`, `nationalId`, `phoneNumber`, `dateOfBirth`, `expiryDate`, `active`
+
+### Authorizations Endpoints
+
+| Method | Path | Auth |
+|---|---|---|
+| `GET` | `/api/insurance/authorizations?insurerId=` | OWNER, BRANCH_MANAGER, CASHIER |
+| `GET` | `/api/insurance/authorizations/{id}` | OWNER, BRANCH_MANAGER, CASHIER |
+| `POST` | `/api/insurance/insurers/{insurerId}/authorizations` | OWNER, BRANCH_MANAGER |
+
+**Authorization:** `id`, `insurerId`, `memberId`, `schemeId`, `authorizationReference`, `approvedAmount`, `usedAmount`, `remainingBalance`, `status` (ACTIVE|EXHAUSTED|EXPIRED|REVOKED), `validFrom`, `validTo`
+
 ### Claim Endpoints
 
 | Method | Path | Auth |
@@ -2067,12 +2104,58 @@ When a claim is created, the system calculates the patient's co-pay:
 | `GET` | `/api/insurance/claims/by-sale/{saleId}` | CASHIER, PHARMACIST |
 | `POST` | `/api/insurance/claims` | CASHIER, PHARMACIST |
 | `PATCH` | `/api/insurance/claims/{id}/status` | OWNER, BRANCH_MANAGER |
-| `POST` | `/api/insurance/batches/submit` | OWNER, BRANCH_MANAGER |
+
+**InsuranceClaimRequestDto:** `saleId`*, `insurerId`*, `schemeId`, `memberId`, `authorizationId`, `patientName`, `patientMembershipId`, `claimAmount`*, `saleTotal`*, `coPayAmount`, `approvedAmount`, `rejectedAmount`, `notes`
+
+**InsuranceClaimResponseDto:** `id`, `insurerId`, `insurerName`, `schemeId`, `schemeName`, `memberId`, `memberName`, `authorizationId`, `saleId`, `patientName`, `patientMembershipId`, `claimAmount`, `approvedAmount`, `rejectedAmount`, `coPayAmount`, `saleTotal`, `claimReference`, `claimStatus`, `batchReference`, `submittedAt`, `rejectionReason`, `notes`
+
+### Claim Attachments Endpoints
+
+| Method | Path | Auth |
+|---|---|---|
+| `GET` | `/api/insurance/claims/{claimId}/attachments` | OWNER, BRANCH_MANAGER |
+| `POST` | `/api/insurance/claims/{claimId}/attachments` | OWNER, BRANCH_MANAGER |
+
+**ClaimAttachment:** `id`, `claimId`, `attachmentType` (PRESCRIPTION|LAB_RESULT|DIAGNOSIS|REFERRAL|OTHER), `fileName`, `fileUrl`, `description`, `createdAt`
+
+### Batches Endpoints
+
+| Method | Path | Auth |
+|---|---|---|
+| `GET` | `/api/insurance/batches?insurerId=` | OWNER, BRANCH_MANAGER |
+| `POST` | `/api/insurance/insurers/{insurerId}/batches` | OWNER, BRANCH_MANAGER |
+| `POST` | `/api/insurance/batches/{batchId}/submit` | OWNER, BRANCH_MANAGER |
+
+**ClaimBatch:** `id`, `insurerId`, `batchReference`, `claimCount`, `totalAmount`, `status` (DRAFT|SUBMITTED|ACKNOWLEDGED|PROCESSING|SETTLED|REJECTED), `submittedAt`
+
+### Payments Endpoints
+
+| Method | Path | Auth |
+|---|---|---|
+| `GET` | `/api/insurance/payments?insurerId=` | OWNER, BRANCH_MANAGER |
+| `POST` | `/api/insurance/insurers/{insurerId}/payments` | OWNER, BRANCH_MANAGER |
+| `POST` | `/api/insurance/payments/{paymentId}/link` | OWNER, BRANCH_MANAGER |
+
+**InsurancePayment:** `id`, `insurerId`, `paymentReference`, `amount`, `paymentDate`, `paymentMethod`, `notes`
+
+### Reconciliation Endpoints
+
+| Method | Path | Auth |
+|---|---|---|
+| `GET` | `/api/insurance/reconciliations?insurerId=` | OWNER, BRANCH_MANAGER |
+| `POST` | `/api/insurance/reconcile` | OWNER, BRANCH_MANAGER |
+
+**POST /reconcile body:** `{"insurerId": 1, "periodStart": "2026-01-01", "periodEnd": "2026-01-31"}`
+
+**ClaimReconciliation:** `id`, `insurerId`, `periodStart`, `periodEnd`, `totalClaimed`, `totalApproved`, `totalRejected`, `totalPaid`, `outstanding`, `claimCount`, `settledCount`
+
+### Reports Endpoint
+
+| Method | Path | Auth |
+|---|---|---|
 | `GET` | `/api/insurance/reports/{insurerId}` | OWNER, BRANCH_MANAGER |
 
-**InsuranceClaimRequestDto:** `saleId`*, `insurerId`*, `patientName`, `patientMembershipId`, `claimAmount`*, `saleTotal`*, `coPayAmount` (optional override), `preauthCode`, `notes`
 
-**InsuranceClaimResponseDto:** `id`, `insurerId`, `insurerName`, `saleId`, `patientName`, `patientMembershipId`, `claimAmount`, `coPayAmount`, `saleTotal`, `claimReference`, `claimStatus`, `preauthCode`, `batchReference`, `submittedAt`, `settledAt`, `settledAmount`, `rejectionReason`, `notes`
 
 ### Claim Status Lifecycle
 
@@ -2094,12 +2177,17 @@ PENDING ──preauth──→ PREAUTH_OBTAINED
 
 ### Batch Claims Submission
 
-End-of-month: submit all pending claims for an insurer as a batch.
-
+**Two-step flow:**
+1. Create draft batch — auto-groups all PENDING claims for the insurer:
 ```
-POST /api/insurance/batches/submit
-{"insurerId": 1}
-→ {"insurerId": 1, "submittedCount": 47}
+POST /api/insurance/insurers/{insurerId}/batches
+→ { "batchReference": "BTCH-AAR-20260722-143000", "claimCount": 47, "totalAmount": 235000, "status": "DRAFT" }
+```
+
+2. Submit the batch — sends to insurer provider adapter:
+```
+POST /api/insurance/batches/{batchId}/submit
+→ status changes to SUBMITTED; adapter (FileExport, SHA, AAR, etc.) processes
 ```
 
 All PENDING + PREAUTH_OBTAINED claims are grouped with a batch reference like `BTCH-AAR-20260722-143000`. Status changes to `SUBMITTED`.
@@ -2113,9 +2201,10 @@ GET /api/insurance/reports/{insurerId}
     "insurerCode": "AAR",
     "totalClaims": 47,
     "totalClaimed": 235000.00,
-    "totalSettled": 189000.00,
+    "totalApproved": 189000.00,
     "totalCoPayCollected": 12400.00,
-    "outstanding": 46000.00,
+    "settledCount": 42,
+    "outstanding": 189000.00,
     "claims": [...]
 }
 ```
@@ -2133,10 +2222,20 @@ GET /api/insurance/reports/{insurerId}
 
 ```
 com.example.pos.insurance/
-├── model/               Insurer, InsuranceClaim, ClaimStatus
-├── repository/          InsurerRepository, InsuranceClaimRepository
+├── model/               Insurer, InsuranceScheme, InsuranceMember,
+│                        InsuranceClaim, ClaimStatus, ClaimAttachment,
+│                        Authorization, ClaimBatch, InsurancePayment,
+│                        ClaimReconciliation
+├── repository/          InsurerRepository, InsuranceSchemeRepository,
+│                        InsuranceMemberRepository, AuthorizationRepository,
+│                        InsuranceClaimRepository, ClaimAttachmentRepository,
+│                        ClaimBatchRepository, InsurancePaymentRepository,
+│                        ClaimReconciliationRepository
 ├── dto/                 InsurerRequestDto, InsurerResponseDto,
 │                        InsuranceClaimRequestDto, InsuranceClaimResponseDto
+├── adapter/             InsuranceProviderAdapter, FileExportAdapter,
+│                        MockProviderAdapter, ShaProviderAdapter,
+│                        AarProviderAdapter
 ├── service/             InsuranceService
 └── controller/          InsuranceController
 ```

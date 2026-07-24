@@ -1,16 +1,18 @@
 package com.example.pos.customer.controller;
 
 import com.example.pos.common.dto.ApiResponse;
+import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.customer.dto.CustomerRequestDto;
 import com.example.pos.customer.dto.CustomerResponseDto;
 import com.example.pos.customer.model.Customer;
 import com.example.pos.customer.service.CustomerService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/customers")
@@ -25,8 +27,10 @@ public class CustomerController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<CustomerResponseDto>>> getAll() {
-        return ResponseEntity.ok(ApiResponse.ok(service.getAll().stream().map(CustomerResponseDto::from).toList()));
+    public ResponseEntity<ApiResponse<PagedResponse<CustomerResponseDto>>> getAll(
+            @PageableDefault(size = 20) Pageable pageable) {
+        Page<Customer> page = service.getAll(pageable);
+        return ResponseEntity.ok(ApiResponse.ok(PagedResponse.from(page, CustomerResponseDto::from)));
     }
 
     @GetMapping("/{id}")
@@ -37,6 +41,14 @@ public class CustomerController {
     @GetMapping("/phone/{phone}")
     public ResponseEntity<ApiResponse<CustomerResponseDto>> getByPhone(@PathVariable String phone) {
         return ResponseEntity.ok(ApiResponse.ok(CustomerResponseDto.from(service.findByPhone(phone))));
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<PagedResponse<CustomerResponseDto>>> search(
+            @RequestParam String q,
+            @PageableDefault(size = 20) Pageable pageable) {
+        Page<Customer> page = service.search(q, pageable);
+        return ResponseEntity.ok(ApiResponse.ok(PagedResponse.from(page, CustomerResponseDto::from)));
     }
 
     @PutMapping("/{id}")

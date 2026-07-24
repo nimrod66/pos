@@ -15,6 +15,8 @@ import com.example.pos.sync.service.SyncService;
 import com.example.pos.user.users.model.User;
 import com.example.pos.user.users.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -115,19 +117,19 @@ public class StockMovementsService {
     }
 
     @Transactional(readOnly = true)
-    public List<StockMovements> getMovementsByBatch(Long batchId) {
-        return movementsRepository.findByMedicineBatchesId(batchId);
+    public Page<StockMovements> getMovementsByBatch(Long batchId, Pageable pageable) {
+        return movementsRepository.findByMedicineBatchesId(batchId, pageable);
     }
 
     @Transactional(readOnly = true)
-    public List<StockMovements> getMovementsByBranch(Long branchId) {
-        return movementsRepository.findByBranchId(branchId);
+    public Page<StockMovements> getMovementsByBranch(Long branchId, Pageable pageable) {
+        return movementsRepository.findByBranchId(branchId, pageable);
     }
 
     @Transactional(readOnly = true)
-    public List<StockMovements> getMovementsByBranchAndDateRange(
-            Long branchId, LocalDate start, LocalDate end) {
-        return movementsRepository.findByBranchIdAndMovementDateBetween(branchId, start, end);
+    public Page<StockMovements> getMovementsByBranchAndDateRange(
+            Long branchId, LocalDate start, LocalDate end, Pageable pageable) {
+        return movementsRepository.findByBranchIdAndMovementDateBetween(branchId, start, end, pageable);
     }
 
     @Transactional(readOnly = true)

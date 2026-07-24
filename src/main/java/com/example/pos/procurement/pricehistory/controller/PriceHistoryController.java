@@ -1,13 +1,15 @@
 package com.example.pos.procurement.pricehistory.controller;
 
 import com.example.pos.common.dto.ApiResponse;
+import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.procurement.pricehistory.dto.PriceHistoryResponseDto;
 import com.example.pos.procurement.pricehistory.model.PriceHistory;
 import com.example.pos.procurement.pricehistory.service.PriceHistoryService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/price-history")
@@ -20,20 +22,18 @@ public class PriceHistoryController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<PriceHistoryResponseDto>>> getByMedicine(
+    public ResponseEntity<ApiResponse<PagedResponse<PriceHistoryResponseDto>>> getByMedicine(
+            @PageableDefault(size = 20) Pageable pageable,
             @RequestParam(required = false) Long medicineId,
             @RequestParam(required = false) Long batchId) {
-        List<PriceHistory> histories;
+        Page<PriceHistory> page;
         if (medicineId != null) {
-            histories = service.getByMedicine(medicineId);
+            page = service.getByMedicine(medicineId, pageable);
         } else if (batchId != null) {
-            histories = service.getByBatch(batchId);
+            page = service.getByBatch(batchId, pageable);
         } else {
             return ResponseEntity.badRequest().body(ApiResponse.error("Provide medicineId or batchId"));
         }
-        List<PriceHistoryResponseDto> response = histories.stream()
-                .map(PriceHistoryResponseDto::from)
-                .toList();
-        return ResponseEntity.ok(ApiResponse.ok(response));
+        return ResponseEntity.ok(ApiResponse.ok(PagedResponse.from(page, PriceHistoryResponseDto::from)));
     }
 }

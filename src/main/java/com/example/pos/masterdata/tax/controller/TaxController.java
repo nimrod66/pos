@@ -1,16 +1,18 @@
 package com.example.pos.masterdata.tax.controller;
 
 import com.example.pos.common.dto.ApiResponse;
+import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.masterdata.tax.dto.TaxRequestDto;
 import com.example.pos.masterdata.tax.dto.TaxResponseDto;
 import com.example.pos.masterdata.tax.model.Tax;
 import com.example.pos.masterdata.tax.service.TaxService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/tax-categories")
@@ -26,9 +28,11 @@ public class TaxController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<TaxResponseDto>>> getAll(@RequestParam(defaultValue = "false") boolean activeOnly) {
-        List<Tax> taxes = activeOnly ? service.getActive() : service.getAll();
-        return ResponseEntity.ok(ApiResponse.ok(taxes.stream().map(TaxResponseDto::from).toList()));
+    public ResponseEntity<ApiResponse<PagedResponse<TaxResponseDto>>> getAll(
+            @RequestParam(defaultValue = "false") boolean activeOnly,
+            @PageableDefault(size = 20) Pageable pageable) {
+        Page<Tax> page = activeOnly ? service.getActive(pageable) : service.getAll(pageable);
+        return ResponseEntity.ok(ApiResponse.ok(PagedResponse.from(page, TaxResponseDto::from)));
     }
 
     @GetMapping("/code/{code}")

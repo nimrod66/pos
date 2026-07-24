@@ -8,6 +8,9 @@ import com.example.pos.procurement.purchaseorders.model.PurchaseOrders;
 import com.example.pos.procurement.purchaseorders.repository.PurchaseOrdersRepository;
 import com.example.pos.user.users.model.User;
 import com.example.pos.user.users.repository.UserRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,7 +51,13 @@ public class GoodsReceivedNotesService {
     }
 
     @Transactional(readOnly = true)
-    public List<GoodsReceivedNotes> getByPurchaseOrder(Long poId) {
-        return repo.findByPurchaseOrdersId(poId);
+    public Page<GoodsReceivedNotes> getByPurchaseOrder(Long poId, Pageable pageable) {
+        List<GoodsReceivedNotes> list = repo.findByPurchaseOrdersId(poId);
+        return new PageImpl<>(list, pageable, list.size());
+    }
+
+    @Transactional(readOnly = true)
+    public GoodsReceivedNotes getById(Long id) {
+        return repo.findById(id).orElseThrow(() -> new ResourceNotFoundException("GoodsReceivedNotes", id));
     }
 }

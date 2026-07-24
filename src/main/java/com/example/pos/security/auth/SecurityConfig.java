@@ -57,7 +57,7 @@ public class SecurityConfig {
                 if (csrfEnabled) {
                     csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         .csrfTokenRequestHandler(handler)
-                        .ignoringRequestMatchers("/api/auth/**", "/actuator/**", "/api/payments/mpesa/callback", "/api/payments/paystack/callback", "/api/sync/**");
+                        .ignoringRequestMatchers("/api/auth/**", "/actuator/**", "/api/payments/mpesa/callback", "/api/payments/paystack/callback", "/api/payments/stripe/callback", "/api/sync/**");
                 } else {
                     csrf.disable();
                 }
@@ -67,7 +67,7 @@ public class SecurityConfig {
             .addFilterBefore(terminalAuthFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**", "/actuator/health", "/swagger-ui/**", "/v3/api-docs/**", "/api/payments/mpesa/callback", "/api/payments/paystack/callback", "/api/sync/health").permitAll()
+                .requestMatchers("/api/auth/**", "/actuator/health", "/actuator/info", "/swagger-ui/**", "/v3/api-docs/**", "/api/payments/mpesa/callback", "/api/payments/paystack/callback", "/api/payments/stripe/callback", "/api/sync/health").permitAll()
                 .requestMatchers("/api/sync/push").hasAnyRole("TERMINAL", "OWNER", "PLATFORM_ADMIN")
                 .requestMatchers("/api/pharmacies/**").hasAnyRole("OWNER", "PLATFORM_ADMIN")
                 .requestMatchers("/api/branches/**").hasAnyRole("OWNER", "PLATFORM_ADMIN")

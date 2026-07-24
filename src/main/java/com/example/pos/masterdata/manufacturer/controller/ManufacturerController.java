@@ -1,16 +1,18 @@
 package com.example.pos.masterdata.manufacturer.controller;
 
 import com.example.pos.common.dto.ApiResponse;
+import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.masterdata.manufacturer.dto.ManufacturerRequestDto;
 import com.example.pos.masterdata.manufacturer.dto.ManufacturerResponseDto;
 import com.example.pos.masterdata.manufacturer.model.Manufacturer;
 import com.example.pos.masterdata.manufacturer.service.ManufacturerService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/manufacturers")
@@ -26,8 +28,10 @@ public class ManufacturerController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<ManufacturerResponseDto>>> getAll() {
-        return ResponseEntity.ok(ApiResponse.ok(service.getAll().stream().map(ManufacturerResponseDto::from).toList()));
+    public ResponseEntity<ApiResponse<PagedResponse<ManufacturerResponseDto>>> getAll(
+            @PageableDefault(size = 20) Pageable pageable) {
+        Page<Manufacturer> page = service.getAll(pageable);
+        return ResponseEntity.ok(ApiResponse.ok(PagedResponse.from(page, ManufacturerResponseDto::from)));
     }
 
     @GetMapping("/{id}")

@@ -1,13 +1,15 @@
 package com.example.pos.audit.controller;
 
 import com.example.pos.common.dto.ApiResponse;
+import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.audit.dto.AuditLogResponseDto;
 import com.example.pos.audit.model.AuditLog;
 import com.example.pos.audit.service.AuditLogService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/audit-logs")
@@ -17,14 +19,15 @@ public class AuditLogController {
     public AuditLogController(AuditLogService service) { this.service = service; }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<AuditLogResponseDto>>> getAll(
+    public ResponseEntity<ApiResponse<PagedResponse<AuditLogResponseDto>>> getAll(
+            @PageableDefault(size = 20) Pageable pageable,
             @RequestParam(required = false) String tableName,
             @RequestParam(required = false) String recordId,
             @RequestParam(required = false) Long userId) {
-        List<AuditLog> logs;
-        if (userId != null) logs = service.getByUser(userId);
-        else if (tableName != null) logs = service.getByTable(tableName, recordId);
-        else logs = List.of();
-        return ResponseEntity.ok(ApiResponse.ok(logs.stream().map(AuditLogResponseDto::from).toList()));
+        Page<AuditLog> page;
+        if (userId != null) page = service.getByUser(userId, pageable);
+        else if (tableName != null) page = service.getByTable(tableName, recordId, pageable);
+        else page = Page.empty();
+        return ResponseEntity.ok(ApiResponse.ok(PagedResponse.from(page, AuditLogResponseDto::from)));
     }
 }

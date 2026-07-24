@@ -1,5 +1,6 @@
 package com.example.pos.masterdata.medicine.service;
 
+import com.example.pos.common.annotation.Auditable;
 import com.example.pos.common.exception.BadRequestException;
 import com.example.pos.common.exception.ConflictException;
 import com.example.pos.common.exception.ResourceNotFoundException;
@@ -18,10 +19,10 @@ import com.example.pos.masterdata.units.model.Unit;
 import com.example.pos.masterdata.units.repository.UnitRepository;
 import com.example.pos.terminal.barcode.BarcodeSource;
 import com.example.pos.terminal.barcode.BarcodeType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 @Transactional
@@ -48,6 +49,7 @@ public class MedicineService {
         this.taxRepository = taxRepository;
     }
 
+    @Auditable(action = "CREATE_MEDICINE", entity = "Medicine")
     public Medicine createMedicine(MedicineRequestDto dto) {
         if (medicineRepository.existsByBarcode(dto.getBarcode())) {
             throw new ConflictException("Barcode " + dto.getBarcode() + " already exists");
@@ -64,23 +66,28 @@ public class MedicineService {
     }
 
     @Transactional(readOnly = true)
-    public List<Medicine> getAllMedicines() {
-        return medicineRepository.findAll();
+    public Page<Medicine> getAllMedicines(Pageable pageable) {
+        return medicineRepository.findAll(pageable);
     }
 
     @Transactional(readOnly = true)
-    public List<Medicine> getMedicinesByCategory(Long categoryId) {
-        return medicineRepository.findByMedicineCategoriesId(categoryId);
+    public Page<Medicine> getMedicinesByCategory(Long categoryId, Pageable pageable) {
+        return medicineRepository.findByMedicineCategoriesId(categoryId, pageable);
     }
 
     @Transactional(readOnly = true)
-    public List<Medicine> getMedicinesByManufacturer(Long manufacturerId) {
-        return medicineRepository.findByManufacturerId(manufacturerId);
+    public Page<Medicine> getMedicinesByManufacturer(Long manufacturerId, Pageable pageable) {
+        return medicineRepository.findByManufacturerId(manufacturerId, pageable);
     }
 
     @Transactional(readOnly = true)
-    public List<Medicine> getControlledDrugs() {
-        return medicineRepository.findByIsControlledDrugTrue();
+    public Page<Medicine> getControlledDrugs(Pageable pageable) {
+        return medicineRepository.findByIsControlledDrugTrue(pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Medicine> search(String q, Pageable pageable) {
+        return medicineRepository.search(q, pageable);
     }
 
     @Transactional(readOnly = true)
@@ -95,6 +102,7 @@ public class MedicineService {
                 .orElseThrow(() -> new ResourceNotFoundException("Medicine with barcode " + barcode));
     }
 
+    @Auditable(action = "UPDATE_MEDICINE", entity = "Medicine")
     public Medicine updateMedicine(Long id, MedicineRequestDto dto) {
         Medicine medicine = getMedicineById(id);
 
@@ -110,6 +118,7 @@ public class MedicineService {
         return medicineRepository.save(medicine);
     }
 
+    @Auditable(action = "DELETE_MEDICINE", entity = "Medicine")
     public void deleteMedicine(Long id) {
         Medicine medicine = getMedicineById(id);
         medicineRepository.delete(medicine);

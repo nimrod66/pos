@@ -1,16 +1,18 @@
 package com.example.pos.sale.salereturns.controller;
 
 import com.example.pos.common.dto.ApiResponse;
+import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.sale.salereturns.dto.SaleReturnRequestDto;
 import com.example.pos.sale.salereturns.dto.SaleReturnResponseDto;
 import com.example.pos.sale.salereturns.model.SaleReturns;
 import com.example.pos.sale.salereturns.service.SaleReturnsService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/sale-returns")
@@ -31,12 +33,11 @@ public class SaleReturnsController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<SaleReturnResponseDto>>> getBySale(
+    public ResponseEntity<ApiResponse<PagedResponse<SaleReturnResponseDto>>> getBySale(
+            @PageableDefault(size = 20) Pageable pageable,
             @RequestParam Long saleId) {
-        List<SaleReturnResponseDto> list = returnsService.getReturnsBySale(saleId).stream()
-                .map(returnsService::toResponseDto)
-                .toList();
-        return ResponseEntity.ok(ApiResponse.ok(list));
+        Page<SaleReturns> page = returnsService.getReturnsBySale(saleId, pageable);
+        return ResponseEntity.ok(ApiResponse.ok(PagedResponse.from(page, returnsService::toResponseDto)));
     }
 
     @GetMapping("/{id}")

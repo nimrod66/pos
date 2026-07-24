@@ -1,6 +1,7 @@
 package com.example.pos.user.users.controller;
 
 import com.example.pos.common.dto.ApiResponse;
+import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.user.users.dto.ChangePasswordRequestDto;
 import com.example.pos.user.users.dto.UpdateStatusRequestDto;
 import com.example.pos.user.users.dto.UserRequestDto;
@@ -8,11 +9,12 @@ import com.example.pos.user.users.dto.UserResponseDto;
 import com.example.pos.user.users.model.User;
 import com.example.pos.user.users.service.UserService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/users")
@@ -32,24 +34,30 @@ public class UserController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<UserResponseDto>>> getAll(
+    public ResponseEntity<ApiResponse<PagedResponse<UserResponseDto>>> getAll(
+            @PageableDefault(size = 20) Pageable pageable,
             @RequestParam(required = false) Long branchId) {
-        List<User> users;
+        Page<User> page;
         if (branchId != null) {
-            users = userService.getUsersByBranch(branchId);
+            page = userService.getUsersByBranch(branchId, pageable);
         } else {
-            users = userService.getAllUsers();
+            page = userService.getAllUsers(pageable);
         }
-        List<UserResponseDto> response = users.stream()
-                .map(UserResponseDto::from)
-                .toList();
-        return ResponseEntity.ok(ApiResponse.ok(response));
+        return ResponseEntity.ok(ApiResponse.ok(PagedResponse.from(page, UserResponseDto::from)));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<UserResponseDto>> getById(@PathVariable Long id) {
         User user = userService.getUserById(id);
         return ResponseEntity.ok(ApiResponse.ok(UserResponseDto.from(user)));
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<PagedResponse<UserResponseDto>>> search(
+            @RequestParam String q,
+            @PageableDefault(size = 20) Pageable pageable) {
+        Page<User> page = userService.search(q, pageable);
+        return ResponseEntity.ok(ApiResponse.ok(PagedResponse.from(page, UserResponseDto::from)));
     }
 
     @PutMapping("/{id}")

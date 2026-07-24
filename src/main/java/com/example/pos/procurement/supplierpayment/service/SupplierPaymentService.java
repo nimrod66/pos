@@ -8,6 +8,9 @@ import com.example.pos.procurement.supplierpayment.model.SupplierPayment;
 import com.example.pos.procurement.supplierpayment.repository.SupplierPaymentRepository;
 import com.example.pos.user.users.model.User;
 import com.example.pos.user.users.repository.UserRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,7 +59,8 @@ public class SupplierPaymentService {
     }
 
     @Transactional(readOnly = true)
-    public List<SupplierPayment> getByInvoice(Long invoiceId) {
-        return repo.findBySupplierInvoicesId(invoiceId);
+    public Page<SupplierPayment> getByInvoice(Long invoiceId, Pageable pageable) {
+        List<SupplierPayment> list = repo.findBySupplierInvoicesId(invoiceId);
+        return new PageImpl<>(list, pageable, list.size());
     }
 }

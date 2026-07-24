@@ -1,17 +1,20 @@
 package com.example.pos.sale.payment.controller;
 
 import com.example.pos.common.dto.ApiResponse;
+import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.payment.gateway.PaymentGatewayResponse;
 import com.example.pos.sale.payment.dto.PaymentRequestDto;
 import com.example.pos.sale.payment.model.Payment;
 import com.example.pos.sale.payment.service.PaymentService;
 import com.example.pos.sale.sales.dto.SaleResponseDto;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -52,8 +55,10 @@ public class PaymentController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<SaleResponseDto.PaymentResponse>>> getBySale(@RequestParam Long saleId) {
-        List<SaleResponseDto.PaymentResponse> list = paymentService.getPaymentsBySale(saleId).stream()
+    public ResponseEntity<ApiResponse<PagedResponse<SaleResponseDto.PaymentResponse>>> getBySale(
+            @PageableDefault(size = 20) Pageable pageable,
+            @RequestParam Long saleId) {
+        Page<SaleResponseDto.PaymentResponse> page = paymentService.getPaymentsBySale(saleId, pageable)
                 .map(p -> SaleResponseDto.PaymentResponse.builder()
                         .id(p.getId())
                         .paymentMethod(p.getPaymentMethod() != null ? p.getPaymentMethod().name() : null)
@@ -62,9 +67,8 @@ public class PaymentController {
                         .transactionReference(p.getTransactionReference())
                         .paymentStatus(p.getPaymentStatus())
                         .paymentDate(p.getPaymentDate())
-                        .build())
-                .toList();
-        return ResponseEntity.ok(ApiResponse.ok(list));
+                        .build());
+        return ResponseEntity.ok(ApiResponse.ok(PagedResponse.fromPage(page)));
     }
 
     @PostMapping("/mpesa/callback")

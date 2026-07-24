@@ -2,7 +2,7 @@ package com.example.pos.pharmacy.regulatory.controlledrugs.model;
 
 import com.example.pos.common.BaseEntity;
 import com.example.pos.masterdata.medicine.model.Medicine;
-import com.example.pos.presciptions.prescriptions.model.Prescriptions;
+import com.example.pos.prescriptions.prescriptions.model.Prescriptions;
 import com.example.pos.user.users.model.User;
 import jakarta.persistence.*;
 import lombok.*;
