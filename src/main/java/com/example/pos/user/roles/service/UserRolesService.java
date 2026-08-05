@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -46,7 +47,7 @@ public class UserRolesService {
     }
 
     @Transactional(readOnly = true)
-    public UserRoles getRoleById(Long id) {
+    public UserRoles getRoleById(UUID id) {
         return rolesRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("UserRoles", id));
     }
@@ -57,7 +58,7 @@ public class UserRolesService {
                 .orElseThrow(() -> new ResourceNotFoundException("UserRoles with name " + roleName));
     }
 
-    public UserRoles updateRole(Long id, UserRolesRequestDto dto) {
+    public UserRoles updateRole(UUID id, UserRolesRequestDto dto) {
         UserRoles role = getRoleById(id);
         if (rolesRepository.existsByRoleNameAndIdNot(dto.getRoleName(), id)) {
             throw new ConflictException("Role '" + dto.getRoleName() + "' already exists");
@@ -66,12 +67,12 @@ public class UserRolesService {
         return rolesRepository.save(role);
     }
 
-    public void deleteRole(Long id) {
+    public void deleteRole(UUID id) {
         UserRoles role = getRoleById(id);
         rolesRepository.delete(role);
     }
 
-    public List<RolePermission> assignPermissions(Long roleId, AssignPermissionsRequestDto dto) {
+    public List<RolePermission> assignPermissions(UUID roleId, AssignPermissionsRequestDto dto) {
         UserRoles role = getRoleById(roleId);
         List<Permissions> permissions = permissionsRepository.findAllById(dto.getPermissionIds());
 
@@ -91,7 +92,7 @@ public class UserRolesService {
         return rolePermissionRepository.saveAll(assignments);
     }
 
-    public void removePermission(Long roleId, Long permissionId) {
+    public void removePermission(UUID roleId, UUID permissionId) {
         UserRoles role = getRoleById(roleId);
         RolePermission assignment = rolePermissionRepository.findByUserRolesAndPermissionsId(role, permissionId)
                 .orElseThrow(() -> new ResourceNotFoundException(

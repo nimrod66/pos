@@ -1,13 +1,12 @@
 package com.example.pos.compliance.transmission.service;
 
-import com.example.pos.compliance.transmission.model.Transmission;
-import com.example.pos.compliance.transmission.model.TransmissionStatus;
+import java.util.UUID;
 
 public interface TransmissionQueue {
 
-    void enqueue(Long transmissionId);
+    void enqueue(UUID transmissionId);
 
-    Long dequeue();
+    UUID dequeue();
 
     int size();
 

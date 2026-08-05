@@ -24,6 +24,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.UUID;
+
 @Service
 @Transactional
 public class MedicineService {
@@ -71,12 +73,12 @@ public class MedicineService {
     }
 
     @Transactional(readOnly = true)
-    public Page<Medicine> getMedicinesByCategory(Long categoryId, Pageable pageable) {
+    public Page<Medicine> getMedicinesByCategory(UUID categoryId, Pageable pageable) {
         return medicineRepository.findByMedicineCategoriesId(categoryId, pageable);
     }
 
     @Transactional(readOnly = true)
-    public Page<Medicine> getMedicinesByManufacturer(Long manufacturerId, Pageable pageable) {
+    public Page<Medicine> getMedicinesByManufacturer(UUID manufacturerId, Pageable pageable) {
         return medicineRepository.findByManufacturerId(manufacturerId, pageable);
     }
 
@@ -91,7 +93,7 @@ public class MedicineService {
     }
 
     @Transactional(readOnly = true)
-    public Medicine getMedicineById(Long id) {
+    public Medicine getMedicineById(UUID id) {
         return medicineRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Medicine", id));
     }
@@ -103,7 +105,7 @@ public class MedicineService {
     }
 
     @Auditable(action = "UPDATE_MEDICINE", entity = "Medicine")
-    public Medicine updateMedicine(Long id, MedicineRequestDto dto) {
+    public Medicine updateMedicine(UUID id, MedicineRequestDto dto) {
         Medicine medicine = getMedicineById(id);
 
         if (medicineRepository.existsByBarcodeAndIdNot(dto.getBarcode(), id)) {
@@ -119,7 +121,7 @@ public class MedicineService {
     }
 
     @Auditable(action = "DELETE_MEDICINE", entity = "Medicine")
-    public void deleteMedicine(Long id) {
+    public void deleteMedicine(UUID id) {
         Medicine medicine = getMedicineById(id);
         medicineRepository.delete(medicine);
     }

@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -63,7 +64,7 @@ public class TerminalMigrationService implements CommandLineRunner {
                     .apiKey((String) row.get("api_key"))
                     .apiSecret((String) row.get("api_secret"))
                     .status(active ? TerminalStatus.ACTIVE : TerminalStatus.PENDING)
-                    .branchId(toLong(row.get("branch_id")))
+                    .branchId(toUUID(row.get("branch_id")))
                     .migratedFromTerminal(true)
                     .build();
 
@@ -74,13 +75,11 @@ public class TerminalMigrationService implements CommandLineRunner {
         log.info("Migration complete: {} terminals migrated to terminal_registry", migrated);
     }
 
-    private Long toLong(Object value) {
+    private UUID toUUID(Object value) {
         if (value == null) return null;
-        if (value instanceof Long) return (Long) value;
-        if (value instanceof Integer) return ((Integer) value).longValue();
         try {
-            return Long.parseLong(value.toString());
-        } catch (NumberFormatException e) {
+            return UUID.fromString(value.toString());
+        } catch (IllegalArgumentException e) {
             return null;
         }
     }

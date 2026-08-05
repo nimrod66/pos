@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -43,13 +44,13 @@ public class SupplierInvoicesService {
     }
 
     @Transactional(readOnly = true)
-    public Page<SupplierInvoices> getBySupplier(Long supplierId, Pageable pageable) {
+    public Page<SupplierInvoices> getBySupplier(UUID supplierId, Pageable pageable) {
         List<SupplierInvoices> list = repo.findBySuppliers_Id(supplierId);
         return new PageImpl<>(list, pageable, list.size());
     }
 
     @Transactional(readOnly = true)
-    public SupplierInvoices getById(Long id) {
+    public SupplierInvoices getById(UUID id) {
         return repo.findById(id).orElseThrow(() -> new ResourceNotFoundException("SupplierInvoice", id));
     }
 }

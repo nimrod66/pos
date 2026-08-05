@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
+import java.util.UUID;
 
 @Entity
 @AllArgsConstructor
@@ -32,5 +33,5 @@ public class TaxPeriod extends BaseEntity {
     private boolean isSubmitted = false;
 
     @Column(name = "tenant_id")
-    private Long tenantId;
+    private UUID tenantId;
 }

@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -17,8 +18,8 @@ import java.util.List;
 @Builder
 public class TaxInvoiceResponseDto {
 
-    private Long id;
-    private Long saleId;
+    private UUID id;
+    private UUID saleId;
     private String invoiceNumber;
     private String invoiceStatus;
     private BigDecimal subtotal;
@@ -27,8 +28,8 @@ public class TaxInvoiceResponseDto {
     private BigDecimal grandTotal;
     private LocalDateTime issueDate;
     private String currency;
-    private Long branchId;
-    private Long customerId;
+    private UUID branchId;
+    private UUID customerId;
     private String customerName;
     private String customerPin;
     private Integer schemaVersion;
@@ -42,8 +43,8 @@ public class TaxInvoiceResponseDto {
 
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
     public static class ItemResponse {
-        private Long id;
-        private Long medicineId;
+        private UUID id;
+        private UUID medicineId;
         private String medicineName;
         private String barcode;
         private Integer quantity;
@@ -59,10 +60,10 @@ public class TaxInvoiceResponseDto {
 
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
     public static class HistoryResponse {
-        private Long id;
+        private UUID id;
         private String historyType;
         private String description;
-        private Long actorId;
+        private UUID actorId;
         private String actorName;
         private LocalDateTime createdAt;
     }

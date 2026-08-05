@@ -1,5 +1,7 @@
 package com.example.pos.terminal.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.terminal.dto.*;
 import com.example.pos.terminal.model.TerminalStatus;
@@ -15,7 +17,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/terminals")
+@RequestMapping("/api/v1/terminals")
 @RequiredArgsConstructor
 public class TerminalRegistryController {
 
@@ -92,7 +94,7 @@ public class TerminalRegistryController {
     }
 
     @DeleteMapping("/peripherals/{peripheralId}")
-    public ResponseEntity<ApiResponse<Void>> removePeripheral(@PathVariable Long peripheralId) {
+    public ResponseEntity<ApiResponse<Void>> removePeripheral(@PathVariable UUID peripheralId) {
         registrationService.removePeripheral(peripheralId);
         return ResponseEntity.ok(ApiResponse.deleted());
     }
@@ -107,7 +109,7 @@ public class TerminalRegistryController {
     public ResponseEntity<ApiResponse<TerminalSessionResponseDto>> createSession(
             @PathVariable String terminalId,
             @RequestHeader("Authorization") String authorization,
-            @RequestParam(required = false) Long cashierId) {
+            @RequestParam(required = false) UUID cashierId) {
         String token = authorization != null && authorization.startsWith("Bearer ")
                 ? authorization.substring(7) : "";
         var terminal = registrationService.getTerminalEntity(terminalId);

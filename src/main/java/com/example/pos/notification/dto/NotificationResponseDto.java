@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.time.LocalDateTime;
 
@@ -14,14 +15,14 @@ import java.time.LocalDateTime;
 @Builder
 public class NotificationResponseDto {
 
-    private Long id;
+    private UUID id;
     private String title;
     private String message;
     private String type;
     private String status;
-    private Long referenceId;
+    private UUID referenceId;
     private String referenceType;
-    private Long branchId;
+    private UUID branchId;
     private LocalDateTime createdAt;
 
     public static NotificationResponseDto from(Notification n) {
@@ -33,3 +34,4 @@ public class NotificationResponseDto {
                 .branchId(n.getBranchId()).createdAt(n.getCreatedAt()).build();
     }
 }
+

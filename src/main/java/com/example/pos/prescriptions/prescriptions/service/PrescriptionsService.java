@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -59,11 +60,11 @@ public class PrescriptionsService {
     public Page<Prescriptions> getAll(Pageable pageable) { return repo.findAll(pageable); }
 
     @Transactional(readOnly = true)
-    public Prescriptions getById(Long id) {
+    public Prescriptions getById(UUID id) {
         return repo.findById(id).orElseThrow(() -> new ResourceNotFoundException("Prescription", id));
     }
 
-    public Prescriptions dispense(Long id) {
+    public Prescriptions dispense(UUID id) {
         Prescriptions p = getById(id);
         p.setStatus("DISPENSED");
         return repo.save(p);

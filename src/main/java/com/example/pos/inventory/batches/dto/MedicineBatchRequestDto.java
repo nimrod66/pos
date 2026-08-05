@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -16,7 +17,7 @@ import java.time.LocalDate;
 public class MedicineBatchRequestDto {
 
     @NotNull(message = "Medicine ID is required")
-    private Long medicineId;
+    private UUID medicineId;
 
     @NotBlank(message = "Batch number is required")
     private String batchNumber;
@@ -37,3 +38,4 @@ public class MedicineBatchRequestDto {
     @Positive(message = "Selling price must be positive")
     private BigDecimal sellingPrice;
 }
+

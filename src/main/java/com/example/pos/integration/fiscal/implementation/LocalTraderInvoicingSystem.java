@@ -5,6 +5,7 @@ import com.example.pos.compliance.tis.TisFacade;
 import com.example.pos.compliance.tis.TraderInvoicingSystem;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 public class LocalTraderInvoicingSystem implements TraderInvoicingSystem {
 
@@ -15,12 +16,12 @@ public class LocalTraderInvoicingSystem implements TraderInvoicingSystem {
     }
 
     @Override
-    public TaxInvoice generateInvoice(Long saleId, String customerPin) {
+    public TaxInvoice generateInvoice(UUID saleId, String customerPin) {
         return tisFacade.generateInvoice(saleId, customerPin);
     }
 
     @Override
-    public String generateReceipt(Long saleId, Long invoiceId) {
+    public String generateReceipt(UUID saleId, UUID invoiceId) {
         return tisFacade.generateReceipt(saleId, invoiceId);
     }
 
@@ -35,17 +36,17 @@ public class LocalTraderInvoicingSystem implements TraderInvoicingSystem {
     }
 
     @Override
-    public void cancelInvoice(Long invoiceId, String reason) {
+    public void cancelInvoice(UUID invoiceId, String reason) {
         tisFacade.cancelInvoice(invoiceId, reason);
     }
 
     @Override
-    public void issueCreditNote(Long invoiceId, BigDecimal amount, String reason) {
+    public void issueCreditNote(UUID invoiceId, BigDecimal amount, String reason) {
         tisFacade.issueCreditNote(invoiceId, amount, reason);
     }
 
     @Override
-    public void issueDebitNote(Long invoiceId, BigDecimal amount, String reason) {
+    public void issueDebitNote(UUID invoiceId, BigDecimal amount, String reason) {
         tisFacade.issueDebitNote(invoiceId, amount, reason);
     }
 

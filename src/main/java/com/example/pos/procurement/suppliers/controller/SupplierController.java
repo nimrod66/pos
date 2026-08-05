@@ -1,5 +1,7 @@
 package com.example.pos.procurement.suppliers.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.procurement.suppliers.dto.SupplierRequestDto;
@@ -15,7 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/suppliers")
+@RequestMapping("/api/v1/suppliers")
 public class SupplierController {
 
     private final SupplierService service;
@@ -34,7 +36,7 @@ public class SupplierController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<SupplierResponseDto>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<SupplierResponseDto>> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(SupplierResponseDto.from(service.getById(id))));
     }
 
@@ -47,10 +49,10 @@ public class SupplierController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<SupplierResponseDto>> update(@PathVariable Long id, @RequestBody @Valid SupplierRequestDto dto) {
+    public ResponseEntity<ApiResponse<SupplierResponseDto>> update(@PathVariable UUID id, @RequestBody @Valid SupplierRequestDto dto) {
         return ResponseEntity.ok(ApiResponse.updated(SupplierResponseDto.from(service.update(id, dto))));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) { service.delete(id); return ResponseEntity.ok(ApiResponse.deleted()); }
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) { service.delete(id); return ResponseEntity.ok(ApiResponse.deleted()); }
 }

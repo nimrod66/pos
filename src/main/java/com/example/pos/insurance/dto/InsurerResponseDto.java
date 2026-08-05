@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.math.BigDecimal;
 
@@ -14,7 +15,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @Builder
 public class InsurerResponseDto {
-    private Long id;
+    private UUID id;
     private String name;
     private String code;
     private String insurerType;
@@ -48,3 +49,4 @@ public class InsurerResponseDto {
                 .build();
     }
 }
+

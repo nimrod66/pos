@@ -1,5 +1,7 @@
 package com.example.pos.core.branch.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.core.branch.dto.BranchRequestDto;
 import com.example.pos.core.branch.dto.BranchResponseDto;
@@ -13,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/branches")
+@RequestMapping("/api/v1/branches")
 public class BranchController {
 
     private final BranchService branchService;
@@ -31,7 +33,7 @@ public class BranchController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<BranchResponseDto>>> getAll(
-            @RequestParam(required = false) Long pharmacyId) {
+            @RequestParam(required = false) UUID pharmacyId) {
         List<Branch> branches;
         if (pharmacyId != null) {
             branches = branchService.getBranchesByPharmacyId(pharmacyId);
@@ -45,21 +47,21 @@ public class BranchController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<BranchResponseDto>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<BranchResponseDto>> getById(@PathVariable UUID id) {
         Branch branch = branchService.getBranchById(id);
         return ResponseEntity.ok(ApiResponse.ok(BranchResponseDto.from(branch)));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<BranchResponseDto>> update(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestBody @Valid BranchRequestDto dto) {
         Branch branch = branchService.updateBranch(id, dto);
         return ResponseEntity.ok(ApiResponse.updated(BranchResponseDto.from(branch)));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         branchService.deleteBranch(id);
         return ResponseEntity.ok(ApiResponse.deleted());
     }

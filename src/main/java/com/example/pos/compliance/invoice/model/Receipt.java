@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @AllArgsConstructor
@@ -16,13 +17,13 @@ import java.time.LocalDateTime;
 public class Receipt extends BaseEntity {
 
     @Column(name = "sale_id", nullable = false)
-    private Long saleId;
+    private UUID saleId;
 
     @Column(name = "receipt_number", unique = true, nullable = false, length = 50)
     private String receiptNumber;
 
     @Column(name = "invoice_id")
-    private Long invoiceId;
+    private UUID invoiceId;
 
     @Column(name = "receipt_data", columnDefinition = "LONGTEXT")
     private String receiptData;
@@ -47,5 +48,5 @@ public class Receipt extends BaseEntity {
     private String verificationUrl;
 
     @Column(name = "tenant_id")
-    private Long tenantId;
+    private UUID tenantId;
 }

@@ -33,7 +33,7 @@ public class BatchProcessor {
                 .build());
     }
 
-    public BatchItem addToBatch(Long batchId, Long invoiceId, String invoiceNumber) {
+    public BatchItem addToBatch(UUID batchId, UUID invoiceId, String invoiceNumber) {
         BatchItem item = BatchItem.builder()
                 .batch(batchRepo.getReferenceById(batchId))
                 .invoiceId(invoiceId)
@@ -43,7 +43,7 @@ public class BatchProcessor {
         return itemRepo.save(item);
     }
 
-    public Batch sealBatch(Long batchId) {
+    public Batch sealBatch(UUID batchId) {
         Batch batch = batchRepo.findById(batchId).orElseThrow();
         batch.setBatchStatus(BatchStatus.SEALED);
         List<BatchItem> items = itemRepo.findByBatchId(batchId);
@@ -51,7 +51,7 @@ public class BatchProcessor {
         return batchRepo.save(batch);
     }
 
-    public void submitBatch(Long batchId, List<String> payloads) {
+    public void submitBatch(UUID batchId, List<String> payloads) {
         Batch batch = batchRepo.findById(batchId).orElseThrow();
         batch.setBatchStatus(BatchStatus.SUBMITTING);
         batch.setSubmittedAt(LocalDateTime.now());

@@ -1,15 +1,17 @@
 package com.example.pos.notification.repository;
 
+import java.util.UUID;
+
 import com.example.pos.notification.model.Notification;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 
-public interface NotificationRepository extends JpaRepository<Notification, Long> {
+public interface NotificationRepository extends JpaRepository<Notification, UUID> {
 
-    List<Notification> findByBranchIdAndStatusOrderByCreatedAtDesc(Long branchId, Notification.Status status);
+    List<Notification> findByBranchIdAndStatusOrderByCreatedAtDesc(UUID branchId, Notification.Status status);
 
-    List<Notification> findByUserIdAndStatusOrderByCreatedAtDesc(Long userId, Notification.Status status);
+    List<Notification> findByUserIdAndStatusOrderByCreatedAtDesc(UUID userId, Notification.Status status);
 
-    List<Notification> findByBranchIdOrderByCreatedAtDesc(Long branchId);
+    List<Notification> findByBranchIdOrderByCreatedAtDesc(UUID branchId);
 }

@@ -1,5 +1,7 @@
 package com.example.pos.masterdata.tax.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.masterdata.tax.dto.TaxRequestDto;
@@ -15,7 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/tax-categories")
+@RequestMapping("/api/v1/tax-categories")
 public class TaxController {
 
     private final TaxService service;
@@ -41,22 +43,22 @@ public class TaxController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<TaxResponseDto>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<TaxResponseDto>> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(TaxResponseDto.from(service.getById(id))));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<TaxResponseDto>> update(@PathVariable Long id, @RequestBody @Valid TaxRequestDto dto) {
+    public ResponseEntity<ApiResponse<TaxResponseDto>> update(@PathVariable UUID id, @RequestBody @Valid TaxRequestDto dto) {
         return ResponseEntity.ok(ApiResponse.updated(TaxResponseDto.from(service.update(id, dto))));
     }
 
     @PatchMapping("/{id}/toggle")
-    public ResponseEntity<ApiResponse<TaxResponseDto>> toggleActive(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<TaxResponseDto>> toggleActive(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.updated(TaxResponseDto.from(service.toggleActive(id))));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         service.delete(id);
         return ResponseEntity.ok(ApiResponse.deleted());
     }

@@ -1,5 +1,7 @@
 package com.example.pos.procurement.supplierinvoices.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.procurement.supplierinvoices.dto.SupplierInvoiceRequestDto;
@@ -15,7 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/supplier-invoices")
+@RequestMapping("/api/v1/supplier-invoices")
 public class SupplierInvoicesController {
 
     private final SupplierInvoicesService service;
@@ -29,13 +31,13 @@ public class SupplierInvoicesController {
     @GetMapping
     public ResponseEntity<ApiResponse<PagedResponse<SupplierInvoiceResponseDto>>> getBySupplier(
             @PageableDefault(size = 20) Pageable pageable,
-            @RequestParam Long supplierId) {
+            @RequestParam UUID supplierId) {
         Page<SupplierInvoices> page = service.getBySupplier(supplierId, pageable);
         return ResponseEntity.ok(ApiResponse.ok(PagedResponse.from(page, SupplierInvoiceResponseDto::from)));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<SupplierInvoiceResponseDto>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<SupplierInvoiceResponseDto>> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(SupplierInvoiceResponseDto.from(service.getById(id))));
     }
 }

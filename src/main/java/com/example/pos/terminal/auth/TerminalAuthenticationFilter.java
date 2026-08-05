@@ -38,7 +38,7 @@ public class TerminalAuthenticationFilter extends OncePerRequestFilter {
         return path.startsWith("/actuator/")
                 || path.startsWith("/swagger")
                 || path.startsWith("/v3/api-docs")
-                || path.startsWith("/api/auth/");
+                || path.startsWith("/api/v1/auth/");
     }
 
     @Override

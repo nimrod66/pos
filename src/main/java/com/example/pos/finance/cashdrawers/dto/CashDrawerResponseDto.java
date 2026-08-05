@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -16,8 +17,8 @@ import java.time.LocalTime;
 @Builder
 public class CashDrawerResponseDto {
 
-    private Long id;
-    private Long staffShiftsId;
+    private UUID id;
+    private UUID staffShiftsId;
     private String status;
     private BigDecimal openingBalance;
     private BigDecimal expectedClosingBalance;
@@ -44,3 +45,4 @@ public class CashDrawerResponseDto {
                 .build();
     }
 }
+

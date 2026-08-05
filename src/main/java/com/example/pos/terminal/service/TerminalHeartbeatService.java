@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -48,7 +49,7 @@ public class TerminalHeartbeatService {
     }
 
     @Transactional(readOnly = true)
-    public List<TerminalHeartbeat> getRecentHeartbeats(Long terminalId) {
+    public List<TerminalHeartbeat> getRecentHeartbeats(UUID terminalId) {
         return heartbeatRepository.findByTerminalIdOrderByTimestampDesc(terminalId)
                 .stream()
                 .limit(10)

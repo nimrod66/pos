@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.time.LocalDateTime;
 
@@ -14,11 +15,11 @@ import java.time.LocalDateTime;
 @Builder
 public class ExpiryLogResponseDto {
 
-    private Long id;
-    private Long medicineBatchesId;
+    private UUID id;
+    private UUID medicineBatchesId;
     private String batchNumber;
     private String medicineName;
-    private Long userId;
+    private UUID userId;
     private String userName;
     private String disposalMethod;
     private LocalDateTime createdAt;

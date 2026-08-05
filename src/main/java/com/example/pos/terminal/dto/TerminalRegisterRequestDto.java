@@ -7,6 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -28,5 +29,6 @@ public class TerminalRegisterRequestDto {
     private String firmwareVersion;
 
     @NotNull(message = "Branch ID is required")
-    private Long branchId;
+    private UUID branchId;
 }
+

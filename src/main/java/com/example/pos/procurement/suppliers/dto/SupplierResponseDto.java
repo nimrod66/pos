@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.time.LocalDateTime;
 
@@ -14,7 +15,7 @@ import java.time.LocalDateTime;
 @Builder
 public class SupplierResponseDto {
 
-    private Long id;
+    private UUID id;
     private String supplierName;
     private String licenseNumber;
     private String phoneNumber;
@@ -35,3 +36,4 @@ public class SupplierResponseDto {
                 .createdAt(s.getCreatedAt()).updatedAt(s.getUpdatedAt()).build();
     }
 }
+

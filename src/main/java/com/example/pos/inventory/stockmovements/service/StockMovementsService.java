@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -84,9 +85,9 @@ public class StockMovementsService {
         return saved;
     }
 
-    public StockMovements recordDirect(Long branchId, Long batchId, Long userId,
+    public StockMovements recordDirect(UUID branchId, UUID batchId, UUID userId,
                                         String movementType, Integer quantity,
-                                        String referenceType, Long referenceId) {
+                                        String referenceType, UUID referenceId) {
         MedicineBatches batch = batchesRepository.findById(batchId).orElse(null);
         Branch branch = branchRepository.findById(branchId).orElse(null);
         User user = userRepository.findById(userId).orElse(null);
@@ -117,23 +118,23 @@ public class StockMovementsService {
     }
 
     @Transactional(readOnly = true)
-    public Page<StockMovements> getMovementsByBatch(Long batchId, Pageable pageable) {
+    public Page<StockMovements> getMovementsByBatch(UUID batchId, Pageable pageable) {
         return movementsRepository.findByMedicineBatchesId(batchId, pageable);
     }
 
     @Transactional(readOnly = true)
-    public Page<StockMovements> getMovementsByBranch(Long branchId, Pageable pageable) {
+    public Page<StockMovements> getMovementsByBranch(UUID branchId, Pageable pageable) {
         return movementsRepository.findByBranchId(branchId, pageable);
     }
 
     @Transactional(readOnly = true)
     public Page<StockMovements> getMovementsByBranchAndDateRange(
-            Long branchId, LocalDate start, LocalDate end, Pageable pageable) {
+            UUID branchId, LocalDate start, LocalDate end, Pageable pageable) {
         return movementsRepository.findByBranchIdAndMovementDateBetween(branchId, start, end, pageable);
     }
 
     @Transactional(readOnly = true)
-    public StockMovements getMovementById(Long id) {
+    public StockMovements getMovementById(UUID id) {
         return movementsRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("StockMovement", id));
     }

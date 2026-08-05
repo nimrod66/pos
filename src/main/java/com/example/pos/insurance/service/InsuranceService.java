@@ -84,7 +84,7 @@ public class InsuranceService {
     }
 
     @Transactional(readOnly = true)
-    public Insurer getInsurer(Long id) {
+    public Insurer getInsurer(UUID id) {
         return insurerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Insurer", id));
     }
@@ -114,7 +114,7 @@ public class InsuranceService {
     }
 
     @Auditable(action = "UPDATE_INSURER", entity = "Insurer")
-    public Insurer updateInsurer(Long id, InsurerRequestDto dto) {
+    public Insurer updateInsurer(UUID id, InsurerRequestDto dto) {
         Insurer insurer = getInsurer(id);
         if (dto.getName() != null) insurer.setName(dto.getName());
         if (dto.getContactPerson() != null) insurer.setContactPerson(dto.getContactPerson());
@@ -133,7 +133,7 @@ public class InsuranceService {
     }
 
     @Auditable(action = "DELETE_INSURER", entity = "Insurer")
-    public void deleteInsurer(Long id) {
+    public void deleteInsurer(UUID id) {
         Insurer insurer = getInsurer(id);
         insurer.setStatus(Insurer.Status.INACTIVE);
         insurerRepository.save(insurer);
@@ -142,7 +142,7 @@ public class InsuranceService {
     // ========== Schemes ==========
 
     @Transactional(readOnly = true)
-    public Page<InsuranceScheme> listSchemes(Long insurerId, Pageable pageable) {
+    public Page<InsuranceScheme> listSchemes(UUID insurerId, Pageable pageable) {
         List<InsuranceScheme> list;
         if (insurerId != null) list = schemeRepository.findByInsurerId(insurerId);
         else list = schemeRepository.findAll();
@@ -150,7 +150,7 @@ public class InsuranceService {
     }
 
     @Auditable(action = "CREATE_SCHEME", entity = "InsuranceScheme")
-    public InsuranceScheme createScheme(Long insurerId, InsuranceScheme scheme) {
+    public InsuranceScheme createScheme(UUID insurerId, InsuranceScheme scheme) {
         Insurer insurer = getInsurer(insurerId);
         scheme.setInsurer(insurer);
         return schemeRepository.save(scheme);
@@ -159,7 +159,7 @@ public class InsuranceService {
     // ========== Members ==========
 
     @Transactional(readOnly = true)
-    public Page<InsuranceMember> listMembers(Long insurerId, Pageable pageable) {
+    public Page<InsuranceMember> listMembers(UUID insurerId, Pageable pageable) {
         List<InsuranceMember> list;
         if (insurerId != null) list = memberRepository.findByInsurerId(insurerId);
         else list = memberRepository.findAll();
@@ -167,13 +167,13 @@ public class InsuranceService {
     }
 
     @Transactional(readOnly = true)
-    public InsuranceMember findMember(String membershipNumber, Long insurerId) {
+    public InsuranceMember findMember(String membershipNumber, UUID insurerId) {
         return memberRepository.findByMembershipNumberAndInsurerId(membershipNumber, insurerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Member " + membershipNumber));
     }
 
     @Auditable(action = "CREATE_MEMBER", entity = "InsuranceMember")
-    public InsuranceMember createMember(Long insurerId, InsuranceMember member) {
+    public InsuranceMember createMember(UUID insurerId, InsuranceMember member) {
         Insurer insurer = getInsurer(insurerId);
         member.setInsurer(insurer);
         return memberRepository.save(member);
@@ -182,7 +182,7 @@ public class InsuranceService {
     // ========== Authorizations ==========
 
     @Transactional(readOnly = true)
-    public Page<Authorization> listAuthorizations(Long insurerId, Pageable pageable) {
+    public Page<Authorization> listAuthorizations(UUID insurerId, Pageable pageable) {
         List<Authorization> list;
         if (insurerId != null) list = authorizationRepository.findByInsurerId(insurerId);
         else list = authorizationRepository.findAll();
@@ -190,13 +190,13 @@ public class InsuranceService {
     }
 
     @Transactional(readOnly = true)
-    public Authorization getAuthorization(Long id) {
+    public Authorization getAuthorization(UUID id) {
         return authorizationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Authorization", id));
     }
 
     @Auditable(action = "CREATE_AUTHORIZATION", entity = "Authorization")
-    public Authorization createAuthorization(Long insurerId, Authorization auth) {
+    public Authorization createAuthorization(UUID insurerId, Authorization auth) {
         Insurer insurer = getInsurer(insurerId);
         auth.setInsurer(insurer);
         if (auth.getAuthorizationReference() == null) {
@@ -280,7 +280,7 @@ public class InsuranceService {
     }
 
     @Transactional(readOnly = true)
-    public Page<InsuranceClaim> listClaims(Long insurerId, String status, Pageable pageable) {
+    public Page<InsuranceClaim> listClaims(UUID insurerId, String status, Pageable pageable) {
         List<InsuranceClaim> list;
         if (insurerId != null && status != null) {
             list = claimRepository.findByInsurerIdAndClaimStatus(insurerId, ClaimStatus.valueOf(status.toUpperCase()));
@@ -295,18 +295,18 @@ public class InsuranceService {
     }
 
     @Transactional(readOnly = true)
-    public InsuranceClaim getClaim(Long id) {
+    public InsuranceClaim getClaim(UUID id) {
         return claimRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("InsuranceClaim", id));
     }
 
     @Transactional(readOnly = true)
-    public List<InsuranceClaim> getClaimsBySale(Long saleId) {
+    public List<InsuranceClaim> getClaimsBySale(UUID saleId) {
         return claimRepository.findBySaleId(saleId);
     }
 
     @Auditable(action = "UPDATE_CLAIM_STATUS", entity = "InsuranceClaim")
-    public InsuranceClaim updateClaimStatus(Long id, String status, String reason, BigDecimal approved, BigDecimal rejected) {
+    public InsuranceClaim updateClaimStatus(UUID id, String status, String reason, BigDecimal approved, BigDecimal rejected) {
         InsuranceClaim claim = getClaim(id);
         ClaimStatus newStatus = ClaimStatus.valueOf(status.toUpperCase());
         claim.setClaimStatus(newStatus);
@@ -320,12 +320,12 @@ public class InsuranceService {
     // ========== Claim Attachments ==========
 
     @Transactional(readOnly = true)
-    public Page<ClaimAttachment> listAttachments(Long claimId, Pageable pageable) {
+    public Page<ClaimAttachment> listAttachments(UUID claimId, Pageable pageable) {
         List<ClaimAttachment> list = attachmentRepository.findByClaimId(claimId);
         return new PageImpl<>(list, pageable, list.size());
     }
 
-    public ClaimAttachment addAttachment(Long claimId, ClaimAttachment attachment) {
+    public ClaimAttachment addAttachment(UUID claimId, ClaimAttachment attachment) {
         InsuranceClaim claim = getClaim(claimId);
         attachment.setClaim(claim);
         return attachmentRepository.save(attachment);
@@ -334,7 +334,7 @@ public class InsuranceService {
     // ========== Batches ==========
 
     @Transactional(readOnly = true)
-    public Page<ClaimBatch> listBatches(Long insurerId, Pageable pageable) {
+    public Page<ClaimBatch> listBatches(UUID insurerId, Pageable pageable) {
         List<ClaimBatch> list;
         if (insurerId != null) list = batchRepository.findByInsurerId(insurerId);
         else list = batchRepository.findAll();
@@ -342,7 +342,7 @@ public class InsuranceService {
     }
 
     @Auditable(action = "CREATE_BATCH", entity = "ClaimBatch")
-    public ClaimBatch createBatch(Long insurerId) {
+    public ClaimBatch createBatch(UUID insurerId) {
         Insurer insurer = getInsurer(insurerId);
         List<InsuranceClaim> pending = claimRepository.findByInsurerIdAndClaimStatus(
                 insurerId, ClaimStatus.PENDING);
@@ -375,7 +375,7 @@ public class InsuranceService {
     }
 
     @Auditable(action = "SUBMIT_BATCH", entity = "ClaimBatch")
-    public ClaimBatch submitBatch(Long batchId) {
+    public ClaimBatch submitBatch(UUID batchId) {
         ClaimBatch batch = batchRepository.findById(batchId)
                 .orElseThrow(() -> new ResourceNotFoundException("ClaimBatch", batchId));
 
@@ -402,7 +402,7 @@ public class InsuranceService {
     // ========== Payments ==========
 
     @Transactional(readOnly = true)
-    public Page<InsurancePayment> listPayments(Long insurerId, Pageable pageable) {
+    public Page<InsurancePayment> listPayments(UUID insurerId, Pageable pageable) {
         List<InsurancePayment> list;
         if (insurerId != null) list = paymentRepository.findByInsurerId(insurerId);
         else list = paymentRepository.findAll();
@@ -410,7 +410,7 @@ public class InsuranceService {
     }
 
     @Auditable(action = "RECORD_PAYMENT", entity = "InsurancePayment")
-    public InsurancePayment recordPayment(Long insurerId, InsurancePayment payment) {
+    public InsurancePayment recordPayment(UUID insurerId, InsurancePayment payment) {
         Insurer insurer = getInsurer(insurerId);
         payment.setInsurer(insurer);
         payment = paymentRepository.save(payment);
@@ -419,12 +419,12 @@ public class InsuranceService {
         return payment;
     }
 
-    public void linkPaymentToClaims(Long paymentId, List<Long> claimIds) {
+    public void linkPaymentToClaims(UUID paymentId, List<UUID> claimIds) {
         InsurancePayment payment = paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new ResourceNotFoundException("InsurancePayment", paymentId));
 
         BigDecimal totalLinked = BigDecimal.ZERO;
-        for (Long claimId : claimIds) {
+        for (UUID claimId : claimIds) {
             InsuranceClaim claim = getClaim(claimId);
             claim.setPayment(payment);
             claim.setClaimStatus(ClaimStatus.PAID);
@@ -436,7 +436,7 @@ public class InsuranceService {
 
     // ========== Reconciliation ==========
 
-    public ClaimReconciliation runReconciliation(Long insurerId, LocalDate start, LocalDate end) {
+    public ClaimReconciliation runReconciliation(UUID insurerId, LocalDate start, LocalDate end) {
         Insurer insurer = getInsurer(insurerId);
 
         var existing = reconciliationRepository
@@ -476,7 +476,7 @@ public class InsuranceService {
     }
 
     @Transactional(readOnly = true)
-    public Page<ClaimReconciliation> listReconciliations(Long insurerId, Pageable pageable) {
+    public Page<ClaimReconciliation> listReconciliations(UUID insurerId, Pageable pageable) {
         List<ClaimReconciliation> list;
         if (insurerId != null) list = reconciliationRepository.findByInsurerId(insurerId);
         else list = reconciliationRepository.findAll();
@@ -486,7 +486,7 @@ public class InsuranceService {
     // ========== Reports ==========
 
     @Transactional(readOnly = true)
-    public Map<String, Object> generateInsurerReport(Long insurerId) {
+    public Map<String, Object> generateInsurerReport(UUID insurerId) {
         Insurer insurer = getInsurer(insurerId);
         List<InsuranceClaim> claims = claimRepository.findByInsurerId(insurerId);
 

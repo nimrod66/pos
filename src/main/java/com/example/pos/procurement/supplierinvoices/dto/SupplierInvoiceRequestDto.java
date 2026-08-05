@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.math.BigDecimal;
 
@@ -15,7 +16,7 @@ import java.math.BigDecimal;
 public class SupplierInvoiceRequestDto {
 
     @NotNull(message = "Supplier ID is required")
-    private Long supplierId;
+    private UUID supplierId;
 
     @NotBlank(message = "Invoice number is required")
     private String invoiceNumber;
@@ -27,3 +28,4 @@ public class SupplierInvoiceRequestDto {
     @NotNull @Positive
     private BigDecimal total;
 }
+

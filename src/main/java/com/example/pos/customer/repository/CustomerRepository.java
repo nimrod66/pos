@@ -1,5 +1,7 @@
 package com.example.pos.customer.repository;
 
+import java.util.UUID;
+
 import com.example.pos.customer.model.Customer;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -9,7 +11,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
 
-public interface CustomerRepository extends JpaRepository<Customer, Long> {
+public interface CustomerRepository extends JpaRepository<Customer, UUID> {
 
     Optional<Customer> findByPhoneNumber(String phoneNumber);
     Optional<Customer> findByEmail(String email);

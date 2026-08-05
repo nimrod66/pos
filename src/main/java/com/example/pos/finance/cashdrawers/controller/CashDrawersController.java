@@ -1,5 +1,7 @@
 package com.example.pos.finance.cashdrawers.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.finance.cashdrawers.dto.CashDrawerRequestDto;
@@ -15,7 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/cash-drawers")
+@RequestMapping("/api/v1/cash-drawers")
 public class CashDrawersController {
 
     private final CashDrawersService service;
@@ -28,20 +30,20 @@ public class CashDrawersController {
     }
 
     @PatchMapping("/{id}/close")
-    public ResponseEntity<ApiResponse<CashDrawerResponseDto>> closeDrawer(@PathVariable Long id, @RequestBody @Valid CashDrawerRequestDto dto) {
+    public ResponseEntity<ApiResponse<CashDrawerResponseDto>> closeDrawer(@PathVariable UUID id, @RequestBody @Valid CashDrawerRequestDto dto) {
         return ResponseEntity.ok(ApiResponse.updated(CashDrawerResponseDto.from(service.closeDrawer(id, dto))));
     }
 
     @GetMapping
     public ResponseEntity<ApiResponse<PagedResponse<CashDrawerResponseDto>>> getByShift(
             @PageableDefault(size = 20) Pageable pageable,
-            @RequestParam Long shiftId) {
+            @RequestParam UUID shiftId) {
         Page<CashDrawers> page = service.getByShift(shiftId, pageable);
         return ResponseEntity.ok(ApiResponse.ok(PagedResponse.from(page, CashDrawerResponseDto::from)));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<CashDrawerResponseDto>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<CashDrawerResponseDto>> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(CashDrawerResponseDto.from(service.getById(id))));
     }
 }

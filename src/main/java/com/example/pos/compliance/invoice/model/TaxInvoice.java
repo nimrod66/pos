@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Entity
 @AllArgsConstructor
@@ -21,7 +22,7 @@ import java.util.List;
 public class TaxInvoice extends BaseEntity {
 
     @Column(name = "sale_id", unique = true)
-    private Long saleId;
+    private UUID saleId;
 
     @Column(name = "branch_code", length = 30)
     private String branchCode;
@@ -55,10 +56,10 @@ public class TaxInvoice extends BaseEntity {
     private String currency = "KES";
 
     @Column(name = "branch_id")
-    private Long branchId;
+    private UUID branchId;
 
     @Column(name = "customer_id")
-    private Long customerId;
+    private UUID customerId;
 
     @Column(name = "customer_name")
     private String customerName;
@@ -71,7 +72,7 @@ public class TaxInvoice extends BaseEntity {
     private Integer schemaVersion = 1;
 
     @Column(name = "tenant_id")
-    private Long tenantId;
+    private UUID tenantId;
 
     @Column(name = "qr_code_content", length = 2000)
     private String qrCodeContent;

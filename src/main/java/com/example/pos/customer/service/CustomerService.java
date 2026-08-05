@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -35,7 +36,7 @@ public class CustomerService {
     public Page<Customer> search(String q, Pageable pageable) { return repo.search(q, pageable); }
 
     @Transactional(readOnly = true)
-    public Customer getById(Long id) {
+    public Customer getById(UUID id) {
         return repo.findById(id).orElseThrow(() -> new ResourceNotFoundException("Customer", id));
     }
 
@@ -45,7 +46,7 @@ public class CustomerService {
     }
 
     @Auditable(action = "UPDATE_CUSTOMER", entity = "Customer")
-    public Customer update(Long id, CustomerRequestDto dto) {
+    public Customer update(UUID id, CustomerRequestDto dto) {
         Customer c = getById(id);
         c.setFirstName(dto.getFirstName()); c.setLastName(dto.getLastName());
         c.setPhoneNumber(dto.getPhoneNumber()); c.setEmail(dto.getEmail());
@@ -53,7 +54,7 @@ public class CustomerService {
         return repo.save(c);
     }
 
-    public Customer addLoyaltyPoints(Long id, int points) {
+    public Customer addLoyaltyPoints(UUID id, int points) {
         Customer c = getById(id);
         c.setLoyaltyPoints(c.getLoyaltyPoints() + points);
         return repo.save(c);

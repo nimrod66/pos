@@ -30,7 +30,7 @@ public class TerminalAuthFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        return !path.startsWith("/api/sync/push");
+        return !path.startsWith("/api/v1/sync/push");
     }
 
     @Override

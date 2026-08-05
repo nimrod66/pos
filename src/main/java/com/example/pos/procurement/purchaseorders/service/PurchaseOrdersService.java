@@ -24,6 +24,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -83,23 +84,23 @@ public class PurchaseOrdersService {
     }
 
     @Transactional(readOnly = true)
-    public Page<PurchaseOrders> getByBranch(Long branchId, Pageable pageable) {
+    public Page<PurchaseOrders> getByBranch(UUID branchId, Pageable pageable) {
         List<PurchaseOrders> list = poRepo.findByBranchId(branchId);
         return new PageImpl<>(list, pageable, list.size());
     }
 
     @Transactional(readOnly = true)
-    public Page<PurchaseOrders> getBySupplier(Long supplierId, Pageable pageable) {
+    public Page<PurchaseOrders> getBySupplier(UUID supplierId, Pageable pageable) {
         List<PurchaseOrders> list = poRepo.findBySupplierId(supplierId);
         return new PageImpl<>(list, pageable, list.size());
     }
 
     @Transactional(readOnly = true)
-    public PurchaseOrders getById(Long id) {
+    public PurchaseOrders getById(UUID id) {
         return poRepo.findById(id).orElseThrow(() -> new ResourceNotFoundException("PurchaseOrder", id));
     }
 
-    public PurchaseOrders approve(Long id, Long approvedById) {
+    public PurchaseOrders approve(UUID id, UUID approvedById) {
         PurchaseOrders po = getById(id);
         User approver = userRepo.findById(approvedById)
                 .orElseThrow(() -> new ResourceNotFoundException("User", approvedById));
@@ -108,7 +109,7 @@ public class PurchaseOrdersService {
         return poRepo.save(po);
     }
 
-    public PurchaseOrders markDelivered(Long id) {
+    public PurchaseOrders markDelivered(UUID id) {
         PurchaseOrders po = getById(id);
         po.setStatus(PurchaseOrders.Status.DELIVERED);
         po.setDeliveryDate(LocalDateTime.now());

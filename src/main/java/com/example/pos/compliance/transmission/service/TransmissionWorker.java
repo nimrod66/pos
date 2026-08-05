@@ -13,6 +13,8 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
+import java.util.UUID;
+
 @Component
 public class TransmissionWorker {
 
@@ -49,7 +51,7 @@ public class TransmissionWorker {
     private void processQueue() {
         while (running) {
             try {
-                Long txId = queue.dequeue();
+                UUID txId = queue.dequeue();
                 if (txId != null) {
                     process(txId);
                 } else {
@@ -64,7 +66,7 @@ public class TransmissionWorker {
         }
     }
 
-    public void process(Long transmissionId) {
+    public void process(UUID transmissionId) {
         Transmission tx = transmissionService.getById(transmissionId);
         log.info("Processing transmission {} for invoice {}", tx.getId(), tx.getInvoiceId());
 

@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.time.LocalDateTime;
 
@@ -14,15 +15,15 @@ import java.time.LocalDateTime;
 @Builder
 public class StaffShiftResponseDto {
 
-    private Long id;
+    private UUID id;
     private String shiftName;
     private Integer shiftNumber;
     private String status;
-    private Long branchId;
+    private UUID branchId;
     private String branchName;
-    private Long userId;
+    private UUID userId;
     private String userName;
-    private Long roleId;
+    private UUID roleId;
     private String roleName;
     private LocalDateTime shiftStartTime;
     private LocalDateTime shiftEndTime;
@@ -52,3 +53,4 @@ public class StaffShiftResponseDto {
                 .build();
     }
 }
+

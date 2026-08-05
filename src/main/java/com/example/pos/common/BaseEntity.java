@@ -10,6 +10,7 @@ import org.hibernate.proxy.HibernateProxy;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
+import java.util.UUID;
 
 @MappedSuperclass
 @Getter
@@ -17,9 +18,10 @@ import java.util.Objects;
 public abstract class BaseEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id", nullable = false, updatable = false, length = 36)
     @Setter(AccessLevel.NONE)
-    protected Long id;
+    protected UUID id;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

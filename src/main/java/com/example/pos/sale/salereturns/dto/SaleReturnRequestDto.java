@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.util.List;
 
@@ -15,10 +16,10 @@ import java.util.List;
 public class SaleReturnRequestDto {
 
     @NotNull(message = "Sale ID is required")
-    private Long saleId;
+    private UUID saleId;
 
     @NotNull(message = "User ID is required")
-    private Long userId;
+    private UUID userId;
 
     @NotBlank(message = "Return reason is required")
     private String reason;
@@ -30,8 +31,9 @@ public class SaleReturnRequestDto {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class ReturnItemDto {
-        @NotNull private Long saleItemId;
-        @NotNull private Long medicineBatchesId;
+        @NotNull private UUID saleItemId;
+        @NotNull private UUID medicineBatchesId;
         @NotNull @Positive private Integer quantity;
     }
 }
+

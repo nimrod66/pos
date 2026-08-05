@@ -1,5 +1,7 @@
 package com.example.pos.compliance.transmission.repository;
 
+import java.util.UUID;
+
 import com.example.pos.compliance.transmission.model.Transmission;
 import com.example.pos.compliance.transmission.model.TransmissionStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -8,9 +10,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-public interface TransmissionRepository extends JpaRepository<Transmission, Long> {
+public interface TransmissionRepository extends JpaRepository<Transmission, UUID> {
 
-    Optional<Transmission> findByInvoiceId(Long invoiceId);
+    Optional<Transmission> findByInvoiceId(UUID invoiceId);
 
     Optional<Transmission> findByIdempotencyKey(String idempotencyKey);
 
@@ -20,5 +22,5 @@ public interface TransmissionRepository extends JpaRepository<Transmission, Long
 
     long countByTransmissionStatus(TransmissionStatus status);
 
-    long countByInvoiceIdInAndTransmissionStatus(List<Long> invoiceIds, TransmissionStatus status);
+    long countByInvoiceIdInAndTransmissionStatus(List<UUID> invoiceIds, TransmissionStatus status);
 }

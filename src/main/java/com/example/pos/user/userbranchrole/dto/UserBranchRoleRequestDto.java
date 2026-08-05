@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 @Data
 @NoArgsConstructor
@@ -11,11 +12,12 @@ import lombok.NoArgsConstructor;
 public class UserBranchRoleRequestDto {
 
     @NotNull(message = "User ID is required")
-    private Long userId;
+    private UUID userId;
 
     @NotNull(message = "Branch ID is required")
-    private Long branchId;
+    private UUID branchId;
 
     @NotNull(message = "Role ID is required")
-    private Long roleId;
+    private UUID roleId;
 }
+

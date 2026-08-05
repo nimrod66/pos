@@ -2,20 +2,21 @@ package com.example.pos.compliance.transmission.service;
 
 import org.springframework.stereotype.Component;
 
+import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 @Component
 public class InMemoryTransmissionQueue implements TransmissionQueue {
 
-    private final ConcurrentLinkedQueue<Long> queue = new ConcurrentLinkedQueue<>();
+    private final ConcurrentLinkedQueue<UUID> queue = new ConcurrentLinkedQueue<>();
 
     @Override
-    public void enqueue(Long transmissionId) {
+    public void enqueue(UUID transmissionId) {
         queue.add(transmissionId);
     }
 
     @Override
-    public Long dequeue() {
+    public UUID dequeue() {
         return queue.poll();
     }
 

@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -51,7 +52,7 @@ public class TisFacade implements TraderInvoicingSystem {
     }
 
     @Override
-    public TaxInvoice generateInvoice(Long saleId, String customerPin) {
+    public TaxInvoice generateInvoice(UUID saleId, String customerPin) {
         return invoiceService.issueFromSale(
                 new com.example.pos.compliance.invoice.dto.SaleFiscalData(
                         saleId, false, null, "BR001",
@@ -60,7 +61,7 @@ public class TisFacade implements TraderInvoicingSystem {
     }
 
     @Override
-    public String generateReceipt(Long saleId, Long invoiceId) {
+    public String generateReceipt(UUID saleId, UUID invoiceId) {
         var receipt = receiptService.create(saleId, invoiceId, "{}", "Pharmacy", config.getKraPin(),
                 "BR001", null, null);
         return receipt.getReceiptNumber();
@@ -81,17 +82,17 @@ public class TisFacade implements TraderInvoicingSystem {
     }
 
     @Override
-    public void cancelInvoice(Long invoiceId, String reason) {
+    public void cancelInvoice(UUID invoiceId, String reason) {
         invoiceService.cancel(invoiceId, reason, null, "TIS");
     }
 
     @Override
-    public void issueCreditNote(Long invoiceId, BigDecimal amount, String reason) {
+    public void issueCreditNote(UUID invoiceId, BigDecimal amount, String reason) {
         throw new UnsupportedOperationException("Use CreditNoteService directly");
     }
 
     @Override
-    public void issueDebitNote(Long invoiceId, BigDecimal amount, String reason) {
+    public void issueDebitNote(UUID invoiceId, BigDecimal amount, String reason) {
         throw new UnsupportedOperationException("Use DebitNoteService directly");
     }
 

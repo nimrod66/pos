@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @AllArgsConstructor
@@ -42,7 +43,7 @@ public class Certificate extends BaseEntity {
     private String certificateData;
 
     @Column(name = "tenant_id")
-    private Long tenantId;
+    private UUID tenantId;
 
     public enum CertificateStatus {
         ACTIVE, EXPIRED, REVOKED, PENDING

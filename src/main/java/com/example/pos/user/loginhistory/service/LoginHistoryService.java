@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional(readOnly = true)
@@ -17,7 +18,7 @@ public class LoginHistoryService {
         this.repo = repo;
     }
 
-    public List<LoginHistory> getByUser(Long userId) {
+    public List<LoginHistory> getByUser(UUID userId) {
         return repo.findByUserIdOrderByLoginTimeDesc(userId);
     }
 }

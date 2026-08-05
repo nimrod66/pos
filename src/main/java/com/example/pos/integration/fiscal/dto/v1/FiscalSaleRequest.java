@@ -2,9 +2,10 @@ package com.example.pos.integration.fiscal.dto.v1;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 
 public record FiscalSaleRequest(
-        Long saleId,
+        UUID saleId,
         String branchCode,
         BigDecimal subtotal,
         BigDecimal taxAmount,
@@ -17,7 +18,7 @@ public record FiscalSaleRequest(
         List<FiscalSaleItemRequest> items
 ) {
     public record FiscalSaleItemRequest(
-            Long medicineId,
+            UUID medicineId,
             String medicineName,
             String barcode,
             String barcodeType,

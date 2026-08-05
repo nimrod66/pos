@@ -41,7 +41,7 @@ public class TransmissionService {
         this.queue = queue;
     }
 
-    public Transmission createAndQueue(Long invoiceId, String documentType, Long submittedBy) {
+    public Transmission createAndQueue(UUID invoiceId, String documentType, UUID submittedBy) {
         Transmission tx = Transmission.builder()
                 .invoiceId(invoiceId)
                 .documentType(documentType)
@@ -58,13 +58,13 @@ public class TransmissionService {
     }
 
     @Transactional(readOnly = true)
-    public Transmission getById(Long id) {
+    public Transmission getById(UUID id) {
         return transmissionRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Transmission", id));
     }
 
     @Transactional(readOnly = true)
-    public Transmission getByInvoiceId(Long invoiceId) {
+    public Transmission getByInvoiceId(UUID invoiceId) {
         return transmissionRepo.findByInvoiceId(invoiceId).orElse(null);
     }
 
@@ -73,7 +73,7 @@ public class TransmissionService {
         return transmissionRepo.findByIdempotencyKey(idempotencyKey).orElse(null);
     }
 
-    public Transmission markTransmitting(Long id, String kraRequest) {
+    public Transmission markTransmitting(UUID id, String kraRequest) {
         Transmission tx = getById(id);
         tx.setTransmissionStatus(TransmissionStatus.TRANSMITTING);
         tx.setKraRequest(kraRequest);
@@ -93,7 +93,7 @@ public class TransmissionService {
         return transmissionRepo.save(tx);
     }
 
-    public Transmission markTransmitted(Long id, String kraResponse, String kraReceiptNumber,
+    public Transmission markTransmitted(UUID id, String kraResponse, String kraReceiptNumber,
                                          Long durationMs) {
         Transmission tx = getById(id);
         tx.setTransmissionStatus(TransmissionStatus.TRANSMITTED);
@@ -117,7 +117,7 @@ public class TransmissionService {
         return transmissionRepo.save(tx);
     }
 
-    public Transmission markFailed(Long id, String failureReason, String kraResponse, int statusCode) {
+    public Transmission markFailed(UUID id, String failureReason, String kraResponse, int statusCode) {
         Transmission tx = getById(id);
         tx.setTransmissionStatus(TransmissionStatus.FAILED);
         tx.setFailureReason(failureReason);

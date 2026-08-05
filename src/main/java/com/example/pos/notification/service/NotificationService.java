@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -19,7 +20,7 @@ public class NotificationService {
     public NotificationService(NotificationRepository repo) { this.repo = repo; }
 
     public Notification create(String title, String message, Notification.Type type,
-                               Long branchId, Long referenceId, String referenceType) {
+                               UUID branchId, UUID referenceId, String referenceType) {
         Notification n = Notification.builder()
                 .title(title).message(message).type(type)
                 .status(Notification.Status.UNREAD)
@@ -28,24 +29,24 @@ public class NotificationService {
     }
 
     @Transactional(readOnly = true)
-    public Page<Notification> getByBranch(Long branchId, Pageable pageable) {
+    public Page<Notification> getByBranch(UUID branchId, Pageable pageable) {
         List<Notification> list = repo.findByBranchIdOrderByCreatedAtDesc(branchId);
         return new PageImpl<>(list, pageable, list.size());
     }
 
     @Transactional(readOnly = true)
-    public Page<Notification> getUnreadByBranch(Long branchId, Pageable pageable) {
+    public Page<Notification> getUnreadByBranch(UUID branchId, Pageable pageable) {
         List<Notification> list = repo.findByBranchIdAndStatusOrderByCreatedAtDesc(branchId, Notification.Status.UNREAD);
         return new PageImpl<>(list, pageable, list.size());
     }
 
-    public Notification markRead(Long id) {
+    public Notification markRead(UUID id) {
         Notification n = repo.findById(id).orElseThrow(() -> new ResourceNotFoundException("Notification", id));
         n.setStatus(Notification.Status.READ);
         return repo.save(n);
     }
 
-    public void dismiss(Long id) {
+    public void dismiss(UUID id) {
         Notification n = repo.findById(id).orElseThrow(() -> new ResourceNotFoundException("Notification", id));
         n.setStatus(Notification.Status.DISMISSED);
         repo.save(n);

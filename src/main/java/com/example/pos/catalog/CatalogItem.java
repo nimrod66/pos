@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 @Entity
 @AllArgsConstructor
@@ -59,7 +60,7 @@ public class CatalogItem extends BaseEntity {
     private String atcCode;
 
     @Column(name = "matched_medicine_id")
-    private Long matchedMedicineId;
+    private UUID matchedMedicineId;
 
     @Column(name = "match_confidence", length = 10)
     private String matchConfidence;

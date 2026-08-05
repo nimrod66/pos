@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -16,11 +17,11 @@ import java.util.List;
 @Builder
 public class TransmissionResponseDto {
 
-    private Long id;
-    private Long invoiceId;
+    private UUID id;
+    private UUID invoiceId;
     private String documentType;
     private String transmissionStatus;
-    private Long submittedBy;
+    private UUID submittedBy;
     private LocalDateTime submittedAt;
     private String requestHash;
     private String responseHash;
@@ -33,7 +34,7 @@ public class TransmissionResponseDto {
 
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
     public static class AttemptResponse {
-        private Long id;
+        private UUID id;
         private Integer attemptNumber;
         private LocalDateTime sentAt;
         private LocalDateTime responseAt;

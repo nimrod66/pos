@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.time.LocalDateTime;
 
@@ -14,14 +15,14 @@ import java.time.LocalDateTime;
 @Builder
 public class BranchResponseDto {
 
-    private Long id;
+    private UUID id;
     private String branchName;
     private String branchCode;
     private String phoneNumber;
     private String email;
     private String location;
     private String status;
-    private Long pharmacyId;
+    private UUID pharmacyId;
     private String pharmacyName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -42,3 +43,4 @@ public class BranchResponseDto {
                 .build();
     }
 }
+

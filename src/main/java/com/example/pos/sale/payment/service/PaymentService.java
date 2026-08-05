@@ -133,13 +133,13 @@ public class PaymentService {
         return response;
     }
 
-    public PaymentGatewayResponse processPayment(Long paymentId, String phoneNumber) {
+    public PaymentGatewayResponse processPayment(UUID paymentId, String phoneNumber) {
         Payment payment = paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Payment", paymentId));
         return processPayment(payment, phoneNumber);
     }
 
-    public PaymentGatewayResponse queryStatus(Long paymentId) {
+    public PaymentGatewayResponse queryStatus(UUID paymentId) {
         Payment payment = paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Payment", paymentId));
 
@@ -237,7 +237,7 @@ public class PaymentService {
         }
     }
 
-    public PaymentGatewayResponse refundPayment(Long paymentId) {
+    public PaymentGatewayResponse refundPayment(UUID paymentId) {
         Payment payment = paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Payment", paymentId));
 
@@ -355,7 +355,7 @@ public class PaymentService {
     }
 
     @Transactional(readOnly = true)
-    public Page<Payment> getPaymentsBySale(Long saleId, Pageable pageable) {
+    public Page<Payment> getPaymentsBySale(UUID saleId, Pageable pageable) {
         return paymentRepository.findBySalesId(saleId, pageable);
     }
 

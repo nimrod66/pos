@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -66,7 +67,7 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public Page<User> getUsersByBranch(Long branchId, Pageable pageable) {
+    public Page<User> getUsersByBranch(UUID branchId, Pageable pageable) {
         List<User> users = userRepository.findByBranchId(branchId);
         return new PageImpl<>(users, pageable, users.size());
     }
@@ -77,7 +78,7 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public User getUserById(Long id) {
+    public User getUserById(UUID id) {
         return userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User", id));
     }
@@ -88,7 +89,7 @@ public class UserService {
                 .orElseThrow(() -> new ResourceNotFoundException("User with email " + email));
     }
 
-    public User updateUser(Long id, UserRequestDto dto) {
+    public User updateUser(UUID id, UserRequestDto dto) {
         User user = getUserById(id);
 
         if (userRepository.existsByEmailAndIdNot(dto.getEmail(), id)) {
@@ -109,7 +110,7 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    public User updateStatus(Long id, UpdateStatusRequestDto dto) {
+    public User updateStatus(UUID id, UpdateStatusRequestDto dto) {
         User user = getUserById(id);
         try {
             user.setStatus(User.Status.valueOf(dto.getStatus().toUpperCase()));
@@ -119,7 +120,7 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    public void changePassword(Long id, ChangePasswordRequestDto dto) {
+    public void changePassword(UUID id, ChangePasswordRequestDto dto) {
         User user = getUserById(id);
         if (!passwordEncoder.matches(dto.getCurrentPassword(), user.getPasswordHash())) {
             throw new BadRequestException("Current password is incorrect");
@@ -128,7 +129,7 @@ public class UserService {
         userRepository.save(user);
     }
 
-    public void deleteUser(Long id) {
+    public void deleteUser(UUID id) {
         User user = getUserById(id);
         userRepository.delete(user);
     }

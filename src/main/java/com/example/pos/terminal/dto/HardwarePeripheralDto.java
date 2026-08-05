@@ -7,6 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -14,7 +15,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class HardwarePeripheralDto {
 
-    private Long id;
+    private UUID id;
     private PeripheralType type;
     private String manufacturer;
     private String model;
@@ -22,3 +23,4 @@ public class HardwarePeripheralDto {
     private PeripheralStatus status;
     private String configuration;
 }
+

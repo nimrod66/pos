@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -48,7 +49,7 @@ public class MedicineBatchesService {
     }
 
     @Transactional(readOnly = true)
-    public Page<MedicineBatches> getBatchesByMedicine(Long medicineId, Pageable pageable) {
+    public Page<MedicineBatches> getBatchesByMedicine(UUID medicineId, Pageable pageable) {
         return batchRepository.findByMedicineId(medicineId, pageable);
     }
 
@@ -58,17 +59,17 @@ public class MedicineBatchesService {
     }
 
     @Transactional(readOnly = true)
-    public List<MedicineBatches> getAvailableBatchesByMedicine(Long medicineId) {
+    public List<MedicineBatches> getAvailableBatchesByMedicine(UUID medicineId) {
         return batchRepository.findByMedicineIdAndExpirationDateAfter(medicineId, LocalDate.now());
     }
 
     @Transactional(readOnly = true)
-    public MedicineBatches getBatchById(Long id) {
+    public MedicineBatches getBatchById(UUID id) {
         return batchRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("MedicineBatch", id));
     }
 
-    public MedicineBatches updateBatch(Long id, MedicineBatchRequestDto dto) {
+    public MedicineBatches updateBatch(UUID id, MedicineBatchRequestDto dto) {
         MedicineBatches batch = getBatchById(id);
 
         if (!batch.getMedicine().getId().equals(dto.getMedicineId())) {
@@ -81,7 +82,7 @@ public class MedicineBatchesService {
         return batchRepository.save(batch);
     }
 
-    public void deleteBatch(Long id) {
+    public void deleteBatch(UUID id) {
         MedicineBatches batch = getBatchById(id);
         batchRepository.delete(batch);
     }

@@ -8,6 +8,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
+import java.util.UUID;
 
 @Entity
 @AllArgsConstructor
@@ -38,7 +39,7 @@ public class StockMovements extends BaseEntity {
     }
 
     private String referenceType;
-    private Long referenceId;
+    private UUID referenceId;
     private LocalDate movementDate;
     private Integer quantity;
 

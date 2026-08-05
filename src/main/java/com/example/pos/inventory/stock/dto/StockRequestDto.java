@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.time.LocalDate;
 
@@ -14,10 +15,10 @@ import java.time.LocalDate;
 public class StockRequestDto {
 
     @NotNull(message = "Medicine batch ID is required")
-    private Long medicineBatchesId;
+    private UUID medicineBatchesId;
 
     @NotNull(message = "Branch ID is required")
-    private Long branchId;
+    private UUID branchId;
 
     @Min(value = 0, message = "Quantity available must be >= 0")
     private Integer quantityAvailable;
@@ -37,3 +38,4 @@ public class StockRequestDto {
     private String shelfLocation;
     private LocalDate lastStockDate;
 }
+

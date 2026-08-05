@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -15,10 +16,10 @@ import java.time.LocalDateTime;
 @Builder
 public class SupplierPaymentResponseDto {
 
-    private Long id;
-    private Long supplierInvoiceId;
+    private UUID id;
+    private UUID supplierInvoiceId;
     private String invoiceNumber;
-    private Long userId;
+    private UUID userId;
     private String userName;
     private String paymentMethod;
     private BigDecimal paymentAmount;
@@ -36,3 +37,4 @@ public class SupplierPaymentResponseDto {
                 .paymentReference(sp.getPaymentReference()).paymentDate(sp.getPaymentDate()).build();
     }
 }
+

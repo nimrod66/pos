@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -56,19 +57,19 @@ public class DispensaryService {
     }
 
     @Transactional(readOnly = true)
-    public Page<Dispensary> getByBatch(Long batchId, Pageable pageable) {
+    public Page<Dispensary> getByBatch(UUID batchId, Pageable pageable) {
         List<Dispensary> list = repo.findByMedicineBatchesId(batchId);
         return new PageImpl<>(list, pageable, list.size());
     }
 
     @Transactional(readOnly = true)
-    public Page<Dispensary> getByUser(Long userId, Pageable pageable) {
+    public Page<Dispensary> getByUser(UUID userId, Pageable pageable) {
         List<Dispensary> list = repo.findByUserId(userId);
         return new PageImpl<>(list, pageable, list.size());
     }
 
     @Transactional(readOnly = true)
-    public Dispensary getById(Long id) {
+    public Dispensary getById(UUID id) {
         return repo.findById(id).orElseThrow(() -> new ResourceNotFoundException("Dispensary", id));
     }
 }

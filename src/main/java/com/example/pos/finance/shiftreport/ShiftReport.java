@@ -4,9 +4,10 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 public record ShiftReport(
-        Long shiftId,
+        UUID shiftId,
         String shiftName,
         String branchName,
         String cashierName,

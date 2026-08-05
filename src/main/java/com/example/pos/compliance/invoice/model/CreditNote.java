@@ -6,6 +6,7 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @AllArgsConstructor
@@ -17,7 +18,7 @@ import java.time.LocalDateTime;
 public class CreditNote extends BaseEntity {
 
     @Column(name = "original_invoice_id", nullable = false)
-    private Long originalInvoiceId;
+    private UUID originalInvoiceId;
 
     @Column(name = "credit_note_number", unique = true, nullable = false)
     private String creditNoteNumber;
@@ -41,8 +42,8 @@ public class CreditNote extends BaseEntity {
     private LocalDateTime issueDate;
 
     @Column(name = "created_by")
-    private Long createdBy;
+    private UUID createdBy;
 
     @Column(name = "tenant_id")
-    private Long tenantId;
+    private UUID tenantId;
 }

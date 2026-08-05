@@ -27,8 +27,8 @@ public class TerminalSessionService {
     public static final int DEFAULT_SESSION_TIMEOUT_MINUTES = 480;
 
     public TerminalSessionResponseDto createSession(Terminal terminal, String token,
-                                                     String ipAddress, String userAgent,
-                                                     Long cashierId, int timeoutMinutes) {
+                                                      String ipAddress, String userAgent,
+                                                      UUID cashierId, int timeoutMinutes) {
         int maxSessions = 5;
         long activeCount = sessionRepository.countByTerminalIdAndActive(terminal.getId(), true);
         if (activeCount >= maxSessions) {
@@ -101,13 +101,13 @@ public class TerminalSessionService {
         });
     }
 
-    public void expireAllSessions(Long terminalId) {
+    public void expireAllSessions(UUID terminalId) {
         List<TerminalSession> sessions = sessionRepository.findByTerminalIdAndActive(terminalId, true);
         sessions.forEach(s -> s.setActive(false));
         sessionRepository.saveAll(sessions);
     }
 
-    public void expireOldestSessions(Long terminalId, int count) {
+    public void expireOldestSessions(UUID terminalId, int count) {
         List<TerminalSession> sessions = sessionRepository.findByTerminalIdAndActive(terminalId, true);
         sessions.stream()
                 .sorted((a, b) -> a.getLastActivityAt().compareTo(b.getLastActivityAt()))
@@ -119,7 +119,7 @@ public class TerminalSessionService {
     }
 
     @Transactional(readOnly = true)
-    public List<TerminalSessionResponseDto> getActiveSessions(Long terminalId) {
+    public List<TerminalSessionResponseDto> getActiveSessions(UUID terminalId) {
         return sessionRepository.findByTerminalIdAndActive(terminalId, true).stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());

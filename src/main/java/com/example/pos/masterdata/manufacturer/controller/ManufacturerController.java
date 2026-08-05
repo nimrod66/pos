@@ -1,5 +1,7 @@
 package com.example.pos.masterdata.manufacturer.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.masterdata.manufacturer.dto.ManufacturerRequestDto;
@@ -15,7 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/manufacturers")
+@RequestMapping("/api/v1/manufacturers")
 public class ManufacturerController {
 
     private final ManufacturerService service;
@@ -35,17 +37,17 @@ public class ManufacturerController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<ManufacturerResponseDto>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<ManufacturerResponseDto>> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(ManufacturerResponseDto.from(service.getById(id))));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<ManufacturerResponseDto>> update(@PathVariable Long id, @RequestBody @Valid ManufacturerRequestDto dto) {
+    public ResponseEntity<ApiResponse<ManufacturerResponseDto>> update(@PathVariable UUID id, @RequestBody @Valid ManufacturerRequestDto dto) {
         return ResponseEntity.ok(ApiResponse.updated(ManufacturerResponseDto.from(service.update(id, dto))));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         service.delete(id);
         return ResponseEntity.ok(ApiResponse.deleted());
     }

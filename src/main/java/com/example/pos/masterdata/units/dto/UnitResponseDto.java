@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.time.LocalDateTime;
 
@@ -14,7 +15,7 @@ import java.time.LocalDateTime;
 @Builder
 public class UnitResponseDto {
 
-    private Long id;
+    private UUID id;
     private String unitName;
     private String unitAbbreviation;
     private LocalDateTime createdAt;
@@ -30,3 +31,4 @@ public class UnitResponseDto {
                 .build();
     }
 }
+

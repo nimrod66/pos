@@ -1,5 +1,7 @@
 package com.example.pos.masterdata.units.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.masterdata.units.dto.UnitRequestDto;
@@ -15,7 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/units")
+@RequestMapping("/api/v1/units")
 public class UnitController {
 
     private final UnitService service;
@@ -35,17 +37,17 @@ public class UnitController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<UnitResponseDto>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<UnitResponseDto>> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(UnitResponseDto.from(service.getById(id))));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<UnitResponseDto>> update(@PathVariable Long id, @RequestBody @Valid UnitRequestDto dto) {
+    public ResponseEntity<ApiResponse<UnitResponseDto>> update(@PathVariable UUID id, @RequestBody @Valid UnitRequestDto dto) {
         return ResponseEntity.ok(ApiResponse.updated(UnitResponseDto.from(service.update(id, dto))));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         service.delete(id);
         return ResponseEntity.ok(ApiResponse.deleted());
     }

@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Component
 public class ProductMatcher {
@@ -101,7 +102,7 @@ public class ProductMatcher {
         return score;
     }
 
-    public record MatchResult(Long medicineId, String medicineName, String confidence, boolean matched, String reason) {
+    public record MatchResult(UUID medicineId, String medicineName, String confidence, boolean matched, String reason) {
         public static MatchResult matched(Medicine medicine, String confidence) {
             return new MatchResult(medicine.getId(), medicine.getBrandName(), confidence, true, null);
         }

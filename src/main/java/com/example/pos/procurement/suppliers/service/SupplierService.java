@@ -11,6 +11,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.UUID;
+
 @Service
 @Transactional
 public class SupplierService {
@@ -35,12 +37,12 @@ public class SupplierService {
     public Page<Suppliers> search(String q, Pageable pageable) { return repo.search(q, pageable); }
 
     @Transactional(readOnly = true)
-    public Suppliers getById(Long id) {
+    public Suppliers getById(UUID id) {
         return repo.findById(id).orElseThrow(() -> new ResourceNotFoundException("Supplier", id));
     }
 
     @Auditable(action = "UPDATE_SUPPLIER", entity = "Supplier")
-    public Suppliers update(Long id, SupplierRequestDto dto) {
+    public Suppliers update(UUID id, SupplierRequestDto dto) {
         Suppliers s = getById(id);
         if (repo.existsBySupplierNameAndIdNot(dto.getSupplierName(), id))
             throw new ConflictException("Supplier '" + dto.getSupplierName() + "' already exists");
@@ -49,7 +51,7 @@ public class SupplierService {
     }
 
     @Auditable(action = "DELETE_SUPPLIER", entity = "Supplier")
-    public void delete(Long id) { repo.delete(getById(id)); }
+    public void delete(UUID id) { repo.delete(getById(id)); }
 
     private void map(SupplierRequestDto dto, Suppliers s) {
         s.setSupplierName(dto.getSupplierName());

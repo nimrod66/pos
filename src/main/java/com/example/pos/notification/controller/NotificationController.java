@@ -1,5 +1,7 @@
 package com.example.pos.notification.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.notification.dto.NotificationResponseDto;
@@ -12,7 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/notifications")
+@RequestMapping("/api/v1/notifications")
 public class NotificationController {
 
     private final NotificationService service;
@@ -21,7 +23,7 @@ public class NotificationController {
     @GetMapping
     public ResponseEntity<ApiResponse<PagedResponse<NotificationResponseDto>>> getByBranch(
             @PageableDefault(size = 20) Pageable pageable,
-            @RequestParam(required = false) Long branchId,
+            @RequestParam(required = false) UUID branchId,
             @RequestParam(defaultValue = "false") boolean unreadOnly) {
         Page<Notification> page = unreadOnly
                 ? service.getUnreadByBranch(branchId, pageable)
@@ -30,12 +32,12 @@ public class NotificationController {
     }
 
     @PatchMapping("/{id}/read")
-    public ResponseEntity<ApiResponse<NotificationResponseDto>> markRead(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<NotificationResponseDto>> markRead(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(NotificationResponseDto.from(service.markRead(id))));
     }
 
     @PatchMapping("/{id}/dismiss")
-    public ResponseEntity<ApiResponse<Void>> dismiss(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> dismiss(@PathVariable UUID id) {
         service.dismiss(id);
         return ResponseEntity.ok(ApiResponse.ok(null));
     }

@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.time.LocalDateTime;
 
@@ -18,7 +19,7 @@ public class TerminalSessionResponseDto {
     private String token;
     private String ipAddress;
     private String userAgent;
-    private Long cashierId;
+    private UUID cashierId;
     private LocalDateTime createdAt;
     private LocalDateTime lastActivityAt;
     private LocalDateTime expiresAt;

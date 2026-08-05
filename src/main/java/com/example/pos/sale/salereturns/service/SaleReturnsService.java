@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -90,12 +91,12 @@ public class SaleReturnsService {
     }
 
     @Transactional(readOnly = true)
-    public Page<SaleReturns> getReturnsBySale(Long saleId, Pageable pageable) {
+    public Page<SaleReturns> getReturnsBySale(UUID saleId, Pageable pageable) {
         return returnsRepository.findBySalesId(saleId, pageable);
     }
 
     @Transactional(readOnly = true)
-    public SaleReturns getReturnById(Long id) {
+    public SaleReturns getReturnById(UUID id) {
         return returnsRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("SaleReturn", id));
     }

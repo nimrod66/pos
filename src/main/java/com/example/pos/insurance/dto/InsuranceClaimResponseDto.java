@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -14,20 +15,20 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 public class InsuranceClaimResponseDto {
-    private Long id;
-    private Long insurerId;
+    private UUID id;
+    private UUID insurerId;
     private String insurerName;
-    private Long schemeId;
+    private UUID schemeId;
     private String schemeName;
-    private Long memberId;
+    private UUID memberId;
     private String memberName;
-    private Long authorizationId;
+    private UUID authorizationId;
     private String authorizationRef;
-    private Long batchId;
+    private UUID batchId;
     private String batchRef;
-    private Long paymentId;
+    private UUID paymentId;
     private String paymentRef;
-    private Long saleId;
+    private UUID saleId;
     private String patientName;
     private String patientMembershipId;
     private BigDecimal claimAmount;
@@ -72,3 +73,4 @@ public class InsuranceClaimResponseDto {
                 .build();
     }
 }
+

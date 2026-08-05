@@ -55,7 +55,7 @@ public class ConnectivityService {
 
         long start = System.currentTimeMillis();
         try {
-            String url = syncProperties.getCentralUrl() + "/api/sync/health";
+            String url = syncProperties.getCentralUrl() + "/api/v1/sync/health";
             Map<String, Object> resp = restTemplate.getForObject(url, Map.class);
             long latency = System.currentTimeMillis() - start;
             lastLatencyMs = latency;

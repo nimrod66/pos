@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -63,12 +64,12 @@ public class ExpensesService {
     public Page<Expenses> getAll(Pageable pageable) { return repo.findAll(pageable); }
 
     @Transactional(readOnly = true)
-    public Expenses getById(Long id) {
+    public Expenses getById(UUID id) {
         return repo.findById(id).orElseThrow(() -> new ResourceNotFoundException("Expense", id));
     }
 
     @Auditable(action = "UPDATE_EXPENSE", entity = "Expense")
-    public Expenses update(Long id, ExpensesRequestDto dto) {
+    public Expenses update(UUID id, ExpensesRequestDto dto) {
         Expenses expense = getById(id);
         ExpenseCategory category = catRepo.findById(dto.getExpenseCategoryId())
                 .orElseThrow(() -> new ResourceNotFoundException("ExpenseCategory", dto.getExpenseCategoryId()));
@@ -86,5 +87,5 @@ public class ExpensesService {
     }
 
     @Auditable(action = "DELETE_EXPENSE", entity = "Expense")
-    public void delete(Long id) { repo.delete(getById(id)); }
+    public void delete(UUID id) { repo.delete(getById(id)); }
 }

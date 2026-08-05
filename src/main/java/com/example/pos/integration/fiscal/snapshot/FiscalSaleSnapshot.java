@@ -3,9 +3,10 @@ package com.example.pos.integration.fiscal.snapshot;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 public record FiscalSaleSnapshot(
-        Long saleId,
+        UUID saleId,
         String invoiceNumber,
         String receiptNumber,
         String branchName,

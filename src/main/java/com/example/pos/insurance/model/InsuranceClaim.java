@@ -6,6 +6,7 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @AllArgsConstructor
@@ -41,7 +42,7 @@ public class InsuranceClaim extends BaseEntity {
     private InsurancePayment payment;
 
     @Column(name = "sale_id", nullable = false)
-    private Long saleId;
+    private UUID saleId;
 
     @Column(name = "patient_name", length = 100)
     private String patientName;

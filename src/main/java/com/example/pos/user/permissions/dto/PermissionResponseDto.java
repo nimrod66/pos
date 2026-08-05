@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.time.LocalDateTime;
 
@@ -14,7 +15,7 @@ import java.time.LocalDateTime;
 @Builder
 public class PermissionResponseDto {
 
-    private Long id;
+    private UUID id;
     private String permissionName;
     private String moduleName;
     private String actionName;
@@ -34,3 +35,4 @@ public class PermissionResponseDto {
                 .build();
     }
 }
+

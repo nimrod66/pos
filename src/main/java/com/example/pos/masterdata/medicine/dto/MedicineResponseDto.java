@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.time.LocalDateTime;
 
@@ -14,7 +15,7 @@ import java.time.LocalDateTime;
 @Builder
 public class MedicineResponseDto {
 
-    private Long id;
+    private UUID id;
     private String barcode;
     private String manufacturerBarcode;
     private String internalBarcode;
@@ -32,15 +33,15 @@ public class MedicineResponseDto {
     private String genericName;
     private String strength;
     private String status;
-    private Long manufacturerId;
+    private UUID manufacturerId;
     private String manufacturerName;
-    private Long medicineCategoriesId;
+    private UUID medicineCategoriesId;
     private String categoryName;
-    private Long dosageFormId;
+    private UUID dosageFormId;
     private String dosageFormName;
-    private Long unitId;
+    private UUID unitId;
     private String unitName;
-    private Long taxId;
+    private UUID taxId;
     private String taxName;
     private boolean requiresPrescription;
     private String description;

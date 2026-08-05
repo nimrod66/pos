@@ -1,5 +1,7 @@
 package com.example.pos.user.users.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.user.users.dto.ChangePasswordRequestDto;
@@ -17,7 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping("/api/v1/users")
 public class UserController {
 
     private final UserService userService;
@@ -36,7 +38,7 @@ public class UserController {
     @GetMapping
     public ResponseEntity<ApiResponse<PagedResponse<UserResponseDto>>> getAll(
             @PageableDefault(size = 20) Pageable pageable,
-            @RequestParam(required = false) Long branchId) {
+            @RequestParam(required = false) UUID branchId) {
         Page<User> page;
         if (branchId != null) {
             page = userService.getUsersByBranch(branchId, pageable);
@@ -47,7 +49,7 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<UserResponseDto>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<UserResponseDto>> getById(@PathVariable UUID id) {
         User user = userService.getUserById(id);
         return ResponseEntity.ok(ApiResponse.ok(UserResponseDto.from(user)));
     }
@@ -62,7 +64,7 @@ public class UserController {
 
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<UserResponseDto>> update(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestBody @Valid UserRequestDto dto) {
         User user = userService.updateUser(id, dto);
         return ResponseEntity.ok(ApiResponse.updated(UserResponseDto.from(user)));
@@ -70,7 +72,7 @@ public class UserController {
 
     @PatchMapping("/{id}/status")
     public ResponseEntity<ApiResponse<UserResponseDto>> updateStatus(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestBody @Valid UpdateStatusRequestDto dto) {
         User user = userService.updateStatus(id, dto);
         return ResponseEntity.ok(ApiResponse.updated(UserResponseDto.from(user)));
@@ -78,14 +80,14 @@ public class UserController {
 
     @PatchMapping("/{id}/password")
     public ResponseEntity<ApiResponse<Void>> changePassword(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestBody @Valid ChangePasswordRequestDto dto) {
         userService.changePassword(id, dto);
         return ResponseEntity.ok(ApiResponse.updated(null));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         userService.deleteUser(id);
         return ResponseEntity.ok(ApiResponse.deleted());
     }

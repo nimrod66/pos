@@ -10,6 +10,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.UUID;
+
 @Service
 @Transactional
 public class CategoryService {
@@ -36,12 +38,12 @@ public class CategoryService {
     }
 
     @Transactional(readOnly = true)
-    public MedicineCategories getById(Long id) {
+    public MedicineCategories getById(UUID id) {
         return repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("MedicineCategory", id));
     }
 
-    public MedicineCategories update(Long id, CategoryRequestDto dto) {
+    public MedicineCategories update(UUID id, CategoryRequestDto dto) {
         MedicineCategories category = getById(id);
         if (repository.existsByCategoryNameAndIdNot(dto.getCategoryName(), id)) {
             throw new ConflictException("Category '" + dto.getCategoryName() + "' already exists");
@@ -51,7 +53,7 @@ public class CategoryService {
         return repository.save(category);
     }
 
-    public void delete(Long id) {
+    public void delete(UUID id) {
         repository.delete(getById(id));
     }
 }

@@ -3,10 +3,12 @@ package com.example.pos.compliance.invoice.event;
 import com.example.pos.compliance.invoice.model.TaxInvoice;
 import org.springframework.context.ApplicationEvent;
 
+import java.util.UUID;
+
 public class InvoiceIssuedEvent extends ApplicationEvent {
 
-    private final Long invoiceId;
-    private final Long saleId;
+    private final UUID invoiceId;
+    private final UUID saleId;
     private final String invoiceNumber;
 
     public InvoiceIssuedEvent(Object source, TaxInvoice invoice) {
@@ -16,7 +18,7 @@ public class InvoiceIssuedEvent extends ApplicationEvent {
         this.invoiceNumber = invoice.getInvoiceNumber();
     }
 
-    public Long getInvoiceId() { return invoiceId; }
-    public Long getSaleId() { return saleId; }
+    public UUID getInvoiceId() { return invoiceId; }
+    public UUID getSaleId() { return saleId; }
     public String getInvoiceNumber() { return invoiceNumber; }
 }

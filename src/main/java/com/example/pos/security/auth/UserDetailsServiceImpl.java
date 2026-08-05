@@ -43,8 +43,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                 if (role.getRolePermission() != null) {
                     for (RolePermission rp : role.getRolePermission()) {
                         if (rp.getPermissions() != null) {
-                            String perm = "PERM_" + rp.getPermissions().getPermissionName();
-                            authorities.add(new SimpleGrantedAuthority(perm));
+                            authorities.add(new SimpleGrantedAuthority("PERM_" + rp.getPermissions().getPermissionName()));
                         }
                     }
                 }
@@ -52,9 +51,11 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         }
 
         boolean active = user.getStatus() == User.Status.ACTIVE;
-        return new org.springframework.security.core.userdetails.User(
-                user.getEmail(), user.getPasswordHash(),
-                active, true, true, !user.getStatus().equals(User.Status.INACTIVE),
+        return new UserDetailsImpl(
+                user.getId(),
+                user.getEmail(),
+                user.getPasswordHash(),
+                active,
                 authorities);
     }
 }

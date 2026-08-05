@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -15,15 +16,15 @@ import java.time.LocalDateTime;
 @Builder
 public class CreditNoteResponseDto {
 
-    private Long id;
-    private Long originalInvoiceId;
+    private UUID id;
+    private UUID originalInvoiceId;
     private String creditNoteNumber;
     private String reason;
     private BigDecimal amount;
     private BigDecimal taxAmount;
     private String status;
     private LocalDateTime issueDate;
-    private Long createdBy;
+    private UUID createdBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 

@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -29,8 +30,8 @@ public class CreditNoteService {
         this.numberGenerator = numberGenerator;
     }
 
-    public CreditNote create(Long originalInvoiceId, BigDecimal amount, BigDecimal taxAmount,
-                              String reason, Long createdBy) {
+    public CreditNote create(UUID originalInvoiceId, BigDecimal amount, BigDecimal taxAmount,
+                              String reason, UUID createdBy) {
         TaxInvoice original = invoiceRepo.findById(originalInvoiceId)
                 .orElseThrow(() -> new ResourceNotFoundException("TaxInvoice", originalInvoiceId));
 
@@ -64,7 +65,7 @@ public class CreditNoteService {
         return creditNoteRepo.save(cn);
     }
 
-    public CreditNote issue(Long id) {
+    public CreditNote issue(UUID id) {
         CreditNote cn = creditNoteRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("CreditNote", id));
         if (cn.getStatus() != CreditNoteStatus.DRAFT) {
@@ -75,7 +76,7 @@ public class CreditNoteService {
         return creditNoteRepo.save(cn);
     }
 
-    public CreditNote cancel(Long id) {
+    public CreditNote cancel(UUID id) {
         CreditNote cn = creditNoteRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("CreditNote", id));
         if (cn.getStatus() == CreditNoteStatus.CANCELLED) {
@@ -86,13 +87,13 @@ public class CreditNoteService {
     }
 
     @Transactional(readOnly = true)
-    public CreditNote getById(Long id) {
+    public CreditNote getById(UUID id) {
         return creditNoteRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("CreditNote", id));
     }
 
     @Transactional(readOnly = true)
-    public List<CreditNote> getByInvoiceId(Long invoiceId) {
+    public List<CreditNote> getByInvoiceId(UUID invoiceId) {
         return creditNoteRepo.findByOriginalInvoiceId(invoiceId);
     }
 }

@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -40,7 +41,7 @@ public class ExpiryLogsService {
     }
 
     @Transactional(readOnly = true)
-    public List<ExpiryLogs> getByBatch(Long batchId) { return repo.findByMedicineBatchesId(batchId); }
+    public List<ExpiryLogs> getByBatch(UUID batchId) { return repo.findByMedicineBatchesId(batchId); }
 
     @Transactional(readOnly = true)
     public List<ExpiryLogs> getAll() { return repo.findAll(); }

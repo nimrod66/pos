@@ -1,12 +1,14 @@
 package com.example.pos.user.permissions.repository;
 
+import java.util.UUID;
+
 import com.example.pos.user.permissions.model.Permissions;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 import java.util.Optional;
 
-public interface PermissionsRepository extends JpaRepository<Permissions, Long> {
+public interface PermissionsRepository extends JpaRepository<Permissions, UUID> {
 
     Optional<Permissions> findByPermissionName(String permissionName);
 
@@ -14,5 +16,5 @@ public interface PermissionsRepository extends JpaRepository<Permissions, Long> 
 
     boolean existsByPermissionName(String permissionName);
 
-    boolean existsByPermissionNameAndIdNot(String permissionName, Long id);
+    boolean existsByPermissionNameAndIdNot(String permissionName, UUID id);
 }

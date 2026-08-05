@@ -10,6 +10,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.UUID;
+
 @Service
 @Transactional
 public class ExpenseCategoryService {
@@ -30,11 +32,11 @@ public class ExpenseCategoryService {
     public Page<ExpenseCategory> getAll(Pageable pageable) { return repo.findAll(pageable); }
 
     @Transactional(readOnly = true)
-    public ExpenseCategory getById(Long id) {
+    public ExpenseCategory getById(UUID id) {
         return repo.findById(id).orElseThrow(() -> new ResourceNotFoundException("ExpenseCategory", id));
     }
 
-    public ExpenseCategory update(Long id, ExpenseCategoryRequestDto dto) {
+    public ExpenseCategory update(UUID id, ExpenseCategoryRequestDto dto) {
         ExpenseCategory ec = getById(id);
         if (repo.existsByCategoryNameAndIdNot(dto.getCategoryName(), id))
             throw new ConflictException("Category '" + dto.getCategoryName() + "' already exists");
@@ -43,5 +45,5 @@ public class ExpenseCategoryService {
         return repo.save(ec);
     }
 
-    public void delete(Long id) { repo.delete(getById(id)); }
+    public void delete(UUID id) { repo.delete(getById(id)); }
 }

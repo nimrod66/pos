@@ -10,6 +10,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.UUID;
+
 @Service
 @Transactional
 public class ManufacturerService {
@@ -32,11 +34,11 @@ public class ManufacturerService {
     public Page<Manufacturer> getAll(Pageable pageable) { return repository.findAll(pageable); }
 
     @Transactional(readOnly = true)
-    public Manufacturer getById(Long id) {
+    public Manufacturer getById(UUID id) {
         return repository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Manufacturer", id));
     }
 
-    public Manufacturer update(Long id, ManufacturerRequestDto dto) {
+    public Manufacturer update(UUID id, ManufacturerRequestDto dto) {
         Manufacturer m = getById(id);
         if (repository.existsByManufacturerNameAndIdNot(dto.getManufacturerName(), id))
             throw new ConflictException("Manufacturer '" + dto.getManufacturerName() + "' already exists");
@@ -46,5 +48,5 @@ public class ManufacturerService {
         return repository.save(m);
     }
 
-    public void delete(Long id) { repository.delete(getById(id)); }
+    public void delete(UUID id) { repository.delete(getById(id)); }
 }

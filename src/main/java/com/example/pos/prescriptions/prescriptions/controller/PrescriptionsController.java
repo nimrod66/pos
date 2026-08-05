@@ -1,5 +1,7 @@
 package com.example.pos.prescriptions.prescriptions.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.prescriptions.prescriptions.dto.PrescriptionRequestDto;
@@ -15,7 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/prescriptions")
+@RequestMapping("/api/v1/prescriptions")
 public class PrescriptionsController {
 
     private final PrescriptionsService service;
@@ -34,12 +36,12 @@ public class PrescriptionsController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<PrescriptionResponseDto>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<PrescriptionResponseDto>> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(service.toDto(service.getById(id))));
     }
 
     @PatchMapping("/{id}/dispense")
-    public ResponseEntity<ApiResponse<PrescriptionResponseDto>> dispense(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<PrescriptionResponseDto>> dispense(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.updated(service.toDto(service.dispense(id))));
     }
 }

@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @AllArgsConstructor
@@ -39,7 +40,7 @@ public class DeviceRegistration extends BaseEntity {
     private String environment = "SANDBOX";
 
     @Column(name = "tenant_id")
-    private Long tenantId;
+    private UUID tenantId;
 
     public enum RegistrationStatus {
         PENDING, INITIALIZED, ACTIVE, EXPIRED, REVOKED

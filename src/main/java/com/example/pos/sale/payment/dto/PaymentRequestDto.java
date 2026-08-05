@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.math.BigDecimal;
 
@@ -15,7 +16,7 @@ import java.math.BigDecimal;
 public class PaymentRequestDto {
 
     @NotNull(message = "Sale ID is required")
-    private Long saleId;
+    private UUID saleId;
 
     @NotBlank(message = "Payment method is required")
     private String paymentMethod;
@@ -28,3 +29,4 @@ public class PaymentRequestDto {
     private String description;
     private String phoneNumber;
 }
+

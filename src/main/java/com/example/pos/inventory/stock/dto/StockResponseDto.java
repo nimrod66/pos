@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -15,12 +16,12 @@ import java.time.LocalDateTime;
 @Builder
 public class StockResponseDto {
 
-    private Long id;
-    private Long medicineBatchesId;
+    private UUID id;
+    private UUID medicineBatchesId;
     private String batchNumber;
-    private Long medicineId;
+    private UUID medicineId;
     private String medicineName;
-    private Long branchId;
+    private UUID branchId;
     private String branchName;
     private Integer quantityAvailable;
     private Integer reservedQuantity;
@@ -61,7 +62,7 @@ public class StockResponseDto {
     @NoArgsConstructor
     @AllArgsConstructor
     static class MedicineBatchesInfo {
-        Long medicineId;
+        UUID medicineId;
         String medicineName;
         String batchNumber;
 
@@ -77,3 +78,4 @@ public class StockResponseDto {
         }
     }
 }
+

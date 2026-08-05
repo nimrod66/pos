@@ -4,6 +4,8 @@ import com.example.pos.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.UUID;
+
 @Entity
 @AllArgsConstructor
 @NoArgsConstructor
@@ -18,7 +20,7 @@ public class BatchItem extends BaseEntity {
     private Batch batch;
 
     @Column(name = "invoice_id", nullable = false)
-    private Long invoiceId;
+    private UUID invoiceId;
 
     @Column(name = "invoice_number", nullable = false)
     private String invoiceNumber;

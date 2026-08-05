@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -15,7 +16,7 @@ import java.util.List;
 @Builder
 public class UserRolesResponseDto {
 
-    private Long id;
+    private UUID id;
     private String roleName;
     private String description;
     private LocalDateTime createdAt;
@@ -31,3 +32,4 @@ public class UserRolesResponseDto {
                 .build();
     }
 }
+

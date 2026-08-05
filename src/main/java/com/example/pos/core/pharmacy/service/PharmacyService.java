@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -39,12 +40,12 @@ public class PharmacyService {
     }
 
     @Transactional(readOnly = true)
-    public Pharmacy getPharmacyById(Long id) {
+    public Pharmacy getPharmacyById(UUID id) {
         return pharmacyRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Pharmacy", id));
     }
 
-    public Pharmacy updatePharmacy(Long id, PharmacyRequestDto dto) {
+    public Pharmacy updatePharmacy(UUID id, PharmacyRequestDto dto) {
         Pharmacy pharmacy = getPharmacyById(id);
 
         if (pharmacyRepository.existsByEmailAndIdNot(dto.getEmail(), id)) {
@@ -58,7 +59,7 @@ public class PharmacyService {
         return pharmacyRepository.save(pharmacy);
     }
 
-    public void deletePharmacy(Long id) {
+    public void deletePharmacy(UUID id) {
         Pharmacy pharmacy = getPharmacyById(id);
         pharmacyRepository.delete(pharmacy);
     }

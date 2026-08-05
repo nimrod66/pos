@@ -1,5 +1,7 @@
 package com.example.pos.user.userbranchrole.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.user.userbranchrole.dto.UserBranchRoleRequestDto;
 import com.example.pos.user.userbranchrole.dto.UserBranchRoleResponseDto;
@@ -13,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/user-branch-roles")
+@RequestMapping("/api/v1/user-branch-roles")
 public class UserBranchRoleController {
 
     private final UserBranchRoleService branchRoleService;
@@ -25,8 +27,8 @@ public class UserBranchRoleController {
     @PostMapping
     public ResponseEntity<ApiResponse<UserBranchRoleResponseDto>> assign(
             @RequestBody @Valid UserBranchRoleRequestDto dto,
-            @RequestAttribute(required = false) Long currentUserId) {
-        Long assignedBy = currentUserId != null ? currentUserId : 1L;
+            @RequestAttribute(required = false) UUID currentUserId) {
+        UUID assignedBy = currentUserId != null ? currentUserId : UUID.randomUUID();
         UserBranchRole assignment = branchRoleService.assignRole(dto, assignedBy);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created(UserBranchRoleResponseDto.from(assignment)));
@@ -34,8 +36,8 @@ public class UserBranchRoleController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<UserBranchRoleResponseDto>>> getAll(
-            @RequestParam(required = false) Long userId,
-            @RequestParam(required = false) Long branchId) {
+            @RequestParam(required = false) UUID userId,
+            @RequestParam(required = false) UUID branchId) {
         List<UserBranchRole> assignments;
         if (userId != null && branchId != null) {
             assignments = branchRoleService.getAssignmentsByUserAndBranch(userId, branchId);
@@ -53,7 +55,7 @@ public class UserBranchRoleController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> remove(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> remove(@PathVariable UUID id) {
         branchRoleService.removeAssignment(id);
         return ResponseEntity.ok(ApiResponse.deleted());
     }

@@ -42,7 +42,7 @@ public class BarcodeService {
 
         String gs1Prefix = medicine.getGs1CompanyPrefix();
         if (gs1Prefix != null && !gs1Prefix.isBlank()) {
-            int productCode = medicine.getId() != null ? medicine.getId().intValue() : 1;
+            int productCode = medicine.getId() != null ? Math.abs(medicine.getId().hashCode() % 100000) : 1;
             return generator.generateEan13(gs1Prefix, productCode);
         }
 

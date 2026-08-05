@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -40,12 +41,12 @@ public class PermissionsService {
     }
 
     @Transactional(readOnly = true)
-    public Permissions getPermissionById(Long id) {
+    public Permissions getPermissionById(UUID id) {
         return permissionsRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Permission", id));
     }
 
-    public Permissions updatePermission(Long id, PermissionRequestDto dto) {
+    public Permissions updatePermission(UUID id, PermissionRequestDto dto) {
         Permissions permission = getPermissionById(id);
         if (permissionsRepository.existsByPermissionNameAndIdNot(dto.getPermissionName(), id)) {
             throw new ConflictException("Permission '" + dto.getPermissionName() + "' already exists");
@@ -54,7 +55,7 @@ public class PermissionsService {
         return permissionsRepository.save(permission);
     }
 
-    public void deletePermission(Long id) {
+    public void deletePermission(UUID id) {
         Permissions permission = getPermissionById(id);
         permissionsRepository.delete(permission);
     }

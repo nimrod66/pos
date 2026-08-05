@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -16,8 +17,8 @@ import java.time.LocalDateTime;
 @Builder
 public class MedicineBatchResponseDto {
 
-    private Long id;
-    private Long medicineId;
+    private UUID id;
+    private UUID medicineId;
     private String medicineName;
     private String batchNumber;
     private LocalDate manufactureDate;
@@ -44,3 +45,4 @@ public class MedicineBatchResponseDto {
                 .build();
     }
 }
+

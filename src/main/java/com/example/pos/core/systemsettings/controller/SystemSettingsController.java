@@ -1,5 +1,7 @@
 package com.example.pos.core.systemsettings.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.core.systemsettings.dto.SystemSettingsRequestDto;
 import com.example.pos.core.systemsettings.dto.SystemSettingsResponseDto;
@@ -13,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/system-settings")
+@RequestMapping("/api/v1/system-settings")
 public class SystemSettingsController {
 
     private final SystemSettingsService settingsService;
@@ -32,8 +34,8 @@ public class SystemSettingsController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<SystemSettingsResponseDto>>> getAll(
-            @RequestParam(required = false) Long pharmacyId,
-            @RequestParam(required = false) Long branchId) {
+            @RequestParam(required = false) UUID pharmacyId,
+            @RequestParam(required = false) UUID branchId) {
         List<SystemSettings> settings;
         if (branchId != null) {
             settings = settingsService.getSettingsByBranch(branchId);
@@ -51,8 +53,8 @@ public class SystemSettingsController {
     @GetMapping("/resolve")
     public ResponseEntity<ApiResponse<SystemSettingsResponseDto>> resolve(
             @RequestParam String key,
-            @RequestParam(required = false) Long branchId,
-            @RequestParam Long pharmacyId) {
+            @RequestParam(required = false) UUID branchId,
+            @RequestParam UUID pharmacyId) {
         SystemSettings setting = settingsService.resolveSetting(key, branchId, pharmacyId);
         if (setting == null) {
             return ResponseEntity.ok(ApiResponse.ok(null, "No setting found"));
@@ -61,21 +63,21 @@ public class SystemSettingsController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<SystemSettingsResponseDto>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<SystemSettingsResponseDto>> getById(@PathVariable UUID id) {
         SystemSettings settings = settingsService.getSettingById(id);
         return ResponseEntity.ok(ApiResponse.ok(SystemSettingsResponseDto.from(settings)));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<SystemSettingsResponseDto>> update(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestBody @Valid SystemSettingsRequestDto dto) {
         SystemSettings settings = settingsService.updateSetting(id, dto);
         return ResponseEntity.ok(ApiResponse.updated(SystemSettingsResponseDto.from(settings)));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         settingsService.deleteSetting(id);
         return ResponseEntity.ok(ApiResponse.deleted());
     }

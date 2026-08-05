@@ -1,5 +1,7 @@
 package com.example.pos.sale.payment.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.payment.gateway.PaymentGatewayResponse;
@@ -18,7 +20,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/payments")
+@RequestMapping("/api/v1/payments")
 public class PaymentController {
 
     private final PaymentService paymentService;
@@ -42,14 +44,14 @@ public class PaymentController {
 
     @PostMapping("/{id}/process")
     public ResponseEntity<ApiResponse<PaymentGatewayResponse>> processPayment(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestParam(required = false) String phoneNumber) {
         PaymentGatewayResponse response = paymentService.processPayment(id, phoneNumber);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
     @GetMapping("/{id}/status")
-    public ResponseEntity<ApiResponse<PaymentGatewayResponse>> queryStatus(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<PaymentGatewayResponse>> queryStatus(@PathVariable UUID id) {
         PaymentGatewayResponse response = paymentService.queryStatus(id);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
@@ -57,7 +59,7 @@ public class PaymentController {
     @GetMapping
     public ResponseEntity<ApiResponse<PagedResponse<SaleResponseDto.PaymentResponse>>> getBySale(
             @PageableDefault(size = 20) Pageable pageable,
-            @RequestParam Long saleId) {
+            @RequestParam UUID saleId) {
         Page<SaleResponseDto.PaymentResponse> page = paymentService.getPaymentsBySale(saleId, pageable)
                 .map(p -> SaleResponseDto.PaymentResponse.builder()
                         .id(p.getId())
@@ -90,7 +92,7 @@ public class PaymentController {
     }
 
     @PostMapping("/{id}/refund")
-    public ResponseEntity<ApiResponse<PaymentGatewayResponse>> refundPayment(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<PaymentGatewayResponse>> refundPayment(@PathVariable UUID id) {
         PaymentGatewayResponse response = paymentService.refundPayment(id);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }

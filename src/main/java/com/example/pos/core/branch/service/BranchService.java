@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -44,17 +45,17 @@ public class BranchService {
     }
 
     @Transactional(readOnly = true)
-    public List<Branch> getBranchesByPharmacyId(Long pharmacyId) {
+    public List<Branch> getBranchesByPharmacyId(UUID pharmacyId) {
         return branchRepository.findByPharmacyId(pharmacyId);
     }
 
     @Transactional(readOnly = true)
-    public Branch getBranchById(Long id) {
+    public Branch getBranchById(UUID id) {
         return branchRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Branch", id));
     }
 
-    public Branch updateBranch(Long id, BranchRequestDto dto) {
+    public Branch updateBranch(UUID id, BranchRequestDto dto) {
         Branch branch = getBranchById(id);
 
         if (branchRepository.existsByBranchCodeAndIdNot(dto.getBranchCode(), id)) {
@@ -74,7 +75,7 @@ public class BranchService {
         return branchRepository.save(branch);
     }
 
-    public void deleteBranch(Long id) {
+    public void deleteBranch(UUID id) {
         Branch branch = getBranchById(id);
         branchRepository.delete(branch);
     }

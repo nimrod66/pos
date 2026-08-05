@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 public class RemoteTraderInvoicingSystem implements TraderInvoicingSystem {
 
@@ -24,7 +25,7 @@ public class RemoteTraderInvoicingSystem implements TraderInvoicingSystem {
     }
 
     @Override
-    public TaxInvoice generateInvoice(Long saleId, String customerPin) {
+    public TaxInvoice generateInvoice(UUID saleId, String customerPin) {
         try {
             FiscalSaleRequest request = new FiscalSaleRequest(
                     saleId, null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
@@ -39,7 +40,7 @@ public class RemoteTraderInvoicingSystem implements TraderInvoicingSystem {
     }
 
     @Override
-    public String generateReceipt(Long saleId, Long invoiceId) {
+    public String generateReceipt(UUID saleId, UUID invoiceId) {
         try {
             return "REMOTE:" + saleId;
         } catch (Exception e) {
@@ -59,7 +60,7 @@ public class RemoteTraderInvoicingSystem implements TraderInvoicingSystem {
     }
 
     @Override
-    public void cancelInvoice(Long invoiceId, String reason) {
+    public void cancelInvoice(UUID invoiceId, String reason) {
         try {
             log.info("Remote fiscal: cancellation requested for invoice {}", invoiceId);
         } catch (Exception e) {
@@ -68,12 +69,12 @@ public class RemoteTraderInvoicingSystem implements TraderInvoicingSystem {
     }
 
     @Override
-    public void issueCreditNote(Long invoiceId, BigDecimal amount, String reason) {
+    public void issueCreditNote(UUID invoiceId, BigDecimal amount, String reason) {
         log.info("Remote fiscal: credit note for invoice {} amount {}", invoiceId, amount);
     }
 
     @Override
-    public void issueDebitNote(Long invoiceId, BigDecimal amount, String reason) {
+    public void issueDebitNote(UUID invoiceId, BigDecimal amount, String reason) {
         log.info("Remote fiscal: debit note for invoice {} amount {}", invoiceId, amount);
     }
 

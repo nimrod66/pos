@@ -1,5 +1,7 @@
 package com.example.pos.compliance.monitoring.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.compliance.monitoring.ComplianceDashboardService;
 import com.example.pos.compliance.monitoring.dto.ComplianceDashboardDto;
@@ -14,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/compliance")
+@RequestMapping("/api/v1/compliance")
 public class DashboardController {
 
     private final ComplianceDashboardService dashboardService;

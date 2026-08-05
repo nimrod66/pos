@@ -1,5 +1,7 @@
 package com.example.pos.insurance.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.insurance.dto.InsuranceClaimRequestDto;
@@ -23,7 +25,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/insurance")
+@RequestMapping("/api/v1/insurance")
 public class InsuranceController {
 
     private final InsuranceService insuranceService;
@@ -49,7 +51,7 @@ public class InsuranceController {
     }
 
     @GetMapping("/insurers/{id}")
-    public ResponseEntity<ApiResponse<InsurerResponseDto>> getInsurer(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<InsurerResponseDto>> getInsurer(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(InsurerResponseDto.from(insuranceService.getInsurer(id))));
     }
 
@@ -61,12 +63,12 @@ public class InsuranceController {
 
     @PutMapping("/insurers/{id}")
     public ResponseEntity<ApiResponse<InsurerResponseDto>> updateInsurer(
-            @PathVariable Long id, @RequestBody InsurerRequestDto dto) {
+            @PathVariable UUID id, @RequestBody InsurerRequestDto dto) {
         return ResponseEntity.ok(ApiResponse.updated(InsurerResponseDto.from(insuranceService.updateInsurer(id, dto))));
     }
 
     @DeleteMapping("/insurers/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteInsurer(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> deleteInsurer(@PathVariable UUID id) {
         insuranceService.deleteInsurer(id);
         return ResponseEntity.ok(ApiResponse.deleted());
     }
@@ -76,14 +78,14 @@ public class InsuranceController {
     @GetMapping("/schemes")
     public ResponseEntity<ApiResponse<PagedResponse<InsuranceScheme>>> listSchemes(
             @PageableDefault(size = 20) Pageable pageable,
-            @RequestParam(required = false) Long insurerId) {
+            @RequestParam(required = false) UUID insurerId) {
         Page<InsuranceScheme> page = insuranceService.listSchemes(insurerId, pageable);
         return ResponseEntity.ok(ApiResponse.ok(PagedResponse.fromPage(page)));
     }
 
     @PostMapping("/insurers/{insurerId}/schemes")
     public ResponseEntity<ApiResponse<InsuranceScheme>> createScheme(
-            @PathVariable Long insurerId, @RequestBody InsuranceScheme scheme) {
+            @PathVariable UUID insurerId, @RequestBody InsuranceScheme scheme) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created(insuranceService.createScheme(insurerId, scheme)));
     }
@@ -93,20 +95,20 @@ public class InsuranceController {
     @GetMapping("/members")
     public ResponseEntity<ApiResponse<PagedResponse<InsuranceMember>>> listMembers(
             @PageableDefault(size = 20) Pageable pageable,
-            @RequestParam(required = false) Long insurerId) {
+            @RequestParam(required = false) UUID insurerId) {
         Page<InsuranceMember> page = insuranceService.listMembers(insurerId, pageable);
         return ResponseEntity.ok(ApiResponse.ok(PagedResponse.fromPage(page)));
     }
 
     @GetMapping("/members/lookup")
     public ResponseEntity<ApiResponse<InsuranceMember>> lookupMember(
-            @RequestParam String membershipNumber, @RequestParam Long insurerId) {
+            @RequestParam String membershipNumber, @RequestParam UUID insurerId) {
         return ResponseEntity.ok(ApiResponse.ok(insuranceService.findMember(membershipNumber, insurerId)));
     }
 
     @PostMapping("/insurers/{insurerId}/members")
     public ResponseEntity<ApiResponse<InsuranceMember>> createMember(
-            @PathVariable Long insurerId, @RequestBody InsuranceMember member) {
+            @PathVariable UUID insurerId, @RequestBody InsuranceMember member) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created(insuranceService.createMember(insurerId, member)));
     }
@@ -116,19 +118,19 @@ public class InsuranceController {
     @GetMapping("/authorizations")
     public ResponseEntity<ApiResponse<PagedResponse<Authorization>>> listAuthorizations(
             @PageableDefault(size = 20) Pageable pageable,
-            @RequestParam(required = false) Long insurerId) {
+            @RequestParam(required = false) UUID insurerId) {
         Page<Authorization> page = insuranceService.listAuthorizations(insurerId, pageable);
         return ResponseEntity.ok(ApiResponse.ok(PagedResponse.fromPage(page)));
     }
 
     @GetMapping("/authorizations/{id}")
-    public ResponseEntity<ApiResponse<Authorization>> getAuthorization(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Authorization>> getAuthorization(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(insuranceService.getAuthorization(id)));
     }
 
     @PostMapping("/insurers/{insurerId}/authorizations")
     public ResponseEntity<ApiResponse<Authorization>> createAuthorization(
-            @PathVariable Long insurerId, @RequestBody Authorization auth) {
+            @PathVariable UUID insurerId, @RequestBody Authorization auth) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created(insuranceService.createAuthorization(insurerId, auth)));
     }
@@ -138,19 +140,19 @@ public class InsuranceController {
     @GetMapping("/claims")
     public ResponseEntity<ApiResponse<PagedResponse<InsuranceClaimResponseDto>>> listClaims(
             @PageableDefault(size = 20) Pageable pageable,
-            @RequestParam(required = false) Long insurerId,
+            @RequestParam(required = false) UUID insurerId,
             @RequestParam(required = false) String status) {
         Page<InsuranceClaim> page = insuranceService.listClaims(insurerId, status, pageable);
         return ResponseEntity.ok(ApiResponse.ok(PagedResponse.from(page, InsuranceClaimResponseDto::from)));
     }
 
     @GetMapping("/claims/{id}")
-    public ResponseEntity<ApiResponse<InsuranceClaimResponseDto>> getClaim(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<InsuranceClaimResponseDto>> getClaim(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(InsuranceClaimResponseDto.from(insuranceService.getClaim(id))));
     }
 
     @GetMapping("/claims/by-sale/{saleId}")
-    public ResponseEntity<ApiResponse<List<InsuranceClaimResponseDto>>> getClaimsBySale(@PathVariable Long saleId) {
+    public ResponseEntity<ApiResponse<List<InsuranceClaimResponseDto>>> getClaimsBySale(@PathVariable UUID saleId) {
         var list = insuranceService.getClaimsBySale(saleId).stream()
                 .map(InsuranceClaimResponseDto::from).toList();
         return ResponseEntity.ok(ApiResponse.ok(list));
@@ -166,7 +168,7 @@ public class InsuranceController {
 
     @PatchMapping("/claims/{id}/status")
     public ResponseEntity<ApiResponse<InsuranceClaimResponseDto>> updateClaimStatus(
-            @PathVariable Long id, @RequestBody Map<String, Object> body) {
+            @PathVariable UUID id, @RequestBody Map<String, Object> body) {
         String status = (String) body.get("status");
         String reason = (String) body.get("reason");
         BigDecimal approved = body.get("approved") != null
@@ -182,14 +184,14 @@ public class InsuranceController {
     @GetMapping("/claims/{claimId}/attachments")
     public ResponseEntity<ApiResponse<PagedResponse<ClaimAttachment>>> listAttachments(
             @PageableDefault(size = 20) Pageable pageable,
-            @PathVariable Long claimId) {
+            @PathVariable UUID claimId) {
         Page<ClaimAttachment> page = insuranceService.listAttachments(claimId, pageable);
         return ResponseEntity.ok(ApiResponse.ok(PagedResponse.fromPage(page)));
     }
 
     @PostMapping("/claims/{claimId}/attachments")
     public ResponseEntity<ApiResponse<ClaimAttachment>> addAttachment(
-            @PathVariable Long claimId, @RequestBody ClaimAttachment attachment) {
+            @PathVariable UUID claimId, @RequestBody ClaimAttachment attachment) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.created(
                 insuranceService.addAttachment(claimId, attachment)));
     }
@@ -199,19 +201,19 @@ public class InsuranceController {
     @GetMapping("/batches")
     public ResponseEntity<ApiResponse<PagedResponse<ClaimBatch>>> listBatches(
             @PageableDefault(size = 20) Pageable pageable,
-            @RequestParam(required = false) Long insurerId) {
+            @RequestParam(required = false) UUID insurerId) {
         Page<ClaimBatch> page = insuranceService.listBatches(insurerId, pageable);
         return ResponseEntity.ok(ApiResponse.ok(PagedResponse.fromPage(page)));
     }
 
     @PostMapping("/insurers/{insurerId}/batches")
-    public ResponseEntity<ApiResponse<ClaimBatch>> createBatch(@PathVariable Long insurerId) {
+    public ResponseEntity<ApiResponse<ClaimBatch>> createBatch(@PathVariable UUID insurerId) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created(insuranceService.createBatch(insurerId)));
     }
 
     @PostMapping("/batches/{batchId}/submit")
-    public ResponseEntity<ApiResponse<ClaimBatch>> submitBatch(@PathVariable Long batchId) {
+    public ResponseEntity<ApiResponse<ClaimBatch>> submitBatch(@PathVariable UUID batchId) {
         return ResponseEntity.ok(ApiResponse.ok(insuranceService.submitBatch(batchId)));
     }
 
@@ -220,21 +222,21 @@ public class InsuranceController {
     @GetMapping("/payments")
     public ResponseEntity<ApiResponse<PagedResponse<InsurancePayment>>> listPayments(
             @PageableDefault(size = 20) Pageable pageable,
-            @RequestParam(required = false) Long insurerId) {
+            @RequestParam(required = false) UUID insurerId) {
         Page<InsurancePayment> page = insuranceService.listPayments(insurerId, pageable);
         return ResponseEntity.ok(ApiResponse.ok(PagedResponse.fromPage(page)));
     }
 
     @PostMapping("/insurers/{insurerId}/payments")
     public ResponseEntity<ApiResponse<InsurancePayment>> recordPayment(
-            @PathVariable Long insurerId, @RequestBody InsurancePayment payment) {
+            @PathVariable UUID insurerId, @RequestBody InsurancePayment payment) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created(insuranceService.recordPayment(insurerId, payment)));
     }
 
     @PostMapping("/payments/{paymentId}/link")
     public ResponseEntity<ApiResponse<Void>> linkPaymentToClaims(
-            @PathVariable Long paymentId, @RequestBody Map<String, List<Long>> body) {
+            @PathVariable UUID paymentId, @RequestBody Map<String, List<UUID>> body) {
         insuranceService.linkPaymentToClaims(paymentId, body.get("claimIds"));
         return ResponseEntity.ok(ApiResponse.ok(null, "Payment linked to claims"));
     }
@@ -242,7 +244,7 @@ public class InsuranceController {
     // ========== Reports ==========
 
     @GetMapping("/reports/{insurerId}")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getInsurerReport(@PathVariable Long insurerId) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getInsurerReport(@PathVariable UUID insurerId) {
         return ResponseEntity.ok(ApiResponse.ok(insuranceService.generateInsurerReport(insurerId)));
     }
 
@@ -251,7 +253,7 @@ public class InsuranceController {
     @GetMapping("/reconciliations")
     public ResponseEntity<ApiResponse<PagedResponse<ClaimReconciliation>>> listReconciliations(
             @PageableDefault(size = 20) Pageable pageable,
-            @RequestParam(required = false) Long insurerId) {
+            @RequestParam(required = false) UUID insurerId) {
         Page<ClaimReconciliation> page = insuranceService.listReconciliations(insurerId, pageable);
         return ResponseEntity.ok(ApiResponse.ok(PagedResponse.fromPage(page)));
     }
@@ -259,7 +261,7 @@ public class InsuranceController {
     @PostMapping("/reconcile")
     public ResponseEntity<ApiResponse<ClaimReconciliation>> reconcile(
             @RequestBody Map<String, Object> body) {
-        Long insurerId = Long.valueOf(body.get("insurerId").toString());
+        UUID insurerId = UUID.fromString(body.get("insurerId").toString());
         LocalDate start = LocalDate.parse((String) body.get("periodStart"));
         LocalDate end = LocalDate.parse((String) body.get("periodEnd"));
         return ResponseEntity.ok(ApiResponse.ok(insuranceService.runReconciliation(insurerId, start, end)));

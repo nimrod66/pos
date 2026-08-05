@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @AllArgsConstructor
@@ -33,7 +34,7 @@ public class TerminalSession extends BaseEntity {
     private String userAgent;
 
     @Column(name = "cashier_id")
-    private Long cashierId;
+    private UUID cashierId;
 
     @Column(name = "last_activity_at")
     private LocalDateTime lastActivityAt;

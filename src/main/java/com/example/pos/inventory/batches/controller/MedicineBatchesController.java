@@ -1,5 +1,7 @@
 package com.example.pos.inventory.batches.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.inventory.batches.dto.MedicineBatchRequestDto;
@@ -17,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 
 @RestController
-@RequestMapping("/api/batches")
+@RequestMapping("/api/v1/batches")
 public class MedicineBatchesController {
 
     private final MedicineBatchesService batchService;
@@ -37,7 +39,7 @@ public class MedicineBatchesController {
     @GetMapping
     public ResponseEntity<ApiResponse<PagedResponse<MedicineBatchResponseDto>>> getAll(
             @PageableDefault(size = 20) Pageable pageable,
-            @RequestParam(required = false) Long medicineId,
+            @RequestParam(required = false) UUID medicineId,
             @RequestParam(required = false) Boolean expiring,
             @RequestParam(required = false) LocalDate before) {
         Page<MedicineBatches> page;
@@ -52,21 +54,21 @@ public class MedicineBatchesController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<MedicineBatchResponseDto>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<MedicineBatchResponseDto>> getById(@PathVariable UUID id) {
         MedicineBatches batch = batchService.getBatchById(id);
         return ResponseEntity.ok(ApiResponse.ok(MedicineBatchResponseDto.from(batch)));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<MedicineBatchResponseDto>> update(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestBody @Valid MedicineBatchRequestDto dto) {
         MedicineBatches batch = batchService.updateBatch(id, dto);
         return ResponseEntity.ok(ApiResponse.updated(MedicineBatchResponseDto.from(batch)));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         batchService.deleteBatch(id);
         return ResponseEntity.ok(ApiResponse.deleted());
     }

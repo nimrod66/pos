@@ -1,5 +1,7 @@
 package com.example.pos.prescriptions.dispensary.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.prescriptions.dispensary.dto.DispensaryRequestDto;
@@ -15,7 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/dispensary")
+@RequestMapping("/api/v1/dispensary")
 public class DispensaryController {
 
     private final DispensaryService service;
@@ -29,8 +31,8 @@ public class DispensaryController {
     @GetMapping
     public ResponseEntity<ApiResponse<PagedResponse<DispensaryResponseDto>>> getAll(
             @PageableDefault(size = 20) Pageable pageable,
-            @RequestParam(required = false) Long batchId,
-            @RequestParam(required = false) Long userId) {
+            @RequestParam(required = false) UUID batchId,
+            @RequestParam(required = false) UUID userId) {
         Page<Dispensary> page;
         if (batchId != null) page = service.getByBatch(batchId, pageable);
         else if (userId != null) page = service.getByUser(userId, pageable);
@@ -39,7 +41,7 @@ public class DispensaryController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<DispensaryResponseDto>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<DispensaryResponseDto>> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(DispensaryResponseDto.from(service.getById(id))));
     }
 }

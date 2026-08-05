@@ -22,6 +22,7 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -48,7 +49,7 @@ public class InvoiceService {
         this.eventPublisher = eventPublisher;
     }
 
-    public TaxInvoice issueFromSale(SaleFiscalData saleData, Long actorId, String actorName) {
+    public TaxInvoice issueFromSale(SaleFiscalData saleData, UUID actorId, String actorName) {
         if (invoiceRepo.findBySaleId(saleData.saleId()).isPresent()) {
             throw new BadRequestException("An invoice already exists for sale " + saleData.saleId());
         }
@@ -113,7 +114,7 @@ public class InvoiceService {
     }
 
     @Transactional(readOnly = true)
-    public TaxInvoice getById(Long id) {
+    public TaxInvoice getById(UUID id) {
         TaxInvoice invoice = invoiceRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("TaxInvoice", id));
         invoice.setItems(itemRepo.findByTaxInvoiceId(id));
@@ -121,7 +122,7 @@ public class InvoiceService {
     }
 
     @Transactional(readOnly = true)
-    public TaxInvoice getBySaleId(Long saleId) {
+    public TaxInvoice getBySaleId(UUID saleId) {
         TaxInvoice invoice = invoiceRepo.findBySaleId(saleId)
                 .orElseThrow(() -> new ResourceNotFoundException("TaxInvoice for sale", saleId));
         invoice.setItems(itemRepo.findByTaxInvoiceId(invoice.getId()));
@@ -129,7 +130,7 @@ public class InvoiceService {
     }
 
     @Transactional(readOnly = true)
-    public Page<TaxInvoice> getByBranch(Long branchId, List<InvoiceStatus> statuses, Pageable pageable) {
+    public Page<TaxInvoice> getByBranch(UUID branchId, List<InvoiceStatus> statuses, Pageable pageable) {
         Page<TaxInvoice> page;
         if (statuses != null && !statuses.isEmpty()) {
             List<TaxInvoice> invoices = invoiceRepo.findByBranchIdAndInvoiceStatusIn(branchId, statuses);
@@ -142,7 +143,7 @@ public class InvoiceService {
     }
 
     @Transactional(readOnly = true)
-    public Page<TaxInvoice> getByBranchAndDate(Long branchId, LocalDateTime start, LocalDateTime end, Pageable pageable) {
+    public Page<TaxInvoice> getByBranchAndDate(UUID branchId, LocalDateTime start, LocalDateTime end, Pageable pageable) {
         List<TaxInvoice> invoices = invoiceRepo.findByBranchIdAndCreatedAtBetween(branchId, start, end);
         Page<TaxInvoice> page = new PageImpl<>(invoices, pageable, invoices.size());
         page.getContent().forEach(inv -> inv.setItems(itemRepo.findByTaxInvoiceId(inv.getId())));
@@ -150,11 +151,11 @@ public class InvoiceService {
     }
 
     @Transactional(readOnly = true)
-    public List<InvoiceHistory> getHistory(Long invoiceId) {
+    public List<InvoiceHistory> getHistory(UUID invoiceId) {
         return historyRepo.findByInvoiceIdOrderByCreatedAtAsc(invoiceId);
     }
 
-    public TaxInvoice cancel(Long id, String reason, Long actorId, String actorName) {
+    public TaxInvoice cancel(UUID id, String reason, UUID actorId, String actorName) {
         TaxInvoice invoice = getById(id);
         if (invoice.getInvoiceStatus() == InvoiceStatus.VOID) {
             throw new BadRequestException("Invoice is already voided");
@@ -166,14 +167,14 @@ public class InvoiceService {
         return invoice;
     }
 
-    public void recordTransmissionSent(Long invoiceId, String description, Long actorId, String actorName) {
+    public void recordTransmissionSent(UUID invoiceId, String description, UUID actorId, String actorName) {
         TaxInvoice invoice = invoiceRepo.findById(invoiceId).orElse(null);
         if (invoice != null) {
             recordHistory(invoice, InvoiceHistoryType.SENT_TO_KRA, description, actorId, actorName);
         }
     }
 
-    public void recordTransmissionAcknowledged(Long invoiceId, String kraReceiptNumber, Long actorId, String actorName) {
+    public void recordTransmissionAcknowledged(UUID invoiceId, String kraReceiptNumber, UUID actorId, String actorName) {
         TaxInvoice invoice = invoiceRepo.findById(invoiceId).orElse(null);
         if (invoice != null) {
             recordHistory(invoice, InvoiceHistoryType.ACKNOWLEDGED,
@@ -181,7 +182,7 @@ public class InvoiceService {
         }
     }
 
-    public void recordTransmissionFailed(Long invoiceId, String failureReason, Long actorId, String actorName) {
+    public void recordTransmissionFailed(UUID invoiceId, String failureReason, UUID actorId, String actorName) {
         TaxInvoice invoice = invoiceRepo.findById(invoiceId).orElse(null);
         if (invoice != null) {
             recordHistory(invoice, InvoiceHistoryType.TRANSMISSION_FAILED,
@@ -190,7 +191,7 @@ public class InvoiceService {
     }
 
     private void recordHistory(TaxInvoice invoice, InvoiceHistoryType type, String description,
-                                Long actorId, String actorName) {
+                                UUID actorId, String actorName) {
         InvoiceHistory history = InvoiceHistory.builder()
                 .invoice(invoice)
                 .historyType(type)

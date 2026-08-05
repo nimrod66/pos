@@ -7,6 +7,7 @@ import lombok.*;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.Base64;
+import java.util.UUID;
 
 @Entity(name = "TerminalRegistry")
 @AllArgsConstructor
@@ -62,7 +63,7 @@ public class Terminal extends BaseEntity {
     private TerminalStatus status = TerminalStatus.PENDING;
 
     @Column(name = "branch_id")
-    private Long branchId;
+    private UUID branchId;
 
     @Column(name = "registered_by", length = 50)
     private String registeredBy;

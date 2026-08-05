@@ -1,5 +1,7 @@
 package com.example.pos.compliance.invoice.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.compliance.invoice.model.Receipt;
 import com.example.pos.compliance.invoice.service.ComplianceReceiptService;
@@ -8,7 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/compliance/receipts")
+@RequestMapping("/api/v1/compliance/receipts")
 public class ComplianceReceiptController {
 
     private final ComplianceReceiptService receiptService;
@@ -19,8 +21,8 @@ public class ComplianceReceiptController {
 
     @PostMapping
     public ResponseEntity<ApiResponse<Receipt>> create(
-            @RequestParam Long saleId,
-            @RequestParam(required = false) Long invoiceId,
+            @RequestParam UUID saleId,
+            @RequestParam(required = false) UUID invoiceId,
             @RequestParam String receiptData,
             @RequestParam String businessName,
             @RequestParam(required = false) String kraPin,
@@ -33,17 +35,17 @@ public class ComplianceReceiptController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<Receipt>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Receipt>> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(receiptService.getById(id)));
     }
 
     @GetMapping("/by-sale/{saleId}")
-    public ResponseEntity<ApiResponse<Receipt>> getBySaleId(@PathVariable Long saleId) {
+    public ResponseEntity<ApiResponse<Receipt>> getBySaleId(@PathVariable UUID saleId) {
         return ResponseEntity.ok(ApiResponse.ok(receiptService.getBySaleId(saleId)));
     }
 
     @PostMapping("/{id}/reprint")
-    public ResponseEntity<ApiResponse<Receipt>> reprint(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Receipt>> reprint(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(receiptService.reprint(id)));
     }
 }

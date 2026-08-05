@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -16,14 +17,14 @@ import java.util.List;
 @Builder
 public class PurchaseOrderResponseDto {
 
-    private Long id;
-    private Long supplierId;
+    private UUID id;
+    private UUID supplierId;
     private String supplierName;
-    private Long branchId;
+    private UUID branchId;
     private String branchName;
-    private Long orderedById;
+    private UUID orderedById;
     private String orderedByName;
-    private Long approvedById;
+    private UUID approvedById;
     private String status;
     private LocalDateTime orderDate;
     private LocalDateTime expectedDeliveryDate;
@@ -34,8 +35,8 @@ public class PurchaseOrderResponseDto {
 
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
     public static class OrderItemResponse {
-        private Long id;
-        private Long medicineId;
+        private UUID id;
+        private UUID medicineId;
         private String medicineName;
         private Integer quantity;
         private BigDecimal buyingPrice;
@@ -60,3 +61,4 @@ public class PurchaseOrderResponseDto {
                 .createdAt(po.getCreatedAt()).updatedAt(po.getUpdatedAt()).build();
     }
 }
+

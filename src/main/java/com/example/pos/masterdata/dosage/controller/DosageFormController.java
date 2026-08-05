@@ -1,5 +1,7 @@
 package com.example.pos.masterdata.dosage.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.masterdata.dosage.dto.DosageFormRequestDto;
 import com.example.pos.masterdata.dosage.dto.DosageFormResponseDto;
@@ -13,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/dosage-forms")
+@RequestMapping("/api/v1/dosage-forms")
 public class DosageFormController {
 
     private final DosageFormService service;
@@ -32,17 +34,17 @@ public class DosageFormController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<DosageFormResponseDto>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<DosageFormResponseDto>> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(DosageFormResponseDto.from(service.getById(id))));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<DosageFormResponseDto>> update(@PathVariable Long id, @RequestBody @Valid DosageFormRequestDto dto) {
+    public ResponseEntity<ApiResponse<DosageFormResponseDto>> update(@PathVariable UUID id, @RequestBody @Valid DosageFormRequestDto dto) {
         return ResponseEntity.ok(ApiResponse.updated(DosageFormResponseDto.from(service.update(id, dto))));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         service.delete(id);
         return ResponseEntity.ok(ApiResponse.deleted());
     }

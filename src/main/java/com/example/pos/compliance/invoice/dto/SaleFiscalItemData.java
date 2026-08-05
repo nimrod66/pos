@@ -1,9 +1,10 @@
 package com.example.pos.compliance.invoice.dto;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 public record SaleFiscalItemData(
-        Long medicineId,
+        UUID medicineId,
         String medicineName,
         String barcode,
         String barcodeType,

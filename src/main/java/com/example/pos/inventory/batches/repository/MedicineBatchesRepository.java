@@ -1,5 +1,7 @@
 package com.example.pos.inventory.batches.repository;
 
+import java.util.UUID;
+
 import com.example.pos.inventory.batches.model.MedicineBatches;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -9,13 +11,15 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
-public interface MedicineBatchesRepository extends JpaRepository<MedicineBatches, Long> {
+public interface MedicineBatchesRepository extends JpaRepository<MedicineBatches, UUID> {
 
     Optional<MedicineBatches> findByBatchNumber(String batchNumber);
 
-    List<MedicineBatches> findByMedicineId(Long medicineId);
+    Optional<MedicineBatches> findByBatchNumberAndMedicineId(String batchNumber, UUID medicineId);
 
-    Page<MedicineBatches> findByMedicineId(Long medicineId, Pageable pageable);
+    List<MedicineBatches> findByMedicineId(UUID medicineId);
+
+    Page<MedicineBatches> findByMedicineId(UUID medicineId, Pageable pageable);
 
     boolean existsByBatchNumber(String batchNumber);
 
@@ -25,5 +29,5 @@ public interface MedicineBatchesRepository extends JpaRepository<MedicineBatches
 
     List<MedicineBatches> findByExpirationDateBetween(LocalDate start, LocalDate end);
 
-    List<MedicineBatches> findByMedicineIdAndExpirationDateAfter(Long medicineId, LocalDate date);
+    List<MedicineBatches> findByMedicineIdAndExpirationDateAfter(UUID medicineId, LocalDate date);
 }

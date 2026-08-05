@@ -10,6 +10,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.UUID;
+
 @Service
 @Transactional
 public class UnitService {
@@ -31,11 +33,11 @@ public class UnitService {
     public Page<Unit> getAll(Pageable pageable) { return repository.findAll(pageable); }
 
     @Transactional(readOnly = true)
-    public Unit getById(Long id) {
+    public Unit getById(UUID id) {
         return repository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Unit", id));
     }
 
-    public Unit update(Long id, UnitRequestDto dto) {
+    public Unit update(UUID id, UnitRequestDto dto) {
         Unit unit = getById(id);
         if (repository.existsByUnitNameAndIdNot(dto.getUnitName(), id))
             throw new ConflictException("Unit '" + dto.getUnitName() + "' already exists");
@@ -44,5 +46,5 @@ public class UnitService {
         return repository.save(unit);
     }
 
-    public void delete(Long id) { repository.delete(getById(id)); }
+    public void delete(UUID id) { repository.delete(getById(id)); }
 }

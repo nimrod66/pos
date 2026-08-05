@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -14,12 +15,12 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 public class PriceHistoryResponseDto {
-    private Long id;
-    private Long medicineId;
+    private UUID id;
+    private UUID medicineId;
     private String medicineName;
-    private Long medicineBatchId;
+    private UUID medicineBatchId;
     private String batchNumber;
-    private Long userId;
+    private UUID userId;
     private String userName;
     private BigDecimal oldBuyingPrice;
     private BigDecimal oldSellingPrice;
@@ -46,3 +47,4 @@ public class PriceHistoryResponseDto {
                 .build();
     }
 }
+

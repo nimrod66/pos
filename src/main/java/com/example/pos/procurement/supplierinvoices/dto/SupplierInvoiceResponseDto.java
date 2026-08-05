@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -15,8 +16,8 @@ import java.time.LocalDateTime;
 @Builder
 public class SupplierInvoiceResponseDto {
 
-    private Long id;
-    private Long supplierId;
+    private UUID id;
+    private UUID supplierId;
     private String supplierName;
     private String invoiceNumber;
     private LocalDateTime invoiceDate;
@@ -36,3 +37,4 @@ public class SupplierInvoiceResponseDto {
                 .status(si.getStatus() != null ? si.getStatus().name() : null).createdAt(si.getCreatedAt()).build();
     }
 }
+

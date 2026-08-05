@@ -1,5 +1,7 @@
 package com.example.pos.sale.sales.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.sale.sales.dto.SaleRequestDto;
@@ -19,7 +21,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/sales")
+@RequestMapping("/api/v1/sales")
 public class SalesController {
 
     private final SaleService saleService;
@@ -38,14 +40,14 @@ public class SalesController {
     @GetMapping
     public ResponseEntity<ApiResponse<PagedResponse<SaleResponseDto>>> getAll(
             @PageableDefault(size = 20) Pageable pageable,
-            @RequestParam(required = false) Long branchId) {
+            @RequestParam(required = false) UUID branchId) {
         Page<Sales> page = saleService.getSalesByBranch(branchId, pageable);
         return ResponseEntity.ok(ApiResponse.ok(PagedResponse.from(page, saleService::toResponseDto)));
     }
 
     @GetMapping("/suspended")
     public ResponseEntity<ApiResponse<List<SaleResponseDto>>> getSuspended(
-            @RequestParam Long branchId) {
+            @RequestParam UUID branchId) {
         List<Sales> sales = saleService.getSuspendedSales(branchId);
         List<SaleResponseDto> response = sales.stream()
                 .map(saleService::toResponseDto)
@@ -55,41 +57,41 @@ public class SalesController {
 
     @GetMapping("/last")
     public ResponseEntity<ApiResponse<SaleResponseDto>> getLast(
-            @RequestParam Long userId,
-            @RequestParam Long branchId) {
+            @RequestParam UUID userId,
+            @RequestParam UUID branchId) {
         Sales sale = saleService.getLastSaleByUserAndBranch(userId, branchId);
         return ResponseEntity.ok(ApiResponse.ok(
                 sale != null ? saleService.toResponseDto(sale) : null));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<SaleResponseDto>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<SaleResponseDto>> getById(@PathVariable UUID id) {
         Sales sale = saleService.getSaleById(id);
         return ResponseEntity.ok(ApiResponse.ok(saleService.toResponseDto(sale)));
     }
 
     @PatchMapping("/{id}/cancel")
-    public ResponseEntity<ApiResponse<SaleResponseDto>> cancel(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<SaleResponseDto>> cancel(@PathVariable UUID id) {
         Sales sale = saleService.cancelSale(id);
         return ResponseEntity.ok(ApiResponse.updated(saleService.toResponseDto(sale)));
     }
 
     @PatchMapping("/{id}/suspend")
-    public ResponseEntity<ApiResponse<SaleResponseDto>> suspend(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<SaleResponseDto>> suspend(@PathVariable UUID id) {
         Sales sale = saleService.suspendSale(id);
         return ResponseEntity.ok(ApiResponse.updated(saleService.toResponseDto(sale)));
     }
 
     @PatchMapping("/{id}/resume")
-    public ResponseEntity<ApiResponse<SaleResponseDto>> resume(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<SaleResponseDto>> resume(@PathVariable UUID id) {
         Sales sale = saleService.resumeSale(id);
         return ResponseEntity.ok(ApiResponse.updated(saleService.toResponseDto(sale)));
     }
 
     @PatchMapping("/{id}/items/{itemId}/override-price")
     public ResponseEntity<ApiResponse<SaleResponseDto>> overridePrice(
-            @PathVariable Long id,
-            @PathVariable Long itemId,
+            @PathVariable UUID id,
+            @PathVariable UUID itemId,
             @RequestBody @Valid PriceOverrideDto dto) {
         Sales sale = saleService.overrideItemPrice(id, itemId, dto.getNewPrice(), dto.getReason());
         return ResponseEntity.ok(ApiResponse.updated(saleService.toResponseDto(sale)));

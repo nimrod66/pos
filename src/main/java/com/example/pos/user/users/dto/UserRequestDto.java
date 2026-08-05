@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 @Data
 @NoArgsConstructor
@@ -34,7 +35,8 @@ public class UserRequestDto {
     private String password;
 
     @NotNull(message = "Branch ID is required")
-    private Long branchId;
+    private UUID branchId;
 
     private String status;
 }
+

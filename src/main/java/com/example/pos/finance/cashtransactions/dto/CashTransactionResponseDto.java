@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -14,8 +15,8 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 public class CashTransactionResponseDto {
-    private Long id;
-    private Long cashDrawerId;
+    private UUID id;
+    private UUID cashDrawerId;
     private String transactionType;
     private BigDecimal amount;
     private String remarks;
@@ -36,3 +37,4 @@ public class CashTransactionResponseDto {
                 .build();
     }
 }
+

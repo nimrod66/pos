@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional(readOnly = true)
@@ -20,7 +21,7 @@ public class CashTransactionsService {
         this.repo = repo;
     }
 
-    public Page<CashTransactions> getByCashDrawer(Long cashDrawerId, Pageable pageable) {
+    public Page<CashTransactions> getByCashDrawer(UUID cashDrawerId, Pageable pageable) {
         List<CashTransactions> list = repo.findByCashDrawersIdOrderByIdDesc(cashDrawerId);
         return new PageImpl<>(list, pageable, list.size());
     }

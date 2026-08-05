@@ -4,6 +4,8 @@ import com.example.pos.compliance.invoice.model.FiscalDocument;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.UUID;
+
 @Entity
 @AllArgsConstructor
 @NoArgsConstructor
@@ -43,11 +45,11 @@ public class EtimsFiscalDocument extends FiscalDocument {
     private String rawResponse;
 
     @Column(name = "transmission_id")
-    private Long transmissionId;
+    private UUID transmissionId;
 
     @Column(name = "sale_id")
-    private Long saleId;
+    private UUID saleId;
 
     @Column(name = "branch_id")
-    private Long branchId;
+    private UUID branchId;
 }

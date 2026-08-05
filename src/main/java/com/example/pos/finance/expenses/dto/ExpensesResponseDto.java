@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -15,11 +16,11 @@ import java.time.LocalDateTime;
 @Builder
 public class ExpensesResponseDto {
 
-    private Long id;
-    private Long expenseCategoryId;
+    private UUID id;
+    private UUID expenseCategoryId;
     private String categoryName;
-    private Long cashDrawersId;
-    private Long userId;
+    private UUID cashDrawersId;
+    private UUID userId;
     private String userName;
     private BigDecimal amount;
     private String description;
@@ -43,3 +44,4 @@ public class ExpensesResponseDto {
                 .build();
     }
 }
+

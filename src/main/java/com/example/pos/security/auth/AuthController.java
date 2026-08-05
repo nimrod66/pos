@@ -1,35 +1,54 @@
 package com.example.pos.security.auth;
 
 import com.example.pos.common.dto.ApiResponse;
+import com.example.pos.user.users.model.User;
+import com.example.pos.user.users.repository.UserRepository;
+import com.example.pos.user.users.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/api/v1/auth")
 public class AuthController {
 
     private final AuthService authService;
+    private final UserRepository userRepository;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, UserRepository userRepository) {
         this.authService = authService;
+        this.userRepository = userRepository;
+    }
+
+    @GetMapping("/csrf")
+    public ResponseEntity<ApiResponse<CsrfResponse>> csrf(HttpServletRequest request) {
+        CsrfToken token = authService.getCsrfToken(request);
+        CsrfResponse cr = new CsrfResponse(
+                token != null ? token.getToken() : null,
+                token != null ? token.getHeaderName() : null
+        );
+        return ResponseEntity.ok(ApiResponse.ok(cr));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<LoginResult>> login(
+    public ResponseEntity<ApiResponse<MeResponse>> login(
             @RequestBody @Valid LoginRequestDto dto,
-            HttpServletRequest request, HttpServletResponse response) {
-        LoginResult result = authService.login(dto.getEmail(), dto.getPassword(), request, response);
+            HttpServletRequest request) {
+        MeResponse result = authService.login(dto.getEmail(), dto.getPassword(), request);
         return ResponseEntity.ok(ApiResponse.ok(result, "Login successful"));
     }
 
-    @PostMapping("/refresh")
-    public ResponseEntity<ApiResponse<String>> refresh(
-            HttpServletRequest request, HttpServletResponse response) {
-        String newToken = authService.refresh(request, response);
-        return ResponseEntity.ok(ApiResponse.ok(newToken, "Token refreshed"));
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<MeResponse>> me(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            HttpServletRequest request) {
+        User user = userRepository.findById(userDetails.getUserId())
+                .orElseThrow();
+        return ResponseEntity.ok(ApiResponse.ok(authService.me(user, request)));
     }
 
     @PostMapping("/logout")
@@ -38,4 +57,6 @@ public class AuthController {
         authService.logout(request, response);
         return ResponseEntity.ok(ApiResponse.ok(null, "Logged out"));
     }
+
+    public record CsrfResponse(String token, String headerName) {}
 }

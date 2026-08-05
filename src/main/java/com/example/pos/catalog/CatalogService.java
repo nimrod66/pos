@@ -6,6 +6,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -40,18 +41,18 @@ public class CatalogService {
     }
 
     @Transactional(readOnly = true)
-    public Catalog getCatalog(Long id) {
+    public Catalog getCatalog(UUID id) {
         return catalogRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Catalog not found: " + id));
     }
 
     @Transactional(readOnly = true)
-    public List<CatalogItem> getCatalogItems(Long catalogId) {
+    public List<CatalogItem> getCatalogItems(UUID catalogId) {
         return catalogItemRepository.findByCatalogId(catalogId);
     }
 
     @Transactional(readOnly = true)
-    public List<CatalogItem> getUnmatchedItems(Long catalogId) {
+    public List<CatalogItem> getUnmatchedItems(UUID catalogId) {
         return catalogItemRepository.findByMatchedMedicineIdIsNullAndCatalogId(catalogId);
     }
 
@@ -91,7 +92,7 @@ public class CatalogService {
         return catalog;
     }
 
-    public Catalog importFromFile(Long catalogId, MultipartFile file) {
+    public Catalog importFromFile(UUID catalogId, MultipartFile file) {
         Catalog catalog = getCatalog(catalogId);
 
         CatalogImporter importer = importers.stream()
@@ -119,7 +120,7 @@ public class CatalogService {
         return catalog;
     }
 
-    public ProductMatcher.MatchResult matchItem(Long itemId) {
+    public ProductMatcher.MatchResult matchItem(UUID itemId) {
         CatalogItem item = catalogItemRepository.findById(itemId)
                 .orElseThrow(() -> new RuntimeException("Catalog item not found: " + itemId));
 
@@ -134,7 +135,7 @@ public class CatalogService {
         return result;
     }
 
-    public int matchAllUnmatched(Long catalogId) {
+    public int matchAllUnmatched(UUID catalogId) {
         List<CatalogItem> unmatched = catalogItemRepository.findByMatchedMedicineIdIsNullAndCatalogId(catalogId);
         int matched = 0;
         for (CatalogItem item : unmatched) {

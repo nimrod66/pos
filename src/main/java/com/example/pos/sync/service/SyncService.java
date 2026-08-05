@@ -75,7 +75,7 @@ public class SyncService {
         outboxRepo.save(event);
 
         try {
-            String url = syncProperties.getCentralUrl() + "/api/sync/push";
+            String url = syncProperties.getCentralUrl() + "/api/v1/sync/push";
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("eventId", event.getEventId());
             body.put("eventVersion", event.getEventVersion());
@@ -132,7 +132,7 @@ public class SyncService {
             return result;
         }
         try {
-            String url = syncProperties.getCentralUrl() + "/api/sync/pull/catalog"
+            String url = syncProperties.getCentralUrl() + "/api/v1/sync/pull/catalog"
                     + (since != null ? "?since=" + since : "");
             Map<String, Object> resp = restTemplate.getForObject(url, Map.class);
             result.put("success", true);

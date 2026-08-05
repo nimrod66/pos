@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -42,7 +43,7 @@ public class CashDrawersService {
         return repo.save(drawer);
     }
 
-    public CashDrawers closeDrawer(Long id, CashDrawerRequestDto dto) {
+    public CashDrawers closeDrawer(UUID id, CashDrawerRequestDto dto) {
         CashDrawers drawer = repo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("CashDrawer", id));
         if (!"OPEN".equals(drawer.getStatus())) {
@@ -58,13 +59,13 @@ public class CashDrawersService {
     }
 
     @Transactional(readOnly = true)
-    public Page<CashDrawers> getByShift(Long shiftId, Pageable pageable) {
+    public Page<CashDrawers> getByShift(UUID shiftId, Pageable pageable) {
         List<CashDrawers> list = repo.findByStaffShiftsId(shiftId);
         return new PageImpl<>(list, pageable, list.size());
     }
 
     @Transactional(readOnly = true)
-    public CashDrawers getById(Long id) {
+    public CashDrawers getById(UUID id) {
         return repo.findById(id).orElseThrow(() -> new ResourceNotFoundException("CashDrawer", id));
     }
 }

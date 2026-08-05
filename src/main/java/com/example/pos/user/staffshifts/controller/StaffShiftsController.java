@@ -1,5 +1,7 @@
 package com.example.pos.user.staffshifts.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.user.staffshifts.dto.StaffShiftRequestDto;
 import com.example.pos.user.staffshifts.dto.StaffShiftResponseDto;
@@ -14,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/shifts")
+@RequestMapping("/api/v1/shifts")
 public class StaffShiftsController {
 
     private final StaffShiftsService shiftService;
@@ -33,8 +35,8 @@ public class StaffShiftsController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<StaffShiftResponseDto>>> getAll(
-            @RequestParam(required = false) Long branchId,
-            @RequestParam(required = false) Long userId) {
+            @RequestParam(required = false) UUID branchId,
+            @RequestParam(required = false) UUID userId) {
         List<StaffShifts> shifts;
         if (userId != null) {
             shifts = shiftService.getShiftsByUser(userId);
@@ -51,7 +53,7 @@ public class StaffShiftsController {
 
     @GetMapping("/active")
     public ResponseEntity<ApiResponse<List<StaffShiftResponseDto>>> getActive(
-            @RequestParam(required = false) Long branchId) {
+            @RequestParam(required = false) UUID branchId) {
         List<StaffShifts> shifts = shiftService.getActiveShifts(branchId);
         List<StaffShiftResponseDto> response = shifts.stream()
                 .map(StaffShiftResponseDto::from)
@@ -61,20 +63,20 @@ public class StaffShiftsController {
 
     @GetMapping("/active/user/{userId}")
     public ResponseEntity<ApiResponse<StaffShiftResponseDto>> getActiveByUser(
-            @PathVariable Long userId) {
+            @PathVariable UUID userId) {
         StaffShifts shift = shiftService.getActiveShiftForUser(userId);
         return ResponseEntity.ok(ApiResponse.ok(StaffShiftResponseDto.from(shift)));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<StaffShiftResponseDto>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<StaffShiftResponseDto>> getById(@PathVariable UUID id) {
         StaffShifts shift = shiftService.getShiftById(id);
         return ResponseEntity.ok(ApiResponse.ok(StaffShiftResponseDto.from(shift)));
     }
 
     @PatchMapping("/{id}/close")
     public ResponseEntity<ApiResponse<StaffShiftResponseDto>> closeShift(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestBody @Valid UpdateShiftStatusDto dto) {
         StaffShifts shift = shiftService.closeShift(id, dto);
         return ResponseEntity.ok(ApiResponse.updated(StaffShiftResponseDto.from(shift)));
@@ -82,7 +84,7 @@ public class StaffShiftsController {
 
     @PatchMapping("/{id}/cancel")
     public ResponseEntity<ApiResponse<StaffShiftResponseDto>> cancelShift(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestBody @Valid UpdateShiftStatusDto dto) {
         StaffShifts shift = shiftService.cancelShift(id, dto);
         return ResponseEntity.ok(ApiResponse.updated(StaffShiftResponseDto.from(shift)));

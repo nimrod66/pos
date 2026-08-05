@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -49,7 +50,7 @@ public class ControlledDrugsService {
     }
 
     @Transactional(readOnly = true)
-    public List<ControlledDrugs> getByMedicine(Long medicineId) {
+    public List<ControlledDrugs> getByMedicine(UUID medicineId) {
         return repo.findByMedicineId(medicineId);
     }
 
@@ -57,7 +58,7 @@ public class ControlledDrugsService {
     public List<ControlledDrugs> getAll() { return repo.findAll(); }
 
     @Transactional(readOnly = true)
-    public ControlledDrugs getById(Long id) {
+    public ControlledDrugs getById(UUID id) {
         return repo.findById(id).orElseThrow(() -> new ResourceNotFoundException("ControlledDrug", id));
     }
 }

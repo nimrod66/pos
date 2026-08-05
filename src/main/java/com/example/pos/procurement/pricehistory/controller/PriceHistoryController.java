@@ -1,5 +1,7 @@
 package com.example.pos.procurement.pricehistory.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.procurement.pricehistory.dto.PriceHistoryResponseDto;
@@ -12,7 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/price-history")
+@RequestMapping("/api/v1/price-history")
 public class PriceHistoryController {
 
     private final PriceHistoryService service;
@@ -24,8 +26,8 @@ public class PriceHistoryController {
     @GetMapping
     public ResponseEntity<ApiResponse<PagedResponse<PriceHistoryResponseDto>>> getByMedicine(
             @PageableDefault(size = 20) Pageable pageable,
-            @RequestParam(required = false) Long medicineId,
-            @RequestParam(required = false) Long batchId) {
+            @RequestParam(required = false) UUID medicineId,
+            @RequestParam(required = false) UUID batchId) {
         Page<PriceHistory> page;
         if (medicineId != null) {
             page = service.getByMedicine(medicineId, pageable);

@@ -1,5 +1,7 @@
 package com.example.pos.pos.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.inventory.stock.model.Stock;
 import com.example.pos.inventory.stock.repository.StockRepository;
@@ -14,7 +16,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/pos")
+@RequestMapping("/api/v1/pos")
 public class PosController {
 
     private final MedicineRepository medicineRepo;
@@ -29,7 +31,7 @@ public class PosController {
     public ApiResponse<List<Map<String, Object>>> lookup(
             @RequestParam(required = false) String barcode,
             @RequestParam(required = false) String name,
-            @RequestParam(required = false) Long branchId) {
+            @RequestParam(required = false) UUID branchId) {
         List<Medicine> medicines;
 
         if (barcode != null && !barcode.isBlank()) {
@@ -88,7 +90,7 @@ public class PosController {
     }
 
     @GetMapping("/quick-items")
-    public ApiResponse<List<Map<String, Object>>> quickItems(@RequestParam Long branchId) {
+    public ApiResponse<List<Map<String, Object>>> quickItems(@RequestParam UUID branchId) {
         List<Stock> stocks = stockRepo.findByBranchIdAndQuantityAvailableGreaterThan(branchId, 0);
         List<Map<String, Object>> result = stocks.stream()
                 .filter(s -> s.getMedicineBatches() != null && s.getMedicineBatches().getMedicine() != null)

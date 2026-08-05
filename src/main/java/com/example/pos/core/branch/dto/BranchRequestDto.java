@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 @Data
 @NoArgsConstructor
@@ -31,7 +32,8 @@ public class BranchRequestDto {
     private String location;
 
     @NotNull(message = "Pharmacy ID is required")
-    private Long pharmacyId;
+    private UUID pharmacyId;
 
     private String status;
 }
+

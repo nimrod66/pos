@@ -4,6 +4,8 @@ import com.example.pos.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.UUID;
+
 @Entity
 @AllArgsConstructor
 @NoArgsConstructor
@@ -18,7 +20,7 @@ import lombok.*;
 public class ComplianceEvent extends BaseEntity {
 
     @Column(name = "invoice_id")
-    private Long invoiceId;
+    private UUID invoiceId;
 
     @Column(name = "document_number", length = 50)
     private String documentNumber;
@@ -31,7 +33,7 @@ public class ComplianceEvent extends BaseEntity {
     private String description;
 
     @Column(name = "actor_id")
-    private Long actorId;
+    private UUID actorId;
 
     @Column(name = "actor_name")
     private String actorName;
@@ -40,7 +42,7 @@ public class ComplianceEvent extends BaseEntity {
     private String payload;
 
     @Column(name = "tenant_id")
-    private Long tenantId;
+    private UUID tenantId;
 
     @Column(name = "correlation_id", length = 64)
     private String correlationId;

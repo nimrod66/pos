@@ -7,6 +7,7 @@ import lombok.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Entity
 @AllArgsConstructor
@@ -18,7 +19,7 @@ import java.util.List;
 public class Transmission extends BaseEntity {
 
     @Column(name = "invoice_id", nullable = false)
-    private Long invoiceId;
+    private UUID invoiceId;
 
     @Column(name = "document_type", nullable = false, length = 30)
     private String documentType;
@@ -32,7 +33,7 @@ public class Transmission extends BaseEntity {
     private TransmissionStatus transmissionStatus = TransmissionStatus.PENDING;
 
     @Column(name = "submitted_by")
-    private Long submittedBy;
+    private UUID submittedBy;
 
     @Column(name = "submitted_at")
     private LocalDateTime submittedAt;
@@ -57,7 +58,7 @@ public class Transmission extends BaseEntity {
     private String kraReceiptNumber;
 
     @Column(name = "tenant_id")
-    private Long tenantId;
+    private UUID tenantId;
 
     @Column(name = "next_retry_time")
     private LocalDateTime nextRetryTime;

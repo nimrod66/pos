@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -16,7 +17,7 @@ import java.util.List;
 @Builder
 public class PrescriptionResponseDto {
 
-    private Long id;
+    private UUID id;
     private String customerName;
     private String doctorName;
     private String doctorLicenseNumber;
@@ -31,8 +32,8 @@ public class PrescriptionResponseDto {
 
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
     public static class PrescriptionItemResponse {
-        private Long id;
-        private Long medicineId;
+        private UUID id;
+        private UUID medicineId;
         private String medicineName;
         private String dosage;
         private Integer quantity;
@@ -47,3 +48,4 @@ public class PrescriptionResponseDto {
                 .createdAt(p.getCreatedAt()).updatedAt(p.getUpdatedAt()).build();
     }
 }
+

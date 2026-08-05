@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -21,7 +22,7 @@ public class ComplianceReceiptService {
         this.numberGenerator = numberGenerator;
     }
 
-    public Receipt create(Long saleId, Long invoiceId, String receiptDataJson,
+    public Receipt create(UUID saleId, UUID invoiceId, String receiptDataJson,
                            String businessName, String kraPin, String branchCode,
                            String qrCodeContent, String verificationUrl) {
         Receipt receipt = Receipt.builder()
@@ -41,17 +42,17 @@ public class ComplianceReceiptService {
     }
 
     @Transactional(readOnly = true)
-    public Receipt getById(Long id) {
+    public Receipt getById(UUID id) {
         return receiptRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Receipt", id));
     }
 
     @Transactional(readOnly = true)
-    public Receipt getBySaleId(Long saleId) {
+    public Receipt getBySaleId(UUID saleId) {
         return receiptRepo.findBySaleId(saleId).orElse(null);
     }
 
-    public Receipt reprint(Long id) {
+    public Receipt reprint(UUID id) {
         Receipt receipt = getById(id);
         receipt.setReprintCount(receipt.getReprintCount() + 1);
         receipt.setPrintedDate(LocalDateTime.now());

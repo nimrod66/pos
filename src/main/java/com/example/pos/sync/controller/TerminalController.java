@@ -1,5 +1,7 @@
 package com.example.pos.sync.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.sync.model.Terminal;
 import com.example.pos.sync.service.TerminalService;
@@ -10,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/sync/terminals")
+@RequestMapping("/api/v1/sync/terminals")
 public class TerminalController {
 
     private final TerminalService terminalService;

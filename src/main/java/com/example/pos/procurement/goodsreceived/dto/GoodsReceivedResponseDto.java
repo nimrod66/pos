@@ -1,34 +1,73 @@
 package com.example.pos.procurement.goodsreceived.dto;
 
-import com.example.pos.procurement.goodsreceived.model.GoodsReceivedNotes;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class GoodsReceivedResponseDto {
 
-    private Long id;
-    private Long purchaseOrdersId;
-    private Long userId;
-    private String userName;
+    private UUID id;
+    private UUID supplierId;
+    private String supplierName;
+    private String supplierInvoiceNumber;
+    private UUID purchaseOrderId;
     private LocalDateTime receivedAt;
     private String remarks;
+    private String idempotencyKey;
+    private List<LineDto> lines;
     private LocalDateTime createdAt;
 
-    public static GoodsReceivedResponseDto from(GoodsReceivedNotes grn) {
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class LineDto {
+        private UUID id;
+        private UUID medicineId;
+        private String medicineName;
+        private UUID batchId;
+        private String batchNumber;
+        private LocalDate expiryDate;
+        private Integer quantity;
+        private BigDecimal unitCost;
+    }
+
+    public static GoodsReceivedResponseDto from(
+            com.example.pos.procurement.goodsreceived.model.GoodsReceivedNotes grn) {
         return GoodsReceivedResponseDto.builder()
                 .id(grn.getId())
-                .purchaseOrdersId(grn.getPurchaseOrders() != null ? grn.getPurchaseOrders().getId() : null)
-                .userId(grn.getUser() != null ? grn.getUser().getId() : null)
-                .userName(grn.getUser() != null ? grn.getUser().getFirstName() : null)
-                .receivedAt(grn.getReceivedAt()).remarks(grn.getRemarks())
-                .createdAt(grn.getCreatedAt()).build();
+                .supplierId(grn.getSupplier() != null ? grn.getSupplier().getId() : null)
+                .supplierName(grn.getSupplier() != null ? grn.getSupplier().getSupplierName() : null)
+                .supplierInvoiceNumber(grn.getSupplierInvoiceNumber())
+                .purchaseOrderId(grn.getPurchaseOrders() != null ? grn.getPurchaseOrders().getId() : null)
+                .receivedAt(grn.getReceivedAt())
+                .remarks(grn.getRemarks())
+                .idempotencyKey(grn.getIdempotencyKey())
+                .lines(grn.getLines() != null ? grn.getLines().stream()
+                        .map(line -> LineDto.builder()
+                                .id(line.getId())
+                                .medicineId(line.getMedicine() != null ? line.getMedicine().getId() : null)
+                                .medicineName(line.getMedicine() != null ? line.getMedicine().getBrandName() : null)
+                                .batchId(line.getBatch() != null ? line.getBatch().getId() : null)
+                                .batchNumber(line.getBatchNumber())
+                                .expiryDate(line.getExpiryDate())
+                                .quantity(line.getQuantity())
+                                .unitCost(line.getUnitCost())
+                                .build())
+                        .collect(Collectors.toList()) : List.of())
+                .createdAt(grn.getCreatedAt())
+                .build();
     }
 }

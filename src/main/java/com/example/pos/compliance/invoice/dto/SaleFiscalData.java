@@ -2,14 +2,15 @@ package com.example.pos.compliance.invoice.dto;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 
 public record SaleFiscalData(
-        Long saleId,
+        UUID saleId,
         boolean cancelled,
-        Long branchId,
+        UUID branchId,
         String branchCode,
         BigDecimal subtotal,
-        Long customerId,
+        UUID customerId,
         String customerName,
         String customerPin,
         String currency,

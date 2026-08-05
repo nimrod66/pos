@@ -11,6 +11,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.UUID;
+
 @Service
 @Transactional
 public class TaxService {
@@ -41,7 +43,7 @@ public class TaxService {
     public Page<Tax> getActive(Pageable pageable) { return repository.findByActiveTrue(pageable); }
 
     @Transactional(readOnly = true)
-    public Tax getById(Long id) {
+    public Tax getById(UUID id) {
         return repository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Tax", id));
     }
 
@@ -50,7 +52,7 @@ public class TaxService {
         return repository.findByCode(code).orElseThrow(() -> new ResourceNotFoundException("Tax code", code));
     }
 
-    public Tax update(Long id, TaxRequestDto dto) {
+    public Tax update(UUID id, TaxRequestDto dto) {
         Tax tax = getById(id);
         if (repository.existsByCodeAndIdNot(dto.getCode(), id))
             throw new ConflictException("Tax code '" + dto.getCode() + "' already exists");
@@ -65,13 +67,13 @@ public class TaxService {
         return repository.save(tax);
     }
 
-    public Tax toggleActive(Long id) {
+    public Tax toggleActive(UUID id) {
         Tax tax = getById(id);
         tax.setActive(!tax.isActive());
         return repository.save(tax);
     }
 
-    public void delete(Long id) {
+    public void delete(UUID id) {
         Tax tax = getById(id);
         if (tax.getMedicine() != null && !tax.getMedicine().isEmpty()) {
             throw new BadRequestException("Cannot delete tax category assigned to " + tax.getMedicine().size() + " medicines");

@@ -1,5 +1,7 @@
 package com.example.pos.compliance.invoice.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.compliance.invoice.dto.CreditNoteResponseDto;
@@ -21,7 +23,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/invoices")
+@RequestMapping("/api/v1/invoices")
 public class InvoiceController {
 
     private final InvoiceService invoiceService;
@@ -39,7 +41,7 @@ public class InvoiceController {
     @PostMapping("/issue")
     public ResponseEntity<ApiResponse<TaxInvoiceResponseDto>> issue(
             @RequestBody SaleFiscalData saleData,
-            @RequestParam(required = false) Long actorId,
+            @RequestParam(required = false) UUID actorId,
             @RequestParam(required = false) String actorName) {
         TaxInvoice invoice = invoiceService.issueFromSale(saleData, actorId, actorName);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -47,14 +49,14 @@ public class InvoiceController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<TaxInvoiceResponseDto>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<TaxInvoiceResponseDto>> getById(@PathVariable UUID id) {
         TaxInvoice invoice = invoiceService.getById(id);
         List<InvoiceHistory> history = invoiceService.getHistory(id);
         return ResponseEntity.ok(ApiResponse.ok(TaxInvoiceResponseDto.from(invoice, history)));
     }
 
     @GetMapping("/by-sale/{saleId}")
-    public ResponseEntity<ApiResponse<TaxInvoiceResponseDto>> getBySaleId(@PathVariable Long saleId) {
+    public ResponseEntity<ApiResponse<TaxInvoiceResponseDto>> getBySaleId(@PathVariable UUID saleId) {
         TaxInvoice invoice = invoiceService.getBySaleId(saleId);
         List<InvoiceHistory> history = invoiceService.getHistory(invoice.getId());
         return ResponseEntity.ok(ApiResponse.ok(TaxInvoiceResponseDto.from(invoice, history)));
@@ -63,7 +65,7 @@ public class InvoiceController {
     @GetMapping
     public ResponseEntity<ApiResponse<PagedResponse<TaxInvoiceResponseDto>>> getByBranch(
             @PageableDefault(size = 20) Pageable pageable,
-            @RequestParam Long branchId,
+            @RequestParam UUID branchId,
             @RequestParam(required = false) List<String> status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
@@ -81,16 +83,16 @@ public class InvoiceController {
 
     @PostMapping("/{id}/cancel")
     public ResponseEntity<ApiResponse<TaxInvoiceResponseDto>> cancel(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestParam(defaultValue = "Manual cancellation") String reason,
-            @RequestParam(required = false) Long actorId,
+            @RequestParam(required = false) UUID actorId,
             @RequestParam(required = false) String actorName) {
         TaxInvoice invoice = invoiceService.cancel(id, reason, actorId, actorName);
         return ResponseEntity.ok(ApiResponse.ok(TaxInvoiceResponseDto.from(invoice)));
     }
 
     @GetMapping("/{id}/history")
-    public ResponseEntity<ApiResponse<List<TaxInvoiceResponseDto.HistoryResponse>>> getHistory(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<List<TaxInvoiceResponseDto.HistoryResponse>>> getHistory(@PathVariable UUID id) {
         List<InvoiceHistory> history = invoiceService.getHistory(id);
         var response = history.stream().map(h -> TaxInvoiceResponseDto.HistoryResponse.builder()
                 .id(h.getId())
@@ -105,34 +107,34 @@ public class InvoiceController {
 
     @PostMapping("/{id}/credit-notes")
     public ResponseEntity<ApiResponse<CreditNoteResponseDto>> createCreditNote(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestParam BigDecimal amount,
             @RequestParam(required = false) BigDecimal taxAmount,
             @RequestParam String reason,
-            @RequestParam(required = false) Long createdBy) {
+            @RequestParam(required = false) UUID createdBy) {
         CreditNote cn = creditNoteService.create(id, amount, taxAmount, reason, createdBy);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.created(CreditNoteResponseDto.from(cn)));
     }
 
     @GetMapping("/{id}/credit-notes")
-    public ResponseEntity<ApiResponse<List<CreditNoteResponseDto>>> getCreditNotes(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<List<CreditNoteResponseDto>>> getCreditNotes(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(
                 creditNoteService.getByInvoiceId(id).stream().map(CreditNoteResponseDto::from).toList()));
     }
 
     @PostMapping("/{id}/debit-notes")
     public ResponseEntity<ApiResponse<DebitNoteResponseDto>> createDebitNote(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestParam BigDecimal amount,
             @RequestParam(required = false) BigDecimal taxAmount,
             @RequestParam String reason,
-            @RequestParam(required = false) Long createdBy) {
+            @RequestParam(required = false) UUID createdBy) {
         DebitNote dn = debitNoteService.create(id, amount, taxAmount, reason, createdBy);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.created(DebitNoteResponseDto.from(dn)));
     }
 
     @GetMapping("/{id}/debit-notes")
-    public ResponseEntity<ApiResponse<List<DebitNoteResponseDto>>> getDebitNotes(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<List<DebitNoteResponseDto>>> getDebitNotes(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(
                 debitNoteService.getByInvoiceId(id).stream().map(DebitNoteResponseDto::from).toList()));
     }

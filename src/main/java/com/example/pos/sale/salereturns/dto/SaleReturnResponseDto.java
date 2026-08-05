@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -15,10 +16,10 @@ import java.util.List;
 @Builder
 public class SaleReturnResponseDto {
 
-    private Long id;
-    private Long saleId;
+    private UUID id;
+    private UUID saleId;
     private String invoiceNumber;
-    private Long userId;
+    private UUID userId;
     private String userName;
     private String reason;
     private String status;
@@ -28,9 +29,9 @@ public class SaleReturnResponseDto {
 
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
     public static class ReturnItemResponse {
-        private Long id;
-        private Long saleItemId;
-        private Long medicineBatchesId;
+        private UUID id;
+        private UUID saleItemId;
+        private UUID medicineBatchesId;
         private String batchNumber;
         private String medicineName;
         private Integer quantity;
@@ -50,3 +51,4 @@ public class SaleReturnResponseDto {
                 .build();
     }
 }
+

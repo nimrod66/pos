@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.math.BigDecimal;
 
@@ -14,15 +15,16 @@ import java.math.BigDecimal;
 public class ExpensesRequestDto {
 
     @NotNull(message = "Expense category ID is required")
-    private Long expenseCategoryId;
+    private UUID expenseCategoryId;
 
-    private Long cashDrawersId;
+    private UUID cashDrawersId;
 
     @NotNull(message = "User ID is required")
-    private Long userId;
+    private UUID userId;
 
     @NotNull @Positive
     private BigDecimal amount;
 
     private String description;
 }
+

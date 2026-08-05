@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -36,7 +37,7 @@ public class UserBranchRoleService {
         this.rolesRepository = rolesRepository;
     }
 
-    public UserBranchRole assignRole(UserBranchRoleRequestDto dto, Long assignedByUserId) {
+    public UserBranchRole assignRole(UserBranchRoleRequestDto dto, UUID assignedByUserId) {
         User user = userRepository.findById(dto.getUserId())
                 .orElseThrow(() -> new ResourceNotFoundException("User", dto.getUserId()));
         Branch branch = branchRepository.findById(dto.getBranchId())
@@ -63,21 +64,21 @@ public class UserBranchRoleService {
     }
 
     @Transactional(readOnly = true)
-    public List<UserBranchRole> getAssignmentsByUser(Long userId) {
+    public List<UserBranchRole> getAssignmentsByUser(UUID userId) {
         return branchRoleRepository.findByUserId(userId);
     }
 
     @Transactional(readOnly = true)
-    public List<UserBranchRole> getAssignmentsByBranch(Long branchId) {
+    public List<UserBranchRole> getAssignmentsByBranch(UUID branchId) {
         return branchRoleRepository.findByBranchId(branchId);
     }
 
     @Transactional(readOnly = true)
-    public List<UserBranchRole> getAssignmentsByUserAndBranch(Long userId, Long branchId) {
+    public List<UserBranchRole> getAssignmentsByUserAndBranch(UUID userId, UUID branchId) {
         return branchRoleRepository.findByUserIdAndBranchId(userId, branchId);
     }
 
-    public void removeAssignment(Long id) {
+    public void removeAssignment(UUID id) {
         UserBranchRole assignment = branchRoleRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("UserBranchRole", id));
         branchRoleRepository.delete(assignment);

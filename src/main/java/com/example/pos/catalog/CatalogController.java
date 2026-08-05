@@ -1,5 +1,7 @@
 package com.example.pos.catalog;
 
+import java.util.UUID;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -9,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/catalog")
+@RequestMapping("/api/v1/catalog")
 public class CatalogController {
 
     private final CatalogService catalogService;
@@ -32,13 +34,13 @@ public class CatalogController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> getCatalog(@PathVariable Long id) {
+    public ResponseEntity<Map<String, Object>> getCatalog(@PathVariable UUID id) {
         return ResponseEntity.ok(Map.of("success", true, "data", catalogService.getCatalog(id)));
     }
 
     @GetMapping("/{id}/items")
     public ResponseEntity<Map<String, Object>> getItems(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestParam(defaultValue = "false") boolean unmatchedOnly) {
         List<CatalogItem> items = unmatchedOnly
                 ? catalogService.getUnmatchedItems(id)
@@ -75,20 +77,20 @@ public class CatalogController {
 
     @PostMapping("/{id}/import/file")
     public ResponseEntity<Map<String, Object>> importFromFile(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestParam("file") MultipartFile file) {
         Catalog catalog = catalogService.importFromFile(id, file);
         return ResponseEntity.ok(Map.of("success", true, "totalItems", catalog.getTotalItems()));
     }
 
     @PostMapping("/items/{itemId}/match")
-    public ResponseEntity<Map<String, Object>> matchItem(@PathVariable Long itemId) {
+    public ResponseEntity<Map<String, Object>> matchItem(@PathVariable UUID itemId) {
         ProductMatcher.MatchResult result = catalogService.matchItem(itemId);
         return ResponseEntity.ok(Map.of("success", true, "data", result));
     }
 
     @PostMapping("/{id}/match-all")
-    public ResponseEntity<Map<String, Object>> matchAll(@PathVariable Long id) {
+    public ResponseEntity<Map<String, Object>> matchAll(@PathVariable UUID id) {
         int matched = catalogService.matchAllUnmatched(id);
         return ResponseEntity.ok(Map.of("success", true, "matched", matched));
     }

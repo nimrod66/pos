@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -69,7 +70,7 @@ public class StaffShiftsService {
         return shiftRepository.save(shift);
     }
 
-    public StaffShifts closeShift(Long id, UpdateShiftStatusDto dto) {
+    public StaffShifts closeShift(UUID id, UpdateShiftStatusDto dto) {
         StaffShifts shift = getShiftById(id);
         if (shift.getStatus() != StaffShifts.Status.ACTIVE) {
             throw new BadRequestException("Only active shifts can be closed");
@@ -84,7 +85,7 @@ public class StaffShiftsService {
         return shiftRepository.save(shift);
     }
 
-    public StaffShifts cancelShift(Long id, UpdateShiftStatusDto dto) {
+    public StaffShifts cancelShift(UUID id, UpdateShiftStatusDto dto) {
         StaffShifts shift = getShiftById(id);
         if (shift.getStatus() != StaffShifts.Status.ACTIVE) {
             throw new BadRequestException("Only active shifts can be cancelled");
@@ -100,17 +101,17 @@ public class StaffShiftsService {
     }
 
     @Transactional(readOnly = true)
-    public List<StaffShifts> getShiftsByBranch(Long branchId) {
+    public List<StaffShifts> getShiftsByBranch(UUID branchId) {
         return shiftRepository.findByBranchId(branchId);
     }
 
     @Transactional(readOnly = true)
-    public List<StaffShifts> getShiftsByUser(Long userId) {
+    public List<StaffShifts> getShiftsByUser(UUID userId) {
         return shiftRepository.findByUserId(userId);
     }
 
     @Transactional(readOnly = true)
-    public List<StaffShifts> getActiveShifts(Long branchId) {
+    public List<StaffShifts> getActiveShifts(UUID branchId) {
         if (branchId != null) {
             return shiftRepository.findByBranchId(branchId).stream()
                     .filter(s -> s.getStatus() == StaffShifts.Status.ACTIVE)
@@ -120,13 +121,13 @@ public class StaffShiftsService {
     }
 
     @Transactional(readOnly = true)
-    public StaffShifts getShiftById(Long id) {
+    public StaffShifts getShiftById(UUID id) {
         return shiftRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("StaffShift", id));
     }
 
     @Transactional(readOnly = true)
-    public StaffShifts getActiveShiftForUser(Long userId) {
+    public StaffShifts getActiveShiftForUser(UUID userId) {
         return shiftRepository.findByUserIdAndStatus(userId, StaffShifts.Status.ACTIVE)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "No active shift found for user " + userId));

@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -16,7 +17,7 @@ import java.util.List;
 @AllArgsConstructor
 public class TerminalResponseDto {
 
-    private Long id;
+    private UUID id;
     private String terminalId;
     private String name;
     private TerminalType terminalType;
@@ -27,7 +28,7 @@ public class TerminalResponseDto {
     private String osVersion;
     private String firmwareVersion;
     private TerminalStatus status;
-    private Long branchId;
+    private UUID branchId;
     private String registeredBy;
     private LocalDateTime registeredAt;
     private LocalDateTime lastSeenAt;
@@ -40,3 +41,4 @@ public class TerminalResponseDto {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
+

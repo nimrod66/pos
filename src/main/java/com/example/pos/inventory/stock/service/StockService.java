@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -64,12 +65,12 @@ public class StockService {
     }
 
     @Transactional(readOnly = true)
-    public Page<Stock> getStockByBranch(Long branchId, Pageable pageable) {
+    public Page<Stock> getStockByBranch(UUID branchId, Pageable pageable) {
         return branchId != null ? stockRepository.findByBranchId(branchId, pageable) : Page.empty();
     }
 
     @Transactional(readOnly = true)
-    public List<Stock> getLowStockByBranch(Long branchId) {
+    public List<Stock> getLowStockByBranch(UUID branchId) {
         List<Stock> all = stockRepository.findByBranchId(branchId);
         return all.stream()
                 .filter(s -> s.getQuantityAvailable() != null
@@ -79,19 +80,19 @@ public class StockService {
     }
 
     @Transactional(readOnly = true)
-    public Stock getStockById(Long id) {
+    public Stock getStockById(UUID id) {
         return stockRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Stock", id));
     }
 
     @Transactional(readOnly = true)
-    public Stock getStockByBranchAndBatch(Long branchId, Long batchId) {
+    public Stock getStockByBranchAndBatch(UUID branchId, UUID batchId) {
         return stockRepository.findByBranchIdAndMedicineBatchesId(branchId, batchId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Stock record for branch " + branchId + " and batch " + batchId));
     }
 
-    public Stock updateStock(Long id, StockRequestDto dto) {
+    public Stock updateStock(UUID id, StockRequestDto dto) {
         Stock stock = getStockById(id);
         mapToEntity(dto, stock);
         return stockRepository.save(stock);
@@ -104,7 +105,7 @@ public class StockService {
         stock.setLastStockDate(LocalDate.now());
         Stock saved = stockRepository.save(stock);
 
-        Long batchId = stock.getMedicineBatches() != null ? stock.getMedicineBatches().getId() : 0;
+        UUID batchId = stock.getMedicineBatches() != null ? stock.getMedicineBatches().getId() : null;
         String medicineName = stock.getMedicineBatches() != null && stock.getMedicineBatches().getMedicine() != null
                 ? stock.getMedicineBatches().getMedicine().getBrandName() : "unknown";
         syncService.writeOutboxEvent(EventType.STOCK_RECEIVED, "STOCK", stock.getId().toString(),
@@ -127,7 +128,7 @@ public class StockService {
         stock.setLastStockDate(LocalDate.now());
         Stock saved = stockRepository.save(stock);
 
-        Long batchId = stock.getMedicineBatches() != null ? stock.getMedicineBatches().getId() : 0;
+        UUID batchId = stock.getMedicineBatches() != null ? stock.getMedicineBatches().getId() : null;
         String medicineName = stock.getMedicineBatches() != null && stock.getMedicineBatches().getMedicine() != null
                 ? stock.getMedicineBatches().getMedicine().getBrandName() : "unknown";
         syncService.writeOutboxEvent(EventType.STOCK_DEDUCTED, "STOCK", stock.getId().toString(),
@@ -140,7 +141,7 @@ public class StockService {
         return saved;
     }
 
-    public void deleteStock(Long id) {
+    public void deleteStock(UUID id) {
         Stock stock = getStockById(id);
         stockRepository.delete(stock);
     }

@@ -1,5 +1,7 @@
 package com.example.pos.core.pharmacy.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.core.pharmacy.dto.PharmacyRequestDto;
 import com.example.pos.core.pharmacy.dto.PharmacyResponseDto;
@@ -13,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/pharmacies")
+@RequestMapping("/api/v1/pharmacies")
 public class PharmacyController {
 
     private final PharmacyService pharmacyService;
@@ -39,21 +41,21 @@ public class PharmacyController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<PharmacyResponseDto>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<PharmacyResponseDto>> getById(@PathVariable UUID id) {
         Pharmacy pharmacy = pharmacyService.getPharmacyById(id);
         return ResponseEntity.ok(ApiResponse.ok(PharmacyResponseDto.from(pharmacy)));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<PharmacyResponseDto>> update(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestBody @Valid PharmacyRequestDto dto) {
         Pharmacy pharmacy = pharmacyService.updatePharmacy(id, dto);
         return ResponseEntity.ok(ApiResponse.updated(PharmacyResponseDto.from(pharmacy)));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         pharmacyService.deletePharmacy(id);
         return ResponseEntity.ok(ApiResponse.deleted());
     }

@@ -1,5 +1,7 @@
 package com.example.pos.user.permissions.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.user.permissions.dto.PermissionRequestDto;
 import com.example.pos.user.permissions.dto.PermissionResponseDto;
@@ -13,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/permissions")
+@RequestMapping("/api/v1/permissions")
 public class PermissionsController {
 
     private final PermissionsService permissionsService;
@@ -46,21 +48,21 @@ public class PermissionsController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<PermissionResponseDto>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<PermissionResponseDto>> getById(@PathVariable UUID id) {
         Permissions permission = permissionsService.getPermissionById(id);
         return ResponseEntity.ok(ApiResponse.ok(PermissionResponseDto.from(permission)));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<PermissionResponseDto>> update(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestBody @Valid PermissionRequestDto dto) {
         Permissions permission = permissionsService.updatePermission(id, dto);
         return ResponseEntity.ok(ApiResponse.updated(PermissionResponseDto.from(permission)));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         permissionsService.deletePermission(id);
         return ResponseEntity.ok(ApiResponse.deleted());
     }

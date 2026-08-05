@@ -46,6 +46,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -87,8 +88,23 @@ public class SaleService {
 
     @Auditable(action = "CREATE_SALE", entity = "Sale")
     public Sales createSale(SaleRequestDto dto) {
-        if (dto.getIdempotencyKey() != null && idempotencyRepository.existsByIdempotencyKey(dto.getIdempotencyKey())) {
-            throw new ConflictException("Duplicate transaction detected");
+        if (dto.getIdempotencyKey() != null && !dto.getIdempotencyKey().isBlank()) {
+            var existing = idempotencyRepository.findByIdempotencyKey(dto.getIdempotencyKey());
+            if (existing.isPresent()) {
+                IdempotencyKey ik = existing.get();
+                if (ik.getStatus() == IdempotencyKey.Status.COMPLETED
+                        && "SALE".equals(ik.getResourceType()) && ik.getResourceId() != null) {
+                    return salesRepository.findById(UUID.fromString(ik.getResourceId()))
+                            .orElseThrow(() -> new ResourceNotFoundException("Sale", ik.getResourceId()));
+                }
+                throw new ConflictException("Duplicate transaction detected");
+            }
+
+            IdempotencyKey key = new IdempotencyKey();
+            key.setIdempotencyKey(dto.getIdempotencyKey());
+            key.setStatus(IdempotencyKey.Status.IN_PROGRESS);
+            key.setResourceType("SALE");
+            idempotencyRepository.save(key);
         }
 
 
@@ -187,14 +203,15 @@ public class SaleService {
         sale.setPaymentStatus(totalPaid.compareTo(sale.getTotal()) >= 0
                 ? Sales.PaymentStatus.PAID : Sales.PaymentStatus.NOT_PAID);
 
-        if (dto.getIdempotencyKey() != null) {
-            IdempotencyKey key = new IdempotencyKey();
-            key.setIdempotencyKey(dto.getIdempotencyKey());
-            key.setStatus(IdempotencyKey.Status.COMPLETED);
-            key.setResourceType("SALE");
-            key.setCreatedTime(LocalTime.now());
-            idempotencyRepository.save(key);
-            sale.setIdempotencyKey(key);
+        if (dto.getIdempotencyKey() != null && !dto.getIdempotencyKey().isBlank()) {
+            UUID saleId = sale.getId();
+            idempotencyRepository.findByIdempotencyKey(dto.getIdempotencyKey()).ifPresent(ik -> {
+                ik.setResourceId(saleId.toString());
+                ik.setStatus(IdempotencyKey.Status.COMPLETED);
+                ik.setCreatedTime(LocalTime.now());
+                idempotencyRepository.save(ik);
+            });
+            sale.setIdempotencyKey(idempotencyRepository.findByIdempotencyKey(dto.getIdempotencyKey()).orElse(null));
         }
 
         salesRepository.save(sale);
@@ -228,18 +245,18 @@ public class SaleService {
     }
 
     @Transactional(readOnly = true)
-    public Page<Sales> getSalesByBranch(Long branchId, Pageable pageable) {
+    public Page<Sales> getSalesByBranch(UUID branchId, Pageable pageable) {
         return salesRepository.findByBranchId(branchId, pageable);
     }
 
     @Transactional(readOnly = true)
-    public Sales getSaleById(Long id) {
+    public Sales getSaleById(UUID id) {
         return salesRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Sale", id));
     }
 
     @Auditable(action = "CANCEL_SALE", entity = "Sale")
-    public Sales cancelSale(Long id) {
+    public Sales cancelSale(UUID id) {
         Sales sale = getSaleById(id);
         if (sale.getSaleStatus() == Sales.SaleStatus.CANCELLED) {
             throw new BadRequestException("Sale is already cancelled");
@@ -268,7 +285,7 @@ public class SaleService {
         return savedCancel;
     }
 
-    public Sales suspendSale(Long id) {
+    public Sales suspendSale(UUID id) {
         Sales sale = getSaleById(id);
         if (sale.getSaleStatus() == Sales.SaleStatus.CANCELLED) {
             throw new BadRequestException("Cannot suspend a cancelled sale");
@@ -301,7 +318,7 @@ public class SaleService {
         return savedSuspend;
     }
 
-    public Sales resumeSale(Long id) {
+    public Sales resumeSale(UUID id) {
         Sales sale = getSaleById(id);
         if (sale.getSaleStatus() != Sales.SaleStatus.SUSPENDED) {
             throw new BadRequestException("Only suspended sales can be resumed");
@@ -338,7 +355,7 @@ public class SaleService {
         return saved;
     }
 
-    public Sales overrideItemPrice(Long saleId, Long itemId, BigDecimal newPrice, String reason) {
+    public Sales overrideItemPrice(UUID saleId, UUID itemId, BigDecimal newPrice, String reason) {
         Sales sale = getSaleById(saleId);
         if (sale.getSaleStatus() == Sales.SaleStatus.CANCELLED) {
             throw new BadRequestException("Cannot modify a cancelled sale");
@@ -384,17 +401,17 @@ public class SaleService {
     }
 
     @Transactional(readOnly = true)
-    public Sales getLastSaleByUserAndBranch(Long userId, Long branchId) {
+    public Sales getLastSaleByUserAndBranch(UUID userId, UUID branchId) {
         return salesRepository.findTop1ByUserIdAndBranchIdOrderByCreatedAtDesc(userId, branchId).orElse(null);
     }
 
     @Transactional(readOnly = true)
-    public List<Sales> getSuspendedSales(Long branchId) {
+    public List<Sales> getSuspendedSales(UUID branchId) {
         return salesRepository.findByBranchIdAndSaleStatus(branchId, Sales.SaleStatus.SUSPENDED);
     }
 
     @Transactional(readOnly = true)
-    public List<Sales> getSalesByBranchAndDate(Long branchId, LocalDateTime start, LocalDateTime end) {
+    public List<Sales> getSalesByBranchAndDate(UUID branchId, LocalDateTime start, LocalDateTime end) {
         return salesRepository.findByBranchIdAndCreatedAtBetween(branchId, start, end);
     }
 

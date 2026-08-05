@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -29,8 +30,8 @@ public class DebitNoteService {
         this.numberGenerator = numberGenerator;
     }
 
-    public DebitNote create(Long originalInvoiceId, BigDecimal amount, BigDecimal taxAmount,
-                             String reason, Long createdBy) {
+    public DebitNote create(UUID originalInvoiceId, BigDecimal amount, BigDecimal taxAmount,
+                             String reason, UUID createdBy) {
         TaxInvoice original = invoiceRepo.findById(originalInvoiceId)
                 .orElseThrow(() -> new ResourceNotFoundException("TaxInvoice", originalInvoiceId));
 
@@ -51,7 +52,7 @@ public class DebitNoteService {
         return debitNoteRepo.save(dn);
     }
 
-    public DebitNote issue(Long id) {
+    public DebitNote issue(UUID id) {
         DebitNote dn = debitNoteRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("DebitNote", id));
         if (dn.getStatus() != CreditNoteStatus.DRAFT) {
@@ -62,7 +63,7 @@ public class DebitNoteService {
         return debitNoteRepo.save(dn);
     }
 
-    public DebitNote cancel(Long id) {
+    public DebitNote cancel(UUID id) {
         DebitNote dn = debitNoteRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("DebitNote", id));
         if (dn.getStatus() == CreditNoteStatus.CANCELLED) {
@@ -73,13 +74,13 @@ public class DebitNoteService {
     }
 
     @Transactional(readOnly = true)
-    public DebitNote getById(Long id) {
+    public DebitNote getById(UUID id) {
         return debitNoteRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("DebitNote", id));
     }
 
     @Transactional(readOnly = true)
-    public List<DebitNote> getByInvoiceId(Long invoiceId) {
+    public List<DebitNote> getByInvoiceId(UUID invoiceId) {
         return debitNoteRepo.findByOriginalInvoiceId(invoiceId);
     }
 }

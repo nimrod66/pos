@@ -1,5 +1,7 @@
 package com.example.pos.compliance.receipt.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.common.exception.ResourceNotFoundException;
 import com.example.pos.compliance.invoice.repository.TaxInvoiceRepository;
@@ -18,7 +20,7 @@ import java.util.ArrayList;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/receipts/fiscal")
+@RequestMapping("/api/v1/receipts/fiscal")
 @RequiredArgsConstructor
 public class UnifiedReceiptController {
 
@@ -28,7 +30,7 @@ public class UnifiedReceiptController {
     private final PharmacyRepository pharmacyRepository;
 
     @GetMapping("/{saleId}")
-    public ResponseEntity<ApiResponse<ReceiptDTO>> getReceipt(@PathVariable Long saleId) {
+    public ResponseEntity<ApiResponse<ReceiptDTO>> getReceipt(@PathVariable UUID saleId) {
         var sale = salesRepository.findById(saleId)
                 .orElseThrow(() -> new ResourceNotFoundException("Sale not found: " + saleId));
 

@@ -4,6 +4,8 @@ import com.example.pos.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.UUID;
+
 @Entity
 @Getter
 @Setter
@@ -22,10 +24,10 @@ public class Notification extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private Status status;
 
-    private Long referenceId;
+    private UUID referenceId;
     private String referenceType;
-    private Long userId;
-    private Long branchId;
+    private UUID userId;
+    private UUID branchId;
 
     public enum Type {
         LOW_STOCK, EXPIRY_WARNING, SALE_COMPLETED, SHIFT_REMINDER, SYSTEM_ALERT

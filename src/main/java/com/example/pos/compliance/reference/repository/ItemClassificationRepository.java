@@ -1,9 +1,11 @@
 package com.example.pos.compliance.reference.repository;
 
+import java.util.UUID;
+
 import com.example.pos.compliance.reference.model.ItemClassification;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
 
-public interface ItemClassificationRepository extends JpaRepository<ItemClassification, Long> {
+public interface ItemClassificationRepository extends JpaRepository<ItemClassification, UUID> {
     Optional<ItemClassification> findByClassificationCode(String code);
 }

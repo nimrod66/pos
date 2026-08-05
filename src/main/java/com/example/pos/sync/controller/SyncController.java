@@ -1,5 +1,7 @@
 package com.example.pos.sync.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.sync.service.ConnectivityService;
 import com.example.pos.sync.service.DeadLetterAlertService;
@@ -10,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/sync")
+@RequestMapping("/api/v1/sync")
 public class SyncController {
 
     private final SyncService syncService;

@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -59,7 +60,7 @@ public class SupplierPaymentService {
     }
 
     @Transactional(readOnly = true)
-    public Page<SupplierPayment> getByInvoice(Long invoiceId, Pageable pageable) {
+    public Page<SupplierPayment> getByInvoice(UUID invoiceId, Pageable pageable) {
         List<SupplierPayment> list = repo.findBySupplierInvoicesId(invoiceId);
         return new PageImpl<>(list, pageable, list.size());
     }

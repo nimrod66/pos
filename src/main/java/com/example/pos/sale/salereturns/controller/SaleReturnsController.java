@@ -1,5 +1,7 @@
 package com.example.pos.sale.salereturns.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.sale.salereturns.dto.SaleReturnRequestDto;
@@ -15,7 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/sale-returns")
+@RequestMapping("/api/v1/sale-returns")
 public class SaleReturnsController {
 
     private final SaleReturnsService returnsService;
@@ -35,13 +37,13 @@ public class SaleReturnsController {
     @GetMapping
     public ResponseEntity<ApiResponse<PagedResponse<SaleReturnResponseDto>>> getBySale(
             @PageableDefault(size = 20) Pageable pageable,
-            @RequestParam Long saleId) {
+            @RequestParam UUID saleId) {
         Page<SaleReturns> page = returnsService.getReturnsBySale(saleId, pageable);
         return ResponseEntity.ok(ApiResponse.ok(PagedResponse.from(page, returnsService::toResponseDto)));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<SaleReturnResponseDto>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<SaleReturnResponseDto>> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(returnsService.toResponseDto(returnsService.getReturnById(id))));
     }
 }

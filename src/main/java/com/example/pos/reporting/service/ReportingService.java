@@ -10,6 +10,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 @Transactional(readOnly = true)
@@ -26,7 +27,7 @@ public class ReportingService {
         this.expensesRepository = expensesRepository;
     }
 
-    public Map<String, Object> getDashboard(Long branchId) {
+    public Map<String, Object> getDashboard(UUID branchId) {
         Map<String, Object> dashboard = new HashMap<>();
 
         var todaySales = salesRepository.findByBranchIdAndCreatedAtBetween(

@@ -2,21 +2,23 @@ package com.example.pos.compliance.tis;
 
 import com.example.pos.compliance.invoice.model.TaxInvoice;
 
+import java.util.UUID;
+
 public interface TraderInvoicingSystem {
 
-    TaxInvoice generateInvoice(Long saleId, String customerPin);
+    TaxInvoice generateInvoice(UUID saleId, String customerPin);
 
-    String generateReceipt(Long saleId, Long invoiceId);
+    String generateReceipt(UUID saleId, UUID invoiceId);
 
     void validateInvoice(TaxInvoice invoice);
 
     void submitToKra(TaxInvoice invoice);
 
-    void cancelInvoice(Long invoiceId, String reason);
+    void cancelInvoice(UUID invoiceId, String reason);
 
-    void issueCreditNote(Long invoiceId, java.math.BigDecimal amount, String reason);
+    void issueCreditNote(UUID invoiceId, java.math.BigDecimal amount, String reason);
 
-    void issueDebitNote(Long invoiceId, java.math.BigDecimal amount, String reason);
+    void issueDebitNote(UUID invoiceId, java.math.BigDecimal amount, String reason);
 
     void reconciliationCheck();
 }

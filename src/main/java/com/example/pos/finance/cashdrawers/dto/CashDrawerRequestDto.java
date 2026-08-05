@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.math.BigDecimal;
 
@@ -13,10 +14,11 @@ import java.math.BigDecimal;
 public class CashDrawerRequestDto {
 
     @NotNull(message = "Staff shift ID is required")
-    private Long staffShiftsId;
+    private UUID staffShiftsId;
 
     private BigDecimal openingBalance;
     private BigDecimal expectedClosingBalance;
     private BigDecimal actualClosingBalance;
     private BigDecimal variance;
 }
+

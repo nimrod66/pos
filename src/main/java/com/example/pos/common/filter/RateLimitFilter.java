@@ -96,7 +96,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private double resolveRate(HttpServletRequest request) {
-        if (request.getRequestURI().startsWith("/api/auth/")) {
+        if (request.getRequestURI().startsWith("/api/v1/auth/")) {
             return authRequestsPerSecond;
         }
         return requestsPerSecond;

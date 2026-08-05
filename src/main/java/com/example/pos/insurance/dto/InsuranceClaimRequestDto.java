@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.math.BigDecimal;
 
@@ -14,14 +15,14 @@ import java.math.BigDecimal;
 public class InsuranceClaimRequestDto {
 
     @NotNull(message = "Sale ID is required")
-    private Long saleId;
+    private UUID saleId;
 
     @NotNull(message = "Insurer ID is required")
-    private Long insurerId;
+    private UUID insurerId;
 
-    private Long schemeId;
+    private UUID schemeId;
 
-    private Long memberId;
+    private UUID memberId;
 
     private String patientName;
 
@@ -41,7 +42,8 @@ public class InsuranceClaimRequestDto {
 
     private BigDecimal rejectedAmount;
 
-    private Long authorizationId;
+    private UUID authorizationId;
 
     private String notes;
 }
+

@@ -6,6 +6,7 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @MappedSuperclass
 @Getter
@@ -24,16 +25,16 @@ public abstract class FiscalDocument extends BaseEntity {
     private String documentStatus;
 
     @Column(name = "tenant_id")
-    private Long tenantId;
+    private UUID tenantId;
 
     @Column(name = "branch_id")
-    private Long branchId;
+    private UUID branchId;
 
     @Column(name = "currency", length = 3)
     private String currency;
 
     @Column(name = "created_by")
-    private Long createdBy;
+    private UUID createdBy;
 
     @Column(name = "schema_version")
     private Integer schemaVersion;

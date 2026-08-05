@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
+import java.util.UUID;
 
 @Data
 @NoArgsConstructor
@@ -13,5 +14,5 @@ import java.util.List;
 public class AssignPermissionsRequestDto {
 
     @NotNull(message = "Permission IDs are required")
-    private List<Long> permissionIds;
+    private List<UUID> permissionIds;
 }

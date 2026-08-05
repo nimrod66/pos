@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.time.LocalDateTime;
 
@@ -14,14 +15,14 @@ import java.time.LocalDateTime;
 @Builder
 public class UserResponseDto {
 
-    private Long id;
+    private UUID id;
     private String firstName;
     private String middleName;
     private String lastName;
     private String phoneNumber;
     private String email;
     private String status;
-    private Long branchId;
+    private UUID branchId;
     private String branchName;
     private LocalDateTime lastLogin;
     private LocalDateTime createdAt;
@@ -44,3 +45,4 @@ public class UserResponseDto {
                 .build();
     }
 }
+

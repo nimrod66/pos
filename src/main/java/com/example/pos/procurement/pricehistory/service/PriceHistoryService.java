@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional(readOnly = true)
@@ -20,12 +21,12 @@ public class PriceHistoryService {
         this.repo = repo;
     }
 
-    public Page<PriceHistory> getByMedicine(Long medicineId, Pageable pageable) {
+    public Page<PriceHistory> getByMedicine(UUID medicineId, Pageable pageable) {
         List<PriceHistory> list = repo.findByMedicineId(medicineId);
         return new PageImpl<>(list, pageable, list.size());
     }
 
-    public Page<PriceHistory> getByBatch(Long batchId, Pageable pageable) {
+    public Page<PriceHistory> getByBatch(UUID batchId, Pageable pageable) {
         List<PriceHistory> list = repo.findByMedicineBatchesId(batchId);
         return new PageImpl<>(list, pageable, list.size());
     }

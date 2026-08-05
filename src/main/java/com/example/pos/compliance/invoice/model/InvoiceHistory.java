@@ -4,6 +4,8 @@ import com.example.pos.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.UUID;
+
 @Entity
 @AllArgsConstructor
 @NoArgsConstructor
@@ -25,7 +27,7 @@ public class InvoiceHistory extends BaseEntity {
     private String description;
 
     @Column(name = "actor_id")
-    private Long actorId;
+    private UUID actorId;
 
     @Column(name = "actor_name")
     private String actorName;

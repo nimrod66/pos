@@ -1,5 +1,7 @@
 package com.example.pos.inventory.stock.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.inventory.stock.dto.StockAdjustmentDto;
@@ -18,7 +20,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/stock")
+@RequestMapping("/api/v1/stock")
 public class StockController {
 
     private final StockService stockService;
@@ -38,14 +40,14 @@ public class StockController {
     @GetMapping
     public ResponseEntity<ApiResponse<PagedResponse<StockResponseDto>>> getAll(
             @PageableDefault(size = 20) Pageable pageable,
-            @RequestParam(required = false) Long branchId) {
+            @RequestParam(required = false) UUID branchId) {
         Page<Stock> page = stockService.getStockByBranch(branchId, pageable);
         return ResponseEntity.ok(ApiResponse.ok(PagedResponse.from(page, StockResponseDto::from)));
     }
 
     @GetMapping("/low")
     public ResponseEntity<ApiResponse<List<StockResponseDto>>> getLowStock(
-            @RequestParam Long branchId) {
+            @RequestParam UUID branchId) {
         List<Stock> stockList = stockService.getLowStockByBranch(branchId);
         List<StockResponseDto> response = stockList.stream()
                 .map(StockResponseDto::from)
@@ -54,14 +56,14 @@ public class StockController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<StockResponseDto>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<StockResponseDto>> getById(@PathVariable UUID id) {
         Stock stock = stockService.getStockById(id);
         return ResponseEntity.ok(ApiResponse.ok(StockResponseDto.from(stock)));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<StockResponseDto>> update(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestBody @Valid StockRequestDto dto) {
         Stock stock = stockService.updateStock(id, dto);
         return ResponseEntity.ok(ApiResponse.updated(StockResponseDto.from(stock)));
@@ -82,7 +84,7 @@ public class StockController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         stockService.deleteStock(id);
         return ResponseEntity.ok(ApiResponse.deleted());
     }

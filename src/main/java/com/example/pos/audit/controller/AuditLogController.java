@@ -1,5 +1,7 @@
 package com.example.pos.audit.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.audit.dto.AuditLogResponseDto;
@@ -12,7 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/audit-logs")
+@RequestMapping("/api/v1/audit-logs")
 public class AuditLogController {
 
     private final AuditLogService service;
@@ -23,7 +25,7 @@ public class AuditLogController {
             @PageableDefault(size = 20) Pageable pageable,
             @RequestParam(required = false) String tableName,
             @RequestParam(required = false) String recordId,
-            @RequestParam(required = false) Long userId) {
+            @RequestParam(required = false) UUID userId) {
         Page<AuditLog> page;
         if (userId != null) page = service.getByUser(userId, pageable);
         else if (tableName != null) page = service.getByTable(tableName, recordId, pageable);

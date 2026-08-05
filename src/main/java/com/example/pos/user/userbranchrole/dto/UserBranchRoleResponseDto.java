@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.time.LocalDateTime;
 
@@ -14,14 +15,14 @@ import java.time.LocalDateTime;
 @Builder
 public class UserBranchRoleResponseDto {
 
-    private Long id;
-    private Long userId;
+    private UUID id;
+    private UUID userId;
     private String userName;
-    private Long branchId;
+    private UUID branchId;
     private String branchName;
-    private Long roleId;
+    private UUID roleId;
     private String roleName;
-    private Long assignedById;
+    private UUID assignedById;
     private String assignedByName;
     private LocalDateTime assignedAt;
     private LocalDateTime createdAt;
@@ -46,3 +47,4 @@ public class UserBranchRoleResponseDto {
                 .build();
     }
 }
+

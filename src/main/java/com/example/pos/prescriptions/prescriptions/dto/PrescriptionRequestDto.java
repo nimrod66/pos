@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -27,8 +28,9 @@ public class PrescriptionRequestDto {
 
     @Data @NoArgsConstructor @AllArgsConstructor
     public static class PrescriptionItemDto {
-        @NotNull private Long medicineId;
+        @NotNull private UUID medicineId;
         private String dosage;
         @NotNull private Integer quantity;
     }
 }
+

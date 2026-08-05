@@ -57,7 +57,7 @@ public class TerminalRegistrationService {
     }
 
     @Transactional(readOnly = true)
-    public TerminalResponseDto getById(Long id) {
+    public TerminalResponseDto getById(UUID id) {
         Terminal terminal = terminalRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Terminal not found: " + id));
         return toDto(terminal);
@@ -91,7 +91,7 @@ public class TerminalRegistrationService {
     }
 
     @Transactional(readOnly = true)
-    public List<TerminalResponseDto> listByBranch(Long branchId) {
+    public List<TerminalResponseDto> listByBranch(UUID branchId) {
         return terminalRepository.findByBranchId(branchId).stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
@@ -202,11 +202,11 @@ public class TerminalRegistrationService {
         return toPeripheralDto(peripheral);
     }
 
-    public void removePeripheral(Long peripheralId) {
+    public void removePeripheral(UUID peripheralId) {
         hardwarePeripheralRepository.deleteById(peripheralId);
     }
 
-    public HardwarePeripheralDto updatePeripheralStatus(Long peripheralId, PeripheralStatus status) {
+    public HardwarePeripheralDto updatePeripheralStatus(UUID peripheralId, PeripheralStatus status) {
         HardwarePeripheral peripheral = hardwarePeripheralRepository.findById(peripheralId)
                 .orElseThrow(() -> new ResourceNotFoundException("Hardware peripheral not found: " + peripheralId));
         peripheral.setStatus(status);

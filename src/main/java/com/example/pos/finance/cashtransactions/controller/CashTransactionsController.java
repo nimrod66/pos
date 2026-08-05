@@ -1,5 +1,7 @@
 package com.example.pos.finance.cashtransactions.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.finance.cashtransactions.dto.CashTransactionResponseDto;
@@ -12,7 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/cash-transactions")
+@RequestMapping("/api/v1/cash-transactions")
 public class CashTransactionsController {
 
     private final CashTransactionsService service;
@@ -24,7 +26,7 @@ public class CashTransactionsController {
     @GetMapping
     public ResponseEntity<ApiResponse<PagedResponse<CashTransactionResponseDto>>> getByDrawer(
             @PageableDefault(size = 20) Pageable pageable,
-            @RequestParam Long cashDrawerId) {
+            @RequestParam UUID cashDrawerId) {
         Page<CashTransactions> page = service.getByCashDrawer(cashDrawerId, pageable);
         return ResponseEntity.ok(ApiResponse.ok(PagedResponse.from(page, CashTransactionResponseDto::from)));
     }

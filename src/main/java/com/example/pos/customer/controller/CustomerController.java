@@ -1,5 +1,7 @@
 package com.example.pos.customer.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.customer.dto.CustomerRequestDto;
@@ -15,7 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/customers")
+@RequestMapping("/api/v1/customers")
 public class CustomerController {
 
     private final CustomerService service;
@@ -34,7 +36,7 @@ public class CustomerController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<CustomerResponseDto>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<CustomerResponseDto>> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(CustomerResponseDto.from(service.getById(id))));
     }
 
@@ -52,12 +54,12 @@ public class CustomerController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<CustomerResponseDto>> update(@PathVariable Long id, @RequestBody @Valid CustomerRequestDto dto) {
+    public ResponseEntity<ApiResponse<CustomerResponseDto>> update(@PathVariable UUID id, @RequestBody @Valid CustomerRequestDto dto) {
         return ResponseEntity.ok(ApiResponse.updated(CustomerResponseDto.from(service.update(id, dto))));
     }
 
     @PatchMapping("/{id}/loyalty")
-    public ResponseEntity<ApiResponse<CustomerResponseDto>> addLoyalty(@PathVariable Long id, @RequestParam int points) {
+    public ResponseEntity<ApiResponse<CustomerResponseDto>> addLoyalty(@PathVariable UUID id, @RequestParam int points) {
         return ResponseEntity.ok(ApiResponse.updated(CustomerResponseDto.from(service.addLoyaltyPoints(id, points))));
     }
 }

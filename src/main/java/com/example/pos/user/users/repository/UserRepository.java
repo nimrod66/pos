@@ -1,5 +1,7 @@
 package com.example.pos.user.users.repository;
 
+import java.util.UUID;
+
 import com.example.pos.user.users.model.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -10,17 +12,17 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.Optional;
 
-public interface UserRepository extends JpaRepository<User, Long> {
+public interface UserRepository extends JpaRepository<User, UUID> {
 
     Optional<User> findByEmail(String email);
 
     boolean existsByEmail(String email);
 
-    boolean existsByEmailAndIdNot(String email, Long id);
+    boolean existsByEmailAndIdNot(String email, UUID id);
 
     boolean existsByPhoneNumber(String phoneNumber);
 
-    List<User> findByBranchId(Long branchId);
+    List<User> findByBranchId(UUID branchId);
 
     Optional<User> findByEmailAndStatus(String email, User.Status status);
 

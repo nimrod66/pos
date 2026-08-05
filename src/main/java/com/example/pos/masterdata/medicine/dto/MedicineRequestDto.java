@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 @Data
 @NoArgsConstructor
@@ -47,16 +48,16 @@ public class MedicineRequestDto {
     private String strength;
 
     @NotNull(message = "Manufacturer ID is required")
-    private Long manufacturerId;
+    private UUID manufacturerId;
 
     @NotNull(message = "Category ID is required")
-    private Long medicineCategoriesId;
+    private UUID medicineCategoriesId;
 
-    private Long dosageFormId;
+    private UUID dosageFormId;
 
-    private Long unitId;
+    private UUID unitId;
 
-    private Long taxId;
+    private UUID taxId;
 
     private boolean requiresPrescription;
     private String description;

@@ -1,5 +1,7 @@
 package com.example.pos.procurement.goodsreceived.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.procurement.goodsreceived.dto.GoodsReceivedRequestDto;
@@ -15,7 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/goods-received")
+@RequestMapping("/api/v1/goods-received")
 public class GoodsReceivedController {
 
     private final GoodsReceivedNotesService service;
@@ -29,13 +31,13 @@ public class GoodsReceivedController {
     @GetMapping
     public ResponseEntity<ApiResponse<PagedResponse<GoodsReceivedResponseDto>>> getByPO(
             @PageableDefault(size = 20) Pageable pageable,
-            @RequestParam Long poId) {
+            @RequestParam UUID poId) {
         Page<GoodsReceivedNotes> page = service.getByPurchaseOrder(poId, pageable);
         return ResponseEntity.ok(ApiResponse.ok(PagedResponse.from(page, GoodsReceivedResponseDto::from)));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<GoodsReceivedResponseDto>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<GoodsReceivedResponseDto>> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(GoodsReceivedResponseDto.from(service.getById(id))));
     }
 }

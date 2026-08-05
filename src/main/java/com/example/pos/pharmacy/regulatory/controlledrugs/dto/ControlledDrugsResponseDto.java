@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.time.LocalDateTime;
 
@@ -14,11 +15,11 @@ import java.time.LocalDateTime;
 @Builder
 public class ControlledDrugsResponseDto {
 
-    private Long id;
-    private Long medicineId;
+    private UUID id;
+    private UUID medicineId;
     private String medicineName;
-    private Long prescriptionId;
-    private Long userId;
+    private UUID prescriptionId;
+    private UUID userId;
     private String userName;
     private Integer quantityDispensed;
     private LocalDateTime createdAt;

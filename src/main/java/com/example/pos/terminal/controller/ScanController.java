@@ -1,5 +1,7 @@
 package com.example.pos.terminal.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.masterdata.medicine.dto.MedicineResponseDto;
 import com.example.pos.masterdata.medicine.model.Medicine;
@@ -14,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/terminals")
+@RequestMapping("/api/v1/terminals")
 public class ScanController {
 
     private final ScannerService scannerService;

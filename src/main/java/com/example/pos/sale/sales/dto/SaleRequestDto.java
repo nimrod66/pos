@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -16,14 +17,14 @@ import java.util.List;
 public class SaleRequestDto {
 
     @NotNull(message = "Branch ID is required")
-    private Long branchId;
+    private UUID branchId;
 
     @NotNull(message = "User ID is required")
-    private Long userId;
+    private UUID userId;
 
     private String invoiceNumber;
     private String idempotencyKey;
-    private Long customerId;
+    private UUID customerId;
 
     @NotNull(message = "Items are required")
     private List<SaleItemDto> items;
@@ -34,7 +35,7 @@ public class SaleRequestDto {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class SaleItemDto {
-        @NotNull private Long medicineBatchesId;
+        @NotNull private UUID medicineBatchesId;
         @NotNull @Positive private Integer quantity;
         @NotNull @Positive private BigDecimal price;
         private BigDecimal discount;
@@ -51,3 +52,4 @@ public class SaleRequestDto {
         private String transactionReference;
     }
 }
+

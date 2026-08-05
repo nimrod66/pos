@@ -1,5 +1,7 @@
 package com.example.pos.masterdata.medicine.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.masterdata.medicine.dto.MedicineRequestDto;
@@ -15,7 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/medicines")
+@RequestMapping("/api/v1/medicines")
 public class MedicineController {
 
     private final MedicineService medicineService;
@@ -34,8 +36,8 @@ public class MedicineController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<PagedResponse<MedicineResponseDto>>> getAll(
-            @RequestParam(required = false) Long categoryId,
-            @RequestParam(required = false) Long manufacturerId,
+            @RequestParam(required = false) UUID categoryId,
+            @RequestParam(required = false) UUID manufacturerId,
             @RequestParam(required = false) Boolean controlled,
             @PageableDefault(size = 20) Pageable pageable) {
         Page<Medicine> page;
@@ -67,21 +69,21 @@ public class MedicineController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<MedicineResponseDto>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<MedicineResponseDto>> getById(@PathVariable UUID id) {
         Medicine medicine = medicineService.getMedicineById(id);
         return ResponseEntity.ok(ApiResponse.ok(MedicineResponseDto.from(medicine)));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<MedicineResponseDto>> update(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestBody @Valid MedicineRequestDto dto) {
         Medicine medicine = medicineService.updateMedicine(id, dto);
         return ResponseEntity.ok(ApiResponse.updated(MedicineResponseDto.from(medicine)));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         medicineService.deleteMedicine(id);
         return ResponseEntity.ok(ApiResponse.deleted());
     }

@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.time.LocalDateTime;
 
@@ -14,12 +15,12 @@ import java.time.LocalDateTime;
 public class StaffShiftRequestDto {
 
     @NotNull(message = "Branch ID is required")
-    private Long branchId;
+    private UUID branchId;
 
     @NotNull(message = "User ID is required")
-    private Long userId;
+    private UUID userId;
 
-    private Long roleId;
+    private UUID roleId;
 
     @NotBlank(message = "Shift name is required")
     private String shiftName;
@@ -31,3 +32,4 @@ public class StaffShiftRequestDto {
 
     private String remarks;
 }
+

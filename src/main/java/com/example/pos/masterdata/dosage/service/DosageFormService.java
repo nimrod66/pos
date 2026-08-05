@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -34,11 +35,11 @@ public class DosageFormService {
     public List<DosageForm> getAll() { return repository.findAll(); }
 
     @Transactional(readOnly = true)
-    public DosageForm getById(Long id) {
+    public DosageForm getById(UUID id) {
         return repository.findById(id).orElseThrow(() -> new ResourceNotFoundException("DosageForm", id));
     }
 
-    public DosageForm update(Long id, DosageFormRequestDto dto) {
+    public DosageForm update(UUID id, DosageFormRequestDto dto) {
         DosageForm form = getById(id);
         if (repository.existsByFormNameAndIdNot(dto.getFormName(), id)) {
             throw new ConflictException("Dosage form '" + dto.getFormName() + "' already exists");
@@ -48,5 +49,5 @@ public class DosageFormService {
         return repository.save(form);
     }
 
-    public void delete(Long id) { repository.delete(getById(id)); }
+    public void delete(UUID id) { repository.delete(getById(id)); }
 }

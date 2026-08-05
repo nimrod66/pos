@@ -7,6 +7,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.UUID;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -17,6 +19,6 @@ public class TerminalPrincipal {
     private String name;
     private TerminalType terminalType;
     private String appVersion;
-    private Long branchId;
+    private UUID branchId;
     private boolean active;
 }

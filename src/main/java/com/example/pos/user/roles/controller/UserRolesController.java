@@ -1,5 +1,7 @@
 package com.example.pos.user.roles.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.user.rolepermissions.model.RolePermission;
 import com.example.pos.user.roles.dto.AssignPermissionsRequestDto;
@@ -15,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/roles")
+@RequestMapping("/api/v1/roles")
 public class UserRolesController {
 
     private final UserRolesService rolesService;
@@ -40,28 +42,28 @@ public class UserRolesController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<UserRolesResponseDto>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<UserRolesResponseDto>> getById(@PathVariable UUID id) {
         UserRoles role = rolesService.getRoleById(id);
         return ResponseEntity.ok(ApiResponse.ok(UserRolesResponseDto.from(role)));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<UserRolesResponseDto>> update(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestBody @Valid UserRolesRequestDto dto) {
         UserRoles role = rolesService.updateRole(id, dto);
         return ResponseEntity.ok(ApiResponse.updated(UserRolesResponseDto.from(role)));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         rolesService.deleteRole(id);
         return ResponseEntity.ok(ApiResponse.deleted());
     }
 
     @PostMapping("/{id}/permissions")
     public ResponseEntity<ApiResponse<Void>> assignPermissions(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestBody @Valid AssignPermissionsRequestDto dto) {
         rolesService.assignPermissions(id, dto);
         return ResponseEntity.ok(ApiResponse.updated(null));
@@ -69,8 +71,8 @@ public class UserRolesController {
 
     @DeleteMapping("/{id}/permissions/{permissionId}")
     public ResponseEntity<ApiResponse<Void>> removePermission(
-            @PathVariable Long id,
-            @PathVariable Long permissionId) {
+            @PathVariable UUID id,
+            @PathVariable UUID permissionId) {
         rolesService.removePermission(id, permissionId);
         return ResponseEntity.ok(ApiResponse.deleted());
     }

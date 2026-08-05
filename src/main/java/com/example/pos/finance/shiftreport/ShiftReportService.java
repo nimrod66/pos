@@ -18,6 +18,7 @@ import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 @Transactional(readOnly = true)
@@ -41,7 +42,7 @@ public class ShiftReportService {
         this.expenseRepo = expenseRepo;
     }
 
-    public ShiftReport generate(Long shiftId) {
+    public ShiftReport generate(UUID shiftId) {
         StaffShifts shift = shiftRepo.findById(shiftId)
                 .orElseThrow(() -> new ResourceNotFoundException("Shift", shiftId));
 

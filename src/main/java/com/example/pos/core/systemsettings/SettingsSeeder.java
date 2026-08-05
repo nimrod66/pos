@@ -11,6 +11,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.UUID;
 
 @Slf4j
 @Component
@@ -47,7 +48,7 @@ public class SettingsSeeder implements CommandLineRunner {
         }
     }
 
-    private void createDefaults(Long pharmacyId, Long branchId, String pharmacyName) {
+    private void createDefaults(UUID pharmacyId, UUID branchId, String pharmacyName) {
         seed(pharmacyId, branchId, SettingKeys.Receipt.STORE_NAME, pharmacyName,
                 "Store name printed on receipts");
         seed(pharmacyId, branchId, SettingKeys.Receipt.HEADER_TEXT, pharmacyName,
@@ -120,7 +121,7 @@ public class SettingsSeeder implements CommandLineRunner {
                 "Backup frequency in hours");
     }
 
-    private void seed(Long pharmacyId, Long branchId, String key, String value, String description) {
+    private void seed(UUID pharmacyId, UUID branchId, String key, String value, String description) {
         Pharmacy pharmacy = pharmacyRepository.getReferenceById(pharmacyId);
         SystemSettings settings = SystemSettings.builder()
                 .settingKey(key)

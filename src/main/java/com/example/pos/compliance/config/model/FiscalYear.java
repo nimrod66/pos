@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
+import java.util.UUID;
 
 @Entity
 @AllArgsConstructor
@@ -29,5 +30,5 @@ public class FiscalYear extends BaseEntity {
     private boolean isCurrent = false;
 
     @Column(name = "tenant_id")
-    private Long tenantId;
+    private UUID tenantId;
 }

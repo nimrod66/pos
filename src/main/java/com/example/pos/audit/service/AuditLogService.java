@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -36,7 +37,7 @@ public class AuditLogService {
     }
 
     @Transactional(readOnly = true)
-    public Page<AuditLog> getByUser(Long userId, Pageable pageable) {
+    public Page<AuditLog> getByUser(UUID userId, Pageable pageable) {
         List<AuditLog> list = repo.findByUserId(userId);
         return new PageImpl<>(list, pageable, list.size());
     }

@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -15,18 +16,18 @@ import java.time.LocalDateTime;
 @Builder
 public class StockMovementResponseDto {
 
-    private Long id;
+    private UUID id;
     private String movementType;
-    private Long medicineBatchesId;
+    private UUID medicineBatchesId;
     private String batchNumber;
-    private Long medicineId;
+    private UUID medicineId;
     private String medicineName;
-    private Long userId;
+    private UUID userId;
     private String userName;
-    private Long branchId;
+    private UUID branchId;
     private String branchName;
     private String referenceType;
-    private Long referenceId;
+    private UUID referenceId;
     private LocalDate movementDate;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -54,3 +55,4 @@ public class StockMovementResponseDto {
                 .build();
     }
 }
+

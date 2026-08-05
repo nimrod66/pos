@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -16,18 +17,18 @@ import java.util.List;
 @Builder
 public class SaleResponseDto {
 
-    private Long id;
+    private UUID id;
     private String invoiceNumber;
     private String saleStatus;
     private String paymentStatus;
     private BigDecimal subtotal;
     private BigDecimal tax;
     private BigDecimal total;
-    private Long branchId;
+    private UUID branchId;
     private String branchName;
-    private Long userId;
+    private UUID userId;
     private String userName;
-    private Long customerId;
+    private UUID customerId;
     private String customerName;
     private List<SaleItemResponse> items;
     private List<PaymentResponse> payments;
@@ -36,8 +37,8 @@ public class SaleResponseDto {
 
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
     public static class SaleItemResponse {
-        private Long id;
-        private Long medicineBatchesId;
+        private UUID id;
+        private UUID medicineBatchesId;
         private String batchNumber;
         private String medicineName;
         private Integer quantity;
@@ -51,7 +52,7 @@ public class SaleResponseDto {
 
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
     public static class PaymentResponse {
-        private Long id;
+        private UUID id;
         private String paymentMethod;
         private BigDecimal amount;
         private String currency;

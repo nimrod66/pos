@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -53,12 +54,12 @@ public class SystemSettingsService {
     }
 
     @Transactional(readOnly = true)
-    public List<SystemSettings> getSettingsByPharmacy(Long pharmacyId) {
+    public List<SystemSettings> getSettingsByPharmacy(UUID pharmacyId) {
         return settingsRepository.findByPharmacyId(pharmacyId);
     }
 
     @Transactional(readOnly = true)
-    public List<SystemSettings> getSettingsByBranch(Long branchId) {
+    public List<SystemSettings> getSettingsByBranch(UUID branchId) {
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new ResourceNotFoundException("Branch", branchId));
         return settingsRepository.findByPharmacyIdAndBranchId(
@@ -66,18 +67,18 @@ public class SystemSettingsService {
     }
 
     @Transactional(readOnly = true)
-    public List<SystemSettings> getPharmacyWideSettings(Long pharmacyId) {
+    public List<SystemSettings> getPharmacyWideSettings(UUID pharmacyId) {
         return settingsRepository.findByPharmacyIdAndBranchIsNull(pharmacyId);
     }
 
     @Transactional(readOnly = true)
-    public SystemSettings getSettingById(Long id) {
+    public SystemSettings getSettingById(UUID id) {
         return settingsRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("SystemSetting", id));
     }
 
     @Transactional(readOnly = true)
-    public SystemSettings resolveSetting(String key, Long branchId, Long pharmacyId) {
+    public SystemSettings resolveSetting(String key, UUID branchId, UUID pharmacyId) {
         SystemSettings override = settingsRepository.findSetting(key, branchId, pharmacyId).orElse(null);
         if (override != null) {
             return override;
@@ -87,12 +88,12 @@ public class SystemSettingsService {
     }
 
     @Transactional(readOnly = true)
-    public String resolveSettingValue(String key, Long branchId, Long pharmacyId, String defaultValue) {
+    public String resolveSettingValue(String key, UUID branchId, UUID pharmacyId, String defaultValue) {
         SystemSettings setting = resolveSetting(key, branchId, pharmacyId);
         return setting != null ? setting.getSettingValue() : defaultValue;
     }
 
-    public SystemSettings updateSetting(Long id, SystemSettingsRequestDto dto) {
+    public SystemSettings updateSetting(UUID id, SystemSettingsRequestDto dto) {
         SystemSettings settings = getSettingById(id);
 
         if (dto.getBranchId() != null) {
@@ -115,7 +116,7 @@ public class SystemSettingsService {
         return settingsRepository.save(settings);
     }
 
-    public void deleteSetting(Long id) {
+    public void deleteSetting(UUID id) {
         SystemSettings settings = getSettingById(id);
         settingsRepository.delete(settings);
     }

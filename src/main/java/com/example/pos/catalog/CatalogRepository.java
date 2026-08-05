@@ -1,12 +1,14 @@
 package com.example.pos.catalog;
 
+import java.util.UUID;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 import java.util.Optional;
 
-public interface CatalogRepository extends JpaRepository<Catalog, Long> {
+public interface CatalogRepository extends JpaRepository<Catalog, UUID> {
 
     List<Catalog> findBySupplier(String supplier);
 

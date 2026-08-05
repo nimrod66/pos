@@ -1,5 +1,7 @@
 package com.example.pos.sync.event;
 
+import java.util.UUID;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

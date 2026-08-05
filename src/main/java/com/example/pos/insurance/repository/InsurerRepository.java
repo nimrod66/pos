@@ -1,12 +1,14 @@
 package com.example.pos.insurance.repository;
 
+import java.util.UUID;
+
 import com.example.pos.insurance.model.Insurer;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 import java.util.Optional;
 
-public interface InsurerRepository extends JpaRepository<Insurer, Long> {
+public interface InsurerRepository extends JpaRepository<Insurer, UUID> {
 
     Optional<Insurer> findByCode(String code);
 

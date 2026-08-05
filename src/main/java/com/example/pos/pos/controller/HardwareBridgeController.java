@@ -1,12 +1,14 @@
 package com.example.pos.pos.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/hardware")
+@RequestMapping("/api/v1/hardware")
 public class HardwareBridgeController {
 
     @GetMapping("/status")

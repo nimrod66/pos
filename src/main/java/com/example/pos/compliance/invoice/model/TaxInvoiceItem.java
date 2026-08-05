@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 @Entity
 @AllArgsConstructor
@@ -20,7 +21,7 @@ public class TaxInvoiceItem extends BaseEntity {
     private TaxInvoice taxInvoice;
 
     @Column(name = "medicine_id")
-    private Long medicineId;
+    private UUID medicineId;
 
     @Column(name = "medicine_name")
     private String medicineName;

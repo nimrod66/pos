@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 import java.time.LocalDateTime;
 
@@ -14,7 +15,7 @@ import java.time.LocalDateTime;
 @Builder
 public class ManufacturerResponseDto {
 
-    private Long id;
+    private UUID id;
     private String manufacturerName;
     private String manufacturerCountry;
     private String manufacturerContact;
@@ -32,3 +33,4 @@ public class ManufacturerResponseDto {
                 .build();
     }
 }
+

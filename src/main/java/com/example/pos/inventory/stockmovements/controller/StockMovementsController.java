@@ -1,5 +1,7 @@
 package com.example.pos.inventory.stockmovements.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.inventory.stockmovements.dto.StockMovementRequestDto;
@@ -18,7 +20,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 
 @RestController
-@RequestMapping("/api/stock-movements")
+@RequestMapping("/api/v1/stock-movements")
 public class StockMovementsController {
 
     private final StockMovementsService movementsService;
@@ -38,8 +40,8 @@ public class StockMovementsController {
     @GetMapping
     public ResponseEntity<ApiResponse<PagedResponse<StockMovementResponseDto>>> getAll(
             @PageableDefault(size = 20) Pageable pageable,
-            @RequestParam(required = false) Long batchId,
-            @RequestParam(required = false) Long branchId,
+            @RequestParam(required = false) UUID batchId,
+            @RequestParam(required = false) UUID branchId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end) {
         Page<StockMovements> page;
@@ -56,7 +58,7 @@ public class StockMovementsController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<StockMovementResponseDto>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<StockMovementResponseDto>> getById(@PathVariable UUID id) {
         StockMovements movement = movementsService.getMovementById(id);
         return ResponseEntity.ok(ApiResponse.ok(StockMovementResponseDto.from(movement)));
     }

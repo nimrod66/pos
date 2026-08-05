@@ -1,5 +1,7 @@
 package com.example.pos.finance.expenses.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.common.dto.PagedResponse;
 import com.example.pos.finance.expenses.dto.ExpensesRequestDto;
@@ -15,7 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/expenses")
+@RequestMapping("/api/v1/expenses")
 public class ExpensesController {
 
     private final ExpensesService service;
@@ -35,15 +37,15 @@ public class ExpensesController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<ExpensesResponseDto>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<ExpensesResponseDto>> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(ExpensesResponseDto.from(service.getById(id))));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<ExpensesResponseDto>> update(@PathVariable Long id, @RequestBody @Valid ExpensesRequestDto dto) {
+    public ResponseEntity<ApiResponse<ExpensesResponseDto>> update(@PathVariable UUID id, @RequestBody @Valid ExpensesRequestDto dto) {
         return ResponseEntity.ok(ApiResponse.updated(ExpensesResponseDto.from(service.update(id, dto))));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) { service.delete(id); return ResponseEntity.ok(ApiResponse.deleted()); }
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) { service.delete(id); return ResponseEntity.ok(ApiResponse.deleted()); }
 }

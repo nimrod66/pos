@@ -2,11 +2,13 @@ package com.example.pos.procurement.goodsreceived.model;
 
 import com.example.pos.common.BaseEntity;
 import com.example.pos.procurement.purchaseorders.model.PurchaseOrders;
-import com.example.pos.user.users.model.User;
+import com.example.pos.procurement.suppliers.model.Suppliers;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @AllArgsConstructor
@@ -16,16 +18,29 @@ import java.time.LocalDateTime;
 @Builder
 @Table(name = "goods_received_notes")
 public class GoodsReceivedNotes extends BaseEntity {
-    //link purchase order id, link user id
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
-    private User user;
+    @JoinColumn(name = "supplier_id", nullable = false)
+    private Suppliers supplier;
+
+    @Column(name = "supplier_invoice_number", length = 100)
+    private String supplierInvoiceNumber;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "purchase_orders_id")
     private PurchaseOrders purchaseOrders;
 
+    @Column(name = "received_at", nullable = false)
+    @Builder.Default
+    private LocalDateTime receivedAt = LocalDateTime.now();
 
-    private LocalDateTime receivedAt;
+    @Column(length = 500)
     private String remarks;
+
+    @Builder.Default
+    @OneToMany(mappedBy = "goodsReceivedNotes", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<GRNLine> lines = new ArrayList<>();
+
+    @Column(name = "idempotency_key", length = 64)
+    private String idempotencyKey;
 }

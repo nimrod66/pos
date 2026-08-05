@@ -1,5 +1,7 @@
 package com.example.pos.masterdata.medicine.repository;
 
+import java.util.UUID;
+
 import com.example.pos.masterdata.medicine.model.Medicine;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -10,7 +12,7 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.Optional;
 
-public interface MedicineRepository extends JpaRepository<Medicine, Long> {
+public interface MedicineRepository extends JpaRepository<Medicine, UUID> {
 
     Optional<Medicine> findByBarcode(String barcode);
 
@@ -18,19 +20,19 @@ public interface MedicineRepository extends JpaRepository<Medicine, Long> {
 
     boolean existsByBarcode(String barcode);
 
-    boolean existsByBarcodeAndIdNot(String barcode, Long id);
+    boolean existsByBarcodeAndIdNot(String barcode, UUID id);
 
     boolean existsBySku(String sku);
 
-    boolean existsBySkuAndIdNot(String sku, Long id);
+    boolean existsBySkuAndIdNot(String sku, UUID id);
 
-    List<Medicine> findByMedicineCategoriesId(Long categoryId);
+    List<Medicine> findByMedicineCategoriesId(UUID categoryId);
 
-    Page<Medicine> findByMedicineCategoriesId(Long categoryId, Pageable pageable);
+    Page<Medicine> findByMedicineCategoriesId(UUID categoryId, Pageable pageable);
 
-    List<Medicine> findByManufacturerId(Long manufacturerId);
+    List<Medicine> findByManufacturerId(UUID manufacturerId);
 
-    Page<Medicine> findByManufacturerId(Long manufacturerId, Pageable pageable);
+    Page<Medicine> findByManufacturerId(UUID manufacturerId, Pageable pageable);
 
     List<Medicine> findByIsControlledDrugTrue();
 

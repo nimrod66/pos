@@ -1,5 +1,7 @@
 package com.example.pos.pharmacy.regulatory.expiry.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.pharmacy.regulatory.expiry.dto.ExpiryLogRequestDto;
 import com.example.pos.pharmacy.regulatory.expiry.dto.ExpiryLogResponseDto;
@@ -13,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/expiry-logs")
+@RequestMapping("/api/v1/expiry-logs")
 public class ExpiryLogsController {
 
     private final ExpiryLogsService service;
@@ -25,7 +27,7 @@ public class ExpiryLogsController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<ExpiryLogResponseDto>>> getAll(@RequestParam(required = false) Long batchId) {
+    public ResponseEntity<ApiResponse<List<ExpiryLogResponseDto>>> getAll(@RequestParam(required = false) UUID batchId) {
         List<ExpiryLogs> list = batchId != null ? service.getByBatch(batchId) : service.getAll();
         return ResponseEntity.ok(ApiResponse.ok(list.stream().map(ExpiryLogResponseDto::from).toList()));
     }

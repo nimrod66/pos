@@ -1,5 +1,7 @@
 package com.example.pos.sale.receipts.controller;
 
+import java.util.UUID;
+
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.common.exception.ResourceNotFoundException;
 import com.example.pos.sale.receipts.service.ReceiptData;
@@ -10,7 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/receipts")
+@RequestMapping("/api/v1/receipts")
 public class ReceiptController {
 
     private final SalesRepository salesRepo;
@@ -22,14 +24,14 @@ public class ReceiptController {
     }
 
     @GetMapping("/{saleId}")
-    public ResponseEntity<ApiResponse<ReceiptData>> getReceipt(@PathVariable Long saleId) {
+    public ResponseEntity<ApiResponse<ReceiptData>> getReceipt(@PathVariable UUID saleId) {
         Sales sale = salesRepo.findById(saleId)
                 .orElseThrow(() -> new ResourceNotFoundException("Sale", saleId));
         return ResponseEntity.ok(ApiResponse.ok(receiptService.generate(sale)));
     }
 
     @GetMapping("/{saleId}/print")
-    public ResponseEntity<String> getReceiptEscPos(@PathVariable Long saleId) {
+    public ResponseEntity<String> getReceiptEscPos(@PathVariable UUID saleId) {
         Sales sale = salesRepo.findById(saleId)
                 .orElseThrow(() -> new ResourceNotFoundException("Sale", saleId));
         return ResponseEntity.ok(receiptService.generateEscPos(sale));
