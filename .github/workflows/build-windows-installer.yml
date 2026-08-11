@@ -1,0 +1,71 @@
+name: Build Windows Pilot Installer
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - main
+      - "agent/**"
+      - "codex/**"
+    tags:
+      - "v*-pilot*"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Test backend
+        run: |
+          chmod +x mvnw
+          ./mvnw test
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24.18.0"
+          cache: npm
+          cache-dependency-path: pharmacy-frontend/package-lock.json
+      - name: Validate frontend
+        working-directory: pharmacy-frontend
+        run: |
+          npm ci
+          npm run lint
+          npm test
+          npm run build
+
+  installer:
+    needs: validate
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --no-progress --yes
+      - name: Build installer
+        shell: pwsh
+        run: .\installer\build-installer.ps1
+      - uses: actions/upload-artifact@v7
+        with:
+          name: PharmacyPOS-Pilot-Setup
+          path: outputs/installer/PharmacyPOS-Pilot-Setup.exe
+          if-no-files-found: error
+      - name: Publish prerelease
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "$env:GITHUB_REF_NAME"
+          "outputs/installer/PharmacyPOS-Pilot-Setup.exe"
+          --prerelease --generate-notes
+          --title "Pharmacy POS $env:GITHUB_REF_NAME"

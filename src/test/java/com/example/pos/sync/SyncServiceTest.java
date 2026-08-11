@@ -17,6 +17,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import org.mockito.ArgumentCaptor;
 
 @ExtendWith(MockitoExtension.class)
 class SyncServiceTest {
@@ -35,10 +36,17 @@ class SyncServiceTest {
 
     @Test
     void shouldWriteOutboxEventWithCorrectVersioning() {
+        when(syncProperties.isEnabled()).thenReturn(true);
         when(terminalConfig.getTerminalId()).thenReturn("TERM-TEST01");
         when(outboxRepo.countByAggregateTypeAndAggregateId("SALE", "uuid-123")).thenReturn(3L);
         SyncService svc = new SyncService(outboxRepo, connectivity, terminalConfig, syncProperties);
         svc.writeOutboxEvent(EventType.SALE_CREATED, "SALE", "uuid-123", "{}");
+
+        ArgumentCaptor<SyncEvent> event = ArgumentCaptor.forClass(SyncEvent.class);
+        verify(outboxRepo).save(event.capture());
+        assertThat(event.getValue().getAggregateVersion()).isEqualTo(4);
+        assertThat(event.getValue().getSequenceNumber()).isEqualTo(4);
+        assertThat(event.getValue().getTerminalId()).isEqualTo("TERM-TEST01");
     }
 
     @Test

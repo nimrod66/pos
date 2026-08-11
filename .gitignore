@@ -36,3 +36,6 @@ pos-data/
 # Build
 *.jar
 !target/*.jar
+/outputs/
+/installer/output/
+/.env.pilot

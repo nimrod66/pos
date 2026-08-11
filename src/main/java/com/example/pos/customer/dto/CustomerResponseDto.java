@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 public class CustomerResponseDto {
 
     private UUID id;
+    private UUID pharmacyId;
     private String firstName;
     private String lastName;
     private String phoneNumber;
@@ -29,6 +30,7 @@ public class CustomerResponseDto {
     public static CustomerResponseDto from(Customer c) {
         return CustomerResponseDto.builder()
                 .id(c.getId()).firstName(c.getFirstName()).lastName(c.getLastName())
+                .pharmacyId(c.getPharmacy() != null ? c.getPharmacy().getId() : null)
                 .phoneNumber(c.getPhoneNumber()).email(c.getEmail()).address(c.getAddress())
                 .loyaltyPoints(c.getLoyaltyPoints()).notes(c.getNotes())
                 .createdAt(c.getCreatedAt()).updatedAt(c.getUpdatedAt()).build();

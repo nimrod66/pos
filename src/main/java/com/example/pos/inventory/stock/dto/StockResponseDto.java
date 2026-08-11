@@ -25,6 +25,7 @@ public class StockResponseDto {
     private String branchName;
     private Integer quantityAvailable;
     private Integer reservedQuantity;
+    private Integer quantityQuarantined;
     private Integer minimumStock;
     private Integer maximumStock;
     private Integer reorderLevel;
@@ -48,6 +49,7 @@ public class StockResponseDto {
                 .branchName(stock.getBranch() != null ? stock.getBranch().getBranchName() : null)
                 .quantityAvailable(stock.getQuantityAvailable())
                 .reservedQuantity(stock.getReservedQuantity())
+                .quantityQuarantined(stock.getQuantityQuarantined())
                 .minimumStock(stock.getMinimumStock())
                 .maximumStock(stock.getMaximumStock())
                 .reorderLevel(stock.getReorderLevel())

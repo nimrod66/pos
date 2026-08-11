@@ -32,7 +32,7 @@ public class EfrisFiscalDocument extends FiscalDocument {
     @Column(name = "buyer_tin", length = 20)
     private String buyerTin;
 
-    @Column(name = "raw_response", columnDefinition = "LONGTEXT")
+    @Column(name = "raw_response", columnDefinition = "TEXT")
     private String rawResponse;
 
     @Column(name = "sale_id")

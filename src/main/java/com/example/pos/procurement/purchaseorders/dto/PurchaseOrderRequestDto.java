@@ -2,6 +2,10 @@ package com.example.pos.procurement.purchaseorders.dto;
 
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -27,15 +31,19 @@ public class PurchaseOrderRequestDto {
 
     private LocalDateTime expectedDeliveryDate;
 
-    @NotNull
+    @NotEmpty
+    @Valid
     private List<OrderItemDto> items;
 
     @Data @NoArgsConstructor @AllArgsConstructor
     public static class OrderItemDto {
         @NotNull private UUID medicineId;
         @NotNull @Positive private Integer quantity;
-        @NotNull @Positive private BigDecimal buyingPrice;
+        @NotNull @DecimalMin("0.01") @Digits(integer = 12, fraction = 2)
+        private BigDecimal buyingPrice;
+        @DecimalMin("0.00") @Digits(integer = 12, fraction = 2)
         private BigDecimal discount;
+        @DecimalMin("0.00") @Digits(integer = 12, fraction = 2)
         private BigDecimal tax;
     }
 }

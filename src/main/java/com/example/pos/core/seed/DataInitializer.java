@@ -4,6 +4,7 @@ import com.example.pos.core.branch.model.Branch;
 import com.example.pos.core.branch.repository.BranchRepository;
 import com.example.pos.core.pharmacy.model.Pharmacy;
 import com.example.pos.core.pharmacy.repository.PharmacyRepository;
+import com.example.pos.security.auth.PermissionCodes;
 import com.example.pos.user.permissions.model.Permissions;
 import com.example.pos.user.permissions.repository.PermissionsRepository;
 import com.example.pos.user.rolepermissions.model.RolePermission;
@@ -16,6 +17,7 @@ import com.example.pos.user.users.model.User;
 import com.example.pos.user.users.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -23,11 +25,30 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 @Component
 @Order(1)
+@ConditionalOnProperty(name = "pos.seed.demo-enabled", havingValue = "true")
 public class DataInitializer implements CommandLineRunner {
+
+    private static final String DEMO_PHARMACY_EMAIL = "admin@demopharmacy.co.ke";
+    private static final String DEMO_BRANCH_CODE = "MAIN";
+
+    private static final List<DemoAccount> DEMO_ACCOUNTS = List.of(
+            new DemoAccount("System", "Admin", "admin@demo.com", "admin123",
+                    "0700000000", List.of("OWNER")),
+            new DemoAccount("Branch", "Manager", "manager@demo.com", "manager123",
+                    "0700000001", List.of("BRANCH_MANAGER")),
+            new DemoAccount("Duty", "Pharmacist", "pharmacist@demo.com", "pharmacist123",
+                    "0700000002", List.of("PHARMACIST")),
+            new DemoAccount("Main", "Cashier", "cashier@demo.com", "cashier123",
+                    "0700000003", List.of("CASHIER")),
+            new DemoAccount("Store", "Keeper", "storekeeper@demo.com", "stock1234",
+                    "0700000004", List.of("STORE_KEEPER")),
+            new DemoAccount("Pharmacy", "Technician", "technician@demo.com", "tech12345",
+                    "0700000005", List.of("CASHIER", "STORE_KEEPER")));
 
     private final PharmacyRepository pharmacyRepo;
     private final BranchRepository branchRepo;
@@ -54,68 +75,28 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        if (pharmacyRepo.count() > 0) {
-            return;
-        }
-
-        log.info("Seeding demo data...");
-
-        Pharmacy pharmacy = Pharmacy.builder()
-                .name("Demo Pharmacy Ltd")
-                .address("123 Healthcare Street, Nairobi")
-                .phoneNumber("0712345678")
-                .email("admin@demopharmacy.co.ke")
-                .licenseNumber("PPB-DEMO-001")
-                .kraPin("P051234567A")
-                .build();
-        pharmacy = pharmacyRepo.save(pharmacy);
-
-        Branch branch = Branch.builder()
-                .branchName("Main Branch")
-                .branchCode("MAIN")
-                .phoneNumber("0712345678")
-                .email("main@demopharmacy.co.ke")
-                .location("Ground Floor, Healthcare Plaza")
-                .pharmacy(pharmacy)
-                .status(Branch.Status.ACTIVE)
-                .build();
-        branch = branchRepo.save(branch);
+        log.info("Ensuring local demo data is available...");
 
         Map<String, String> roleNames = Map.of(
                 "OWNER", "Full system access, pharmacy owner",
-                "PLATFORM_ADMIN", "Platform-level admin, manage pharmacies",
                 "BRANCH_MANAGER", "Manage branch operations",
                 "PHARMACIST", "Dispense prescriptions, manage medicines",
                 "CASHIER", "Process sales and payments",
                 "STORE_KEEPER", "Manage inventory and stock"
         );
 
-        Map<String, List<String>> permsByModule = new java.util.LinkedHashMap<>();
-        permsByModule.put("SALES", List.of("CREATE_SALE", "VIEW_SALE", "VOID_SALE", "PROCESS_RETURN"));
-        permsByModule.put("INVENTORY", List.of("VIEW_STOCK", "ADJUST_STOCK", "RECEIVE_STOCK", "TRANSFER_STOCK"));
-        permsByModule.put("PURCHASE", List.of("CREATE_PO", "APPROVE_PO", "VIEW_PO", "RECEIVE_GOODS"));
-        permsByModule.put("MEDICINES", List.of("CREATE_MEDICINE", "EDIT_MEDICINE", "DELETE_MEDICINE", "VIEW_MEDICINE"));
-        permsByModule.put("USERS", List.of("CREATE_USER", "EDIT_USER", "DELETE_USER", "VIEW_USER"));
-        permsByModule.put("ROLES", List.of("MANAGE_ROLES", "MANAGE_PERMISSIONS"));
-        permsByModule.put("REPORTS", List.of("VIEW_REPORTS", "EXPORT_REPORTS"));
-        permsByModule.put("FINANCE", List.of("VIEW_FINANCE", "MANAGE_EXPENSES", "MANAGE_CASH_DRAWER"));
-        permsByModule.put("PRESCRIPTIONS", List.of("CREATE_PRESCRIPTION", "DISPENSE", "VIEW_PRESCRIPTION"));
-        permsByModule.put("SETTINGS", List.of("MANAGE_SETTINGS"));
-        permsByModule.put("PHARMACY", List.of("MANAGE_PHARMACY", "MANAGE_BRANCH"));
-        permsByModule.put("COMPLIANCE", List.of("VIEW_AUDIT", "MANAGE_ETIMS", "MANAGE_CONTROLLED"));
-
-        for (Map.Entry<String, List<String>> entry : permsByModule.entrySet()) {
-            String module = entry.getKey();
-            for (String action : entry.getValue()) {
-                if (!permRepo.existsByPermissionName(module + "_" + action)) {
-                    Permissions perm = Permissions.builder()
-                            .permissionName(module + "_" + action)
-                            .moduleName(module)
-                            .actionName(action)
-                            .description(action.replace("_", " "))
-                            .build();
-                    permRepo.save(perm);
-                }
+        for (String code : PermissionCodes.ALL) {
+            int separator = code.indexOf('.');
+            String module = code.substring(0, separator);
+            String action = code.substring(separator + 1);
+            if (!permRepo.existsByPermissionName(code)) {
+                Permissions perm = Permissions.builder()
+                        .permissionName(code)
+                        .moduleName(module)
+                        .actionName(action)
+                        .description(action.replace('.', ' '))
+                        .build();
+                permRepo.save(perm);
             }
         }
 
@@ -129,58 +110,102 @@ public class DataInitializer implements CommandLineRunner {
             }
         }
 
-        UserRoles ownerRole = rolesRepo.findByRoleName("OWNER").orElseThrow();
-        List<Permissions> allPermissions = permRepo.findAll();
-        for (Permissions p : allPermissions) {
-            RolePermission rp = RolePermission.builder()
-                    .userRoles(ownerRole)
-                    .permissions(p)
-                    .build();
-            rolePermRepo.save(rp);
+        for (Map.Entry<String, List<String>> bundle : PermissionCodes.ROLE_BUNDLES.entrySet()) {
+            assignPermissions(bundle.getKey(), bundle.getValue());
         }
 
-        assignRoleToModulePerms("BRANCH_MANAGER", List.of("SALES", "INVENTORY", "PURCHASE", "MEDICINES", "REPORTS", "FINANCE", "PRESCRIPTIONS", "COMPLIANCE"));
-        assignRoleToModulePerms("PHARMACIST", List.of("SALES", "MEDICINES", "PRESCRIPTIONS", "INVENTORY"));
-        assignRoleToModulePerms("CASHIER", List.of("SALES"));
-        assignRoleToModulePerms("STORE_KEEPER", List.of("INVENTORY", "PURCHASE", "MEDICINES"));
+        Optional<Pharmacy> existingDemoPharmacy = pharmacyRepo.findByEmail(DEMO_PHARMACY_EMAIL);
+        if (existingDemoPharmacy.isEmpty() && pharmacyRepo.count() > 0) {
+            log.warn("Demo seeding is enabled, but this database already belongs to another pharmacy. "
+                    + "Skipping demo users to avoid changing tenant data.");
+            return;
+        }
 
-        User admin = User.builder()
-                .firstName("System")
-                .lastName("Admin")
-                .email("admin@demo.com")
-                .passwordHash(passwordEncoder.encode("admin123"))
-                .phoneNumber("0700000000")
-                .branch(branch)
-                .status(User.Status.ACTIVE)
-                .lastLogin(LocalDateTime.now())
-                .build();
-        admin = userRepo.save(admin);
+        Pharmacy pharmacy = existingDemoPharmacy.orElseGet(this::createDemoPharmacy);
+        Branch branch = branchRepo.findByPharmacyId(pharmacy.getId()).stream()
+                .filter(candidate -> DEMO_BRANCH_CODE.equalsIgnoreCase(candidate.getBranchCode()))
+                .findFirst()
+                .orElseGet(() -> createDemoBranch(pharmacy));
 
-        UserBranchRole ubr = UserBranchRole.builder()
-                .user(admin)
-                .branch(branch)
-                .role(ownerRole)
-                .assignedBy(admin)
-                .assignedAt(LocalDateTime.now())
-                .build();
-        ubrRepo.save(ubr);
+        DemoAccount ownerAccount = DEMO_ACCOUNTS.getFirst();
+        User owner = ensureDemoUser(ownerAccount, branch);
+        assignRoles(owner, branch, owner, ownerAccount.roles());
 
-        log.info("Demo data seeded. Login: admin@demo.com / admin123");
+        for (DemoAccount account : DEMO_ACCOUNTS.subList(1, DEMO_ACCOUNTS.size())) {
+            User user = ensureDemoUser(account, branch);
+            assignRoles(user, branch, owner, account.roles());
+        }
+
+        log.info("Demo data ready. {} role-based login accounts are available.", DEMO_ACCOUNTS.size());
     }
 
-    private void assignRoleToModulePerms(String roleName, List<String> modules) {
+    private Pharmacy createDemoPharmacy() {
+        return pharmacyRepo.save(Pharmacy.builder()
+                .name("Demo Pharmacy Ltd")
+                .address("123 Healthcare Street, Nairobi")
+                .phoneNumber("0712345678")
+                .email(DEMO_PHARMACY_EMAIL)
+                .licenseNumber("PPB-DEMO-001")
+                .kraPin("P051234567A")
+                .build());
+    }
+
+    private Branch createDemoBranch(Pharmacy pharmacy) {
+        return branchRepo.save(Branch.builder()
+                .branchName("Main Branch")
+                .branchCode(DEMO_BRANCH_CODE)
+                .phoneNumber("0712345678")
+                .email("main@demopharmacy.co.ke")
+                .location("Ground Floor, Healthcare Plaza")
+                .pharmacy(pharmacy)
+                .status(Branch.Status.ACTIVE)
+                .build());
+    }
+
+    private User ensureDemoUser(DemoAccount account, Branch branch) {
+        return userRepo.findByEmail(account.email()).orElseGet(() -> userRepo.save(User.builder()
+                .firstName(account.firstName())
+                .lastName(account.lastName())
+                .email(account.email())
+                .passwordHash(passwordEncoder.encode(account.password()))
+                .phoneNumber(account.phoneNumber())
+                .branch(branch)
+                .status(User.Status.ACTIVE)
+                .build()));
+    }
+
+    private void assignRoles(User user, Branch branch, User assignedBy, List<String> roleNames) {
+        for (String roleName : roleNames) {
+            UserRoles role = rolesRepo.findByRoleName(roleName).orElseThrow();
+            if (ubrRepo.existsByUserIdAndBranchIdAndRoleId(
+                    user.getId(), branch.getId(), role.getId())) {
+                continue;
+            }
+            ubrRepo.save(UserBranchRole.builder()
+                    .user(user)
+                    .branch(branch)
+                    .role(role)
+                    .assignedBy(assignedBy)
+                    .assignedAt(LocalDateTime.now())
+                    .build());
+        }
+    }
+
+    private void assignPermissions(String roleName, List<String> permissionCodes) {
         UserRoles role = rolesRepo.findByRoleName(roleName).orElseThrow();
-        for (String module : modules) {
-            List<Permissions> perms = permRepo.findByModuleName(module);
-            for (Permissions p : perms) {
-                if (rolePermRepo.findByUserRolesAndPermissionsId(role, p.getId()).isEmpty()) {
-                    RolePermission rp = RolePermission.builder()
-                            .userRoles(role)
-                            .permissions(p)
-                            .build();
-                    rolePermRepo.save(rp);
-                }
+        for (String permissionCode : permissionCodes) {
+            Permissions permission = permRepo.findByPermissionName(permissionCode).orElseThrow();
+            if (rolePermRepo.findByUserRolesAndPermissionsId(role, permission.getId()).isEmpty()) {
+                RolePermission rp = RolePermission.builder()
+                        .userRoles(role)
+                        .permissions(permission)
+                        .build();
+                rolePermRepo.save(rp);
             }
         }
+    }
+
+    private record DemoAccount(String firstName, String lastName, String email, String password,
+                               String phoneNumber, List<String> roles) {
     }
 }

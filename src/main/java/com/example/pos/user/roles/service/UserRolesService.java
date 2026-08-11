@@ -2,6 +2,8 @@ package com.example.pos.user.roles.service;
 
 import com.example.pos.common.exception.ConflictException;
 import com.example.pos.common.exception.ResourceNotFoundException;
+import com.example.pos.common.exception.ForbiddenException;
+import com.example.pos.security.auth.PermissionCodes;
 import com.example.pos.user.permissions.model.Permissions;
 import com.example.pos.user.permissions.repository.PermissionsRepository;
 import com.example.pos.user.rolepermissions.model.RolePermission;
@@ -33,22 +35,20 @@ public class UserRolesService {
     }
 
     public UserRoles createRole(UserRolesRequestDto dto) {
-        if (rolesRepository.existsByRoleName(dto.getRoleName())) {
-            throw new ConflictException("Role '" + dto.getRoleName() + "' already exists");
-        }
-        UserRoles role = new UserRoles();
-        role.setRoleName(dto.getRoleName());
-        return rolesRepository.save(role);
+        throw canonicalRolesOnly();
     }
 
     @Transactional(readOnly = true)
     public List<UserRoles> getAllRoles() {
-        return rolesRepository.findAll();
+        return rolesRepository.findAll().stream()
+                .filter(role -> PermissionCodes.ROLE_BUNDLES.containsKey(role.getRoleName()))
+                .toList();
     }
 
     @Transactional(readOnly = true)
     public UserRoles getRoleById(UUID id) {
         return rolesRepository.findById(id)
+                .filter(role -> PermissionCodes.ROLE_BUNDLES.containsKey(role.getRoleName()))
                 .orElseThrow(() -> new ResourceNotFoundException("UserRoles", id));
     }
 
@@ -59,44 +59,22 @@ public class UserRolesService {
     }
 
     public UserRoles updateRole(UUID id, UserRolesRequestDto dto) {
-        UserRoles role = getRoleById(id);
-        if (rolesRepository.existsByRoleNameAndIdNot(dto.getRoleName(), id)) {
-            throw new ConflictException("Role '" + dto.getRoleName() + "' already exists");
-        }
-        role.setRoleName(dto.getRoleName());
-        return rolesRepository.save(role);
+        throw canonicalRolesOnly();
     }
 
     public void deleteRole(UUID id) {
-        UserRoles role = getRoleById(id);
-        rolesRepository.delete(role);
+        throw canonicalRolesOnly();
     }
 
     public List<RolePermission> assignPermissions(UUID roleId, AssignPermissionsRequestDto dto) {
-        UserRoles role = getRoleById(roleId);
-        List<Permissions> permissions = permissionsRepository.findAllById(dto.getPermissionIds());
-
-        if (permissions.size() != dto.getPermissionIds().size()) {
-            throw new ResourceNotFoundException("One or more permissions not found");
-        }
-
-        List<RolePermission> assignments = permissions.stream()
-                .map(permission -> {
-                    RolePermission rp = new RolePermission();
-                    rp.setUserRoles(role);
-                    rp.setPermissions(permission);
-                    return rp;
-                })
-                .toList();
-
-        return rolePermissionRepository.saveAll(assignments);
+        throw canonicalRolesOnly();
     }
 
     public void removePermission(UUID roleId, UUID permissionId) {
-        UserRoles role = getRoleById(roleId);
-        RolePermission assignment = rolePermissionRepository.findByUserRolesAndPermissionsId(role, permissionId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "RolePermission assignment for role " + roleId + " and permission " + permissionId));
-        rolePermissionRepository.delete(assignment);
+        throw canonicalRolesOnly();
+    }
+
+    private ForbiddenException canonicalRolesOnly() {
+        return new ForbiddenException("Roles and permission bundles are fixed by the shared POS specification");
     }
 }

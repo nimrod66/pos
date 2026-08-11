@@ -30,8 +30,7 @@ public class UserRequestDto {
     @NotBlank(message = "Email is required")
     private String email;
 
-    @NotBlank(message = "Password is required")
-    @Size(min = 6, message = "Password must be at least 6 characters")
+    @Size(min = 8, max = 128, message = "Password must be 8-128 characters")
     private String password;
 
     @NotNull(message = "Branch ID is required")

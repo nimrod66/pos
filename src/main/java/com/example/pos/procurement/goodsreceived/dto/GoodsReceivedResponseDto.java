@@ -23,6 +23,10 @@ public class GoodsReceivedResponseDto {
     private String supplierName;
     private String supplierInvoiceNumber;
     private UUID purchaseOrderId;
+    private UUID branchId;
+    private String branchName;
+    private UUID receivedByUserId;
+    private String receivedByName;
     private LocalDateTime receivedAt;
     private String remarks;
     private String idempotencyKey;
@@ -52,6 +56,13 @@ public class GoodsReceivedResponseDto {
                 .supplierName(grn.getSupplier() != null ? grn.getSupplier().getSupplierName() : null)
                 .supplierInvoiceNumber(grn.getSupplierInvoiceNumber())
                 .purchaseOrderId(grn.getPurchaseOrders() != null ? grn.getPurchaseOrders().getId() : null)
+                .branchId(grn.getBranch() != null ? grn.getBranch().getId() : null)
+                .branchName(grn.getBranch() != null ? grn.getBranch().getBranchName() : null)
+                .receivedByUserId(grn.getReceivedBy() != null ? grn.getReceivedBy().getId() : null)
+                .receivedByName(grn.getReceivedBy() != null
+                        ? (grn.getReceivedBy().getFirstName() + " "
+                        + (grn.getReceivedBy().getLastName() != null ? grn.getReceivedBy().getLastName() : "")).trim()
+                        : null)
                 .receivedAt(grn.getReceivedAt())
                 .remarks(grn.getRemarks())
                 .idempotencyKey(grn.getIdempotencyKey())

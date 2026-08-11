@@ -2,6 +2,9 @@ package com.example.pos.prescriptions.prescriptions.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -16,21 +19,22 @@ import java.util.List;
 public class PrescriptionRequestDto {
 
     @NotBlank private String customerName;
-    private String doctorName;
-    private String doctorLicenseNumber;
+    @NotBlank private String doctorName;
+    @NotBlank private String doctorLicenseNumber;
     private String hospitalName;
-    private String prescriptionNumber;
+    @NotBlank private String prescriptionNumber;
     private String diagnosis;
-    private LocalDate issuedDate;
+    @NotNull private LocalDate issuedDate;
 
-    @NotNull
+    @NotEmpty
+    @Valid
     private List<PrescriptionItemDto> items;
 
     @Data @NoArgsConstructor @AllArgsConstructor
     public static class PrescriptionItemDto {
         @NotNull private UUID medicineId;
         private String dosage;
-        @NotNull private Integer quantity;
+        @NotNull @Positive private Integer quantity;
     }
 }
 

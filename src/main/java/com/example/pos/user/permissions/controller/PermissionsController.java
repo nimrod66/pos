@@ -10,6 +10,7 @@ import com.example.pos.user.permissions.service.PermissionsService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,6 +26,7 @@ public class PermissionsController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('user.manage')")
     public ResponseEntity<ApiResponse<PermissionResponseDto>> create(
             @RequestBody @Valid PermissionRequestDto dto) {
         Permissions permission = permissionsService.createPermission(dto);
@@ -33,6 +35,7 @@ public class PermissionsController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('user.manage')")
     public ResponseEntity<ApiResponse<List<PermissionResponseDto>>> getAll(
             @RequestParam(required = false) String module) {
         List<Permissions> permissions;
@@ -48,12 +51,14 @@ public class PermissionsController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('user.manage')")
     public ResponseEntity<ApiResponse<PermissionResponseDto>> getById(@PathVariable UUID id) {
         Permissions permission = permissionsService.getPermissionById(id);
         return ResponseEntity.ok(ApiResponse.ok(PermissionResponseDto.from(permission)));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('user.manage')")
     public ResponseEntity<ApiResponse<PermissionResponseDto>> update(
             @PathVariable UUID id,
             @RequestBody @Valid PermissionRequestDto dto) {
@@ -62,6 +67,7 @@ public class PermissionsController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('user.manage')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         permissionsService.deletePermission(id);
         return ResponseEntity.ok(ApiResponse.deleted());

@@ -14,15 +14,21 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.security.web.csrf.CsrfTokenRepository;
+import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.session.FindByIndexNameSessionRepository;
+import org.springframework.session.Session;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Service
@@ -30,30 +36,52 @@ import java.util.*;
 public class AuthService {
 
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
-    private static final int SESSION_TIMEOUT_SECONDS = 86400;
-
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
     private final LoginHistoryRepository loginHistoryRepository;
+    private final SecurityContextRepository securityContextRepository;
+    private final CsrfTokenRepository csrfTokenRepository;
+    private final FindByIndexNameSessionRepository<? extends Session> sessionRepository;
+    private final Duration inactivityTimeout;
+    private final Duration absoluteSessionTimeout;
 
     public AuthService(AuthenticationManager authenticationManager,
                        UserRepository userRepository,
-                       LoginHistoryRepository loginHistoryRepository) {
+                       LoginHistoryRepository loginHistoryRepository,
+                       SecurityContextRepository securityContextRepository,
+                       CsrfTokenRepository csrfTokenRepository,
+                       FindByIndexNameSessionRepository<? extends Session> sessionRepository,
+                       @Value("${spring.session.timeout:30m}") Duration inactivityTimeout,
+                       @Value("${pos.security.absolute-session-timeout:12h}") Duration absoluteSessionTimeout) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.loginHistoryRepository = loginHistoryRepository;
+        this.securityContextRepository = securityContextRepository;
+        this.csrfTokenRepository = csrfTokenRepository;
+        this.sessionRepository = sessionRepository;
+        this.inactivityTimeout = inactivityTimeout;
+        this.absoluteSessionTimeout = absoluteSessionTimeout;
     }
 
-    public MeResponse login(String email, String password, HttpServletRequest request) {
+    public MeResponse login(String email, String password, HttpServletRequest request,
+                            HttpServletResponse response) {
+        String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
         Authentication auth = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(email, password));
+                new UsernamePasswordAuthenticationToken(normalizedEmail, password));
 
-        SecurityContextHolder.getContext().setAuthentication(auth);
+        revokePrincipalSessions(normalizedEmail);
 
         HttpSession session = request.getSession(true);
-        session.setMaxInactiveInterval(SESSION_TIMEOUT_SECONDS);
+        request.changeSessionId();
+        session.setMaxInactiveInterval(Math.toIntExact(inactivityTimeout.toSeconds()));
 
-        User user = userRepository.findByEmail(email)
+        SecurityContext context = SecurityContextHolder.createEmptyContext();
+        context.setAuthentication(auth);
+        SecurityContextHolder.setContext(context);
+        securityContextRepository.saveContext(context, request, response);
+        csrfTokenRepository.saveToken(null, request, response);
+
+        User user = userRepository.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
 
         LoginHistory history = LoginHistory.builder()
@@ -72,7 +100,9 @@ public class AuthService {
     }
 
     @Transactional(readOnly = true)
-    public MeResponse me(User user, HttpServletRequest request) {
+    public MeResponse me(UUID userId, HttpServletRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BadCredentialsException("Authenticated user no longer exists"));
         return buildMeResponse(user, request.getSession(false));
     }
 
@@ -93,6 +123,7 @@ public class AuthService {
     }
 
     public void revokeUserSessions(UUID userId) {
+        userRepository.findById(userId).ifPresent(user -> revokePrincipalSessions(user.getEmail()));
         log.info("Sessions revoked for user {}", userId);
     }
 
@@ -118,13 +149,20 @@ public class AuthService {
 
         List<String> roles = user.getUserBranchRole() != null
                 ? user.getUserBranchRole().stream()
+                    .filter(ur -> branch != null && ur.getBranch() != null
+                            && branch.getId().equals(ur.getBranch().getId()))
                     .map(ur -> ur.getRole().getRoleName())
-                    .distinct().toList()
+                    .filter(Objects::nonNull)
+                    .distinct().sorted().toList()
                 : List.of();
 
-        List<String> permissions = new ArrayList<>();
+        Set<String> permissions = new TreeSet<>();
         if (user.getUserBranchRole() != null) {
             for (UserBranchRole ur : user.getUserBranchRole()) {
+                if (branch == null || ur.getBranch() == null
+                        || !branch.getId().equals(ur.getBranch().getId())) {
+                    continue;
+                }
                 if (ur.getRole().getRolePermission() != null) {
                     ur.getRole().getRolePermission().forEach(rp -> {
                         if (rp.getPermissions() != null) {
@@ -142,9 +180,11 @@ public class AuthService {
 
         String expiresAt = null;
         if (session != null) {
-            expiresAt = LocalDateTime.ofEpochSecond(
-                    session.getCreationTime() / 1000 + session.getMaxInactiveInterval(),
-                    0, ZoneOffset.UTC).format(DateTimeFormatter.ISO_DATE_TIME);
+            Instant idleExpiry = Instant.ofEpochMilli(session.getLastAccessedTime())
+                    .plusSeconds(session.getMaxInactiveInterval());
+            Instant absoluteExpiry = Instant.ofEpochMilli(session.getCreationTime())
+                    .plus(absoluteSessionTimeout);
+            expiresAt = (idleExpiry.isBefore(absoluteExpiry) ? idleExpiry : absoluteExpiry).toString();
         }
 
         return MeResponse.builder()
@@ -157,7 +197,7 @@ public class AuthService {
                         .pharmacyName(pharmacy != null ? pharmacy.getName() : null)
                         .activeBranch(branchInfo)
                         .roles(roles)
-                        .permissions(permissions)
+                        .permissions(List.copyOf(permissions))
                         .featureFlags(featureFlags)
                         .build())
                 .build();
@@ -179,5 +219,11 @@ public class AuthService {
     private String getHeader(HttpServletRequest request, String name) {
         String value = request.getHeader(name);
         return value != null && value.length() > 200 ? value.substring(0, 200) : value;
+    }
+
+    private void revokePrincipalSessions(String principalName) {
+        sessionRepository.findByPrincipalName(principalName)
+                .keySet()
+                .forEach(sessionRepository::deleteById);
     }
 }

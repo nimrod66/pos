@@ -8,7 +8,11 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties(prefix = "pos.sync")
 public class SyncProperties {
-    private String mode = "online";
+    private String mode = "local";
     private String centralUrl = "http://localhost:9090";
     private int pollIntervalSeconds = 30;
+
+    public boolean isEnabled() {
+        return "hybrid".equalsIgnoreCase(mode);
+    }
 }

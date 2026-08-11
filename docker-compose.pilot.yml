@@ -1,0 +1,87 @@
+name: pharmacy-pos-pilot
+
+services:
+  postgres:
+    image: postgres:17.7-alpine
+    environment:
+      POSTGRES_DB: pharmacy_pos
+      POSTGRES_USER: pharmacy_pos
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pharmacy_pos -d pharmacy_pos"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      JAVA_TOOL_OPTIONS: -Duser.timezone=Africa/Nairobi
+      SPRING_PROFILES_ACTIVE: offline
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/pharmacy_pos
+      SPRING_DATASOURCE_USERNAME: pharmacy_pos
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POS_ALLOWED_ORIGINS: http://localhost:${FRONTEND_PORT:-3000},http://127.0.0.1:${FRONTEND_PORT:-3000}
+      POS_SESSION_COOKIE_SECURE: "false"
+      POS_SESSION_COOKIE_SAME_SITE: strict
+      POS_SESSION_IDLE_TIMEOUT: 30m
+      POS_SESSION_ABSOLUTE_TIMEOUT: 12h
+      POS_SEED_DEMO_ENABLED: ${POS_SEED_DEMO_ENABLED:-true}
+      POS_SYNC_MODE: local
+      POS_FEATURES_FISCAL: "false"
+      POS_FISCAL_ENABLED: "false"
+      POS_FEATURES_DEVICES: "false"
+      POS_FEATURES_EMAIL: "false"
+      POS_FEATURES_SMS: "false"
+      POS_RATE_LIMIT_ENABLED: "false"
+      MANAGEMENT_HEALTH_MAIL_ENABLED: "false"
+      MANAGEMENT_HEALTH_RABBIT_ENABLED: "false"
+    ports:
+      - "${API_PORT:-9090}:9090"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - pos_data:/app/pos-data
+      - connectors_data:/connectors
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./pharmacy-frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: http://localhost:${API_PORT:-9090}/api/v1
+        NEXT_PUBLIC_CSRF_HEADER_NAME: X-XSRF-TOKEN
+        NEXT_PUBLIC_DEMO_AUTH: "false"
+        NEXT_PUBLIC_SHOW_DEMO_ACCOUNTS: ${SHOW_DEMO_ACCOUNTS:-true}
+    environment:
+      PORT: 3000
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/login"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  pos_data:
+  connectors_data:

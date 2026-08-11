@@ -4,6 +4,7 @@ import com.example.pos.sale.sales.repository.SalesRepository;
 import com.example.pos.inventory.stock.repository.StockRepository;
 import com.example.pos.finance.expenses.repository.ExpensesRepository;
 import org.springframework.stereotype.Service;
+import com.example.pos.security.auth.AuthenticatedUserContext;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -19,20 +20,26 @@ public class ReportingService {
     private final SalesRepository salesRepository;
     private final StockRepository stockRepository;
     private final ExpensesRepository expensesRepository;
+    private final AuthenticatedUserContext current;
 
     public ReportingService(SalesRepository salesRepository, StockRepository stockRepository,
-                            ExpensesRepository expensesRepository) {
+                            ExpensesRepository expensesRepository,
+                            AuthenticatedUserContext current) {
         this.salesRepository = salesRepository;
         this.stockRepository = stockRepository;
         this.expensesRepository = expensesRepository;
+        this.current = current;
     }
 
     public Map<String, Object> getDashboard(UUID branchId) {
+        current.requireBranch(branchId);
         Map<String, Object> dashboard = new HashMap<>();
 
+        LocalDateTime start = LocalDateTime.now().toLocalDate().atStartOfDay();
+        LocalDateTime end = start.plusDays(1);
+
         var todaySales = salesRepository.findByBranchIdAndCreatedAtBetween(
-                branchId, LocalDateTime.now().withHour(0).withMinute(0),
-                LocalDateTime.now().withHour(23).withMinute(59));
+                branchId, start, end);
 
         BigDecimal totalSales = todaySales.stream()
                 .map(s -> s.getTotal() != null ? s.getTotal() : BigDecimal.ZERO)

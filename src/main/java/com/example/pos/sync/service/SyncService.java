@@ -36,6 +36,8 @@ public class SyncService {
 
     @Transactional(propagation = Propagation.MANDATORY)
     public void writeOutboxEvent(EventType eventType, String aggregateType, String aggregateId, String payload) {
+        if (!syncProperties.isEnabled()) return;
+
         long existingCount = outboxRepo.countByAggregateTypeAndAggregateId(aggregateType, aggregateId);
         int nextVersion = (int) existingCount + 1;
 
@@ -53,6 +55,7 @@ public class SyncService {
 
     @Scheduled(fixedDelay = 2000)
     public void pushPendingEvents() {
+        if (!syncProperties.isEnabled()) return;
         if (!connectivity.isOnline()) return;
 
         List<SyncEvent> pending = outboxRepo.findByStatusAndNextRetryAtBeforeOrderByCreatedAtAsc(

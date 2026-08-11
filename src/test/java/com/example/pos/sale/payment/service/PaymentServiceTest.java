@@ -6,6 +6,7 @@ import com.example.pos.sale.sales.model.Sales;
 import com.example.pos.sale.sales.repository.SalesRepository;
 import com.example.pos.sync.config.TerminalConfig;
 import com.example.pos.sync.service.SyncService;
+import com.example.pos.security.auth.AuthenticatedUserContext;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -37,10 +38,13 @@ class PaymentServiceTest {
     @Mock
     private TerminalConfig terminalConfig;
 
+    @Mock
+    private AuthenticatedUserContext current;
+
     @Test
     void shouldProcessSuccessfulMpesaCallback() {
         PaymentService paymentService = new PaymentService(paymentRepository, salesRepository, gatewayFactory,
-                syncService, terminalConfig);
+                syncService, terminalConfig, current);
         when(terminalConfig.getTerminalId()).thenReturn("TERM-A");
 
         Sales sale = Sales.builder().build();
@@ -61,7 +65,8 @@ class PaymentServiceTest {
                 try {
                     var idField = com.example.pos.common.BaseEntity.class.getDeclaredField("id");
                     idField.setAccessible(true);
-                    idField.set(p, 99L);
+                    idField.set(p, java.util.UUID.fromString(
+                            "99999999-9999-9999-9999-999999999999"));
                 } catch (Exception ignored) {}
             }
             return p;
@@ -88,7 +93,7 @@ class PaymentServiceTest {
     @Test
     void shouldHandleFailedMpesaCallback() {
         PaymentService paymentService = new PaymentService(paymentRepository, salesRepository, gatewayFactory,
-                syncService, terminalConfig);
+                syncService, terminalConfig, current);
 
         Sales sale = Sales.builder().build();
         sale.setTotal(new BigDecimal("50.00"));
@@ -121,7 +126,7 @@ class PaymentServiceTest {
     @Test
     void shouldIgnoreAlreadyFinalizedPayment() {
         PaymentService paymentService = new PaymentService(paymentRepository, salesRepository, gatewayFactory,
-                syncService, terminalConfig);
+                syncService, terminalConfig, current);
 
         Payment payment = Payment.builder().build();
         payment.setPaymentStatus("COMPLETED");

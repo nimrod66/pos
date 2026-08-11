@@ -19,21 +19,25 @@ public class Payment extends BaseEntity {
     //link sale id
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "sales_id")
+    @JoinColumn(name = "sales_id", nullable = false)
     private Sales sales;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private PaymentMethod paymentMethod;
 
+    @Column(nullable = false)
     private BigDecimal amount;
+    @Column(nullable = false, length = 3)
     private String currency;
     private String description;
     private String transactionReference;
+    @Column(nullable = false)
     private String paymentStatus;
     private LocalDateTime paymentDate;
 
     public enum PaymentMethod {
-        M_PESA, CASH, CARD, STRIPE
+        MPESA_MANUAL, M_PESA, CASH, CARD, STRIPE
     }
 
 }

@@ -32,7 +32,7 @@ import java.util.Set;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-@Table(name = "user")
+@Table(name = "users")
 @Builder
 
 public class User extends BaseEntity {
@@ -41,7 +41,10 @@ public class User extends BaseEntity {
     private String middleName;
     private String lastName;
     private String phoneNumber;
+    @Column(nullable = false)
     private String email;
+
+    @Column(nullable = false)
     private String passwordHash;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -49,6 +52,7 @@ public class User extends BaseEntity {
     private Branch branch;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private Status status;
 
     private LocalDateTime lastLogin;
@@ -74,7 +78,7 @@ public class User extends BaseEntity {
     private List<PurchaseOrders> purchaseOrders;
 
     @Builder.Default
-    @OneToMany(mappedBy = "user", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @OneToMany(mappedBy = "receivedBy", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private Set<GoodsReceivedNotes> goodsReceivedNotes = new HashSet<>();
 
     @Builder.Default

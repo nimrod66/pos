@@ -51,7 +51,7 @@ public class ConnectivityService {
     }
 
     public boolean checkConnectivity() {
-        if (terminalConfig.isOffline()) return true;
+        if (!syncProperties.isEnabled()) return true;
 
         long start = System.currentTimeMillis();
         try {
@@ -99,7 +99,7 @@ public class ConnectivityService {
 
     public Map<String, Object> getStatus() {
         Map<String, Object> status = new LinkedHashMap<>();
-        status.put("mode", terminalConfig.isOffline() ? "OFFLINE" : "ONLINE");
+        status.put("mode", syncProperties.getMode().toUpperCase());
         status.put("connected", online);
         status.put("terminalId", terminalConfig.getTerminalId());
         status.put("centralUrl", syncProperties.getCentralUrl());

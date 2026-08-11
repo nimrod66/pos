@@ -1,279 +1,297 @@
-# Notes to Frontend Dev — eTIMS Compliance Module
+# Frontend Integration Note
 
-## 1. New Data Model — Tax Categories on Medicines
+This is the handoff contract for the Pharmacy POS frontend. Read `API.md` for full command examples.
 
-Every **Medicine** now has a required `taxCategoryId` pointing to `TaxCategory`.
+## Non-Negotiable Boundaries
 
-**TaxCategory** (managed via Settings UI):
-```json
-{
-  "id": 1,
-  "name": "VAT 16%",
-  "code": "VAT16",
-  "taxType": "VAT_STANDARD",
-  "rate": 16.00,
-  "active": true
+- The frontend talks to `/api/v1` on the pharmacy node.
+- Authentication is an HttpOnly server-side session cookie. Do not add browser JWT storage.
+- Every fetch uses `credentials: "include"`.
+- Every `POST`, `PUT`, `PATCH`, and `DELETE` uses the current CSRF token.
+- `/auth/me` is the source of user, active branch, role, permission, and session-expiry state.
+- The backend calculates checkout price, tax, totals, change, stock allocation, refund value, and drawer variance.
+- The frontend never writes stock quantities directly.
+- Local and hybrid deployments use the same frontend contract. The browser still talks to its pharmacy node.
+
+## Local URLs
+
+```text
+Frontend: http://localhost:3000
+API:      http://localhost:9090/api/v1
+Health:   http://localhost:9090/actuator/health
+Swagger:  http://localhost:9090/swagger-ui/index.html
+```
+
+Use one configurable public API origin, for example:
+
+```env
+NEXT_PUBLIC_API_BASE_URL=http://localhost:9090/api/v1
+```
+
+Do not append `/api/v1` a second time in endpoint helpers.
+
+## Fetch Client
+
+Keep the CSRF token in memory. The session cookie is managed by the browser and is intentionally unreadable from JavaScript.
+
+```ts
+const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:9090/api/v1";
+
+type CsrfState = { token: string; headerName: string };
+let csrf: CsrfState | null = null;
+
+export async function refreshCsrf(): Promise<CsrfState> {
+  const response = await fetch(`${API_URL}/auth/csrf`, {
+    credentials: "include",
+    cache: "no-store",
+  });
+  if (!response.ok) throw await toApiError(response);
+  const body = await response.json();
+  csrf = body.data;
+  return csrf;
+}
+
+export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const method = (init.method ?? "GET").toUpperCase();
+  const mutates = ["POST", "PUT", "PATCH", "DELETE"].includes(method);
+  if (mutates && !csrf) await refreshCsrf();
+
+  const headers = new Headers(init.headers);
+  headers.set("Accept", "application/json");
+  if (init.body) headers.set("Content-Type", "application/json");
+  if (mutates && csrf) headers.set(csrf.headerName, csrf.token);
+
+  const response = await fetch(`${API_URL}${path}`, {
+    ...init,
+    headers,
+    credentials: "include",
+    cache: "no-store",
+  });
+
+  if (!response.ok) throw await toApiError(response);
+  return response.json();
 }
 ```
 
-Tax types: `VAT_STANDARD` | `VAT_REDUCED` | `VAT_ZERO` | `VAT_EXEMPT` | `OUT_OF_SCOPE`
+`toApiError` should parse the backend error body and retain `status`, `errorCode`, `message`, and `validationErrors`.
 
-**Frontend changes:**
-- Add a "Tax Category" dropdown to the Medicine create/edit form
-- Show tax rate and type in the product listing (columns: Name, Barcode, Price, Tax)
-- Tax category can be toggled active/inactive — don't show inactive ones in new medicine forms
-- Endpoints: `GET /api/tax-categories/` (accepts `?activeOnly=true`), `PATCH /api/tax-categories/{id}/toggle`
+## Login Flow
 
-## 2. Sale Flow — What Changed
+1. Call `refreshCsrf()` when the login page opens.
+2. `POST /auth/login` with email/password and the token.
+3. Immediately call `refreshCsrf()` again. Login rotates the session and invalidates the old token.
+4. Call `GET /auth/me` and put its data in the auth store.
+5. Redirect to the first route allowed by returned permissions.
 
-When a cashier completes a sale (`POST /api/sales`), `SaleService` now snapshots `taxRate` and `taxableAmount` on each `SaleItem`. The response is unchanged — these are internal fields.
-
-**No frontend changes needed at sale time.** Tax is calculated per-item automatically.
-
-## 3. New Step: Issue Invoice (after sale)
-
-After sale completion, the cashier **must** issue a tax invoice. This is the trigger for all compliance flows.
-
-```javascript
-// After successful POST /api/sales
-const invoice = await api.post(`/api/invoices/issue/${saleId}`);
-// Returns:
-{
-  "id": 1,
-  "saleId": 42,
-  "invoiceNumber": "INV-001-20260721-000001",
-  "status": "ISSUED",
-  "subtotal": 500.00,
-  "taxAmount": 80.00,
-  "discount": 0,
-  "grandTotal": 580.00,
-  "currency": "KES",
-  "issueDate": "2026-07-21T14:30:00",
-  "items": [
-    {
-      "medicineName": "Amoxicillin 500mg",
-      "barcode": "8901234567890",
-      "quantity": 2,
-      "unitPrice": 250.00,
-      "taxableAmount": 250.00,
-      "taxRate": 16.00,
-      "taxType": "VAT_STANDARD",
-      "taxAmount": 40.00,
-      "discount": 0,
-      "subtotal": 500.00,
-      "total": 580.00
-    }
-  ]
-}
+```ts
+await refreshCsrf();
+await apiFetch("/auth/login", {
+  method: "POST",
+  body: JSON.stringify({ email, password }),
+});
+await refreshCsrf();
+const session = await apiFetch<MeEnvelope>("/auth/me");
 ```
 
-**Frontend requirements:**
-- After sale, show an **"Issue Tax Invoice"** button
-- Display invoice number prominently on the receipt screen
-- Show status badge (ISSUED = green, TRANSMITTED = blue, FAILED = red)
-- The invoice **cannot** be edited after issuance — only voided or credited
+On app reload, call `/auth/me`. A `401` means the user must log in again. Do not infer login from local storage.
 
-## 4. Invoice Status & Transmission Flow (Async)
+Logout with `POST /auth/logout`, clear in-memory auth/CSRF state, then return to login.
 
-The invoice and transmission have **separate statuses**:
+## Current User Shape
 
-### Invoice Status
-| Status | Meaning |
-|---|---|
-| `DRAFT` | Not yet issued (should not appear in normal flow) |
-| `ISSUED` | Created and saved, awaiting transmission |
-| `VOID` | Canceled before any financial effect |
-| `CREDITED` | A credit note was issued against this invoice |
-| `CLOSED` | Final — invoice + transmission complete |
-
-### Business (Transmission) Status
-| Status | Meaning |
-|---|---|
-| `PENDING` | Issued but not yet sent to KRA |
-| `TRANSMITTED` | Successfully sent to KRA |
-| `FAILED` | Transmission failed (auto-retrying) |
-| `ACKNOWLEDGED` | KRA confirmed receipt |
-
-**Frontend polling pattern:**
-```javascript
-const pollInvoice = async (invoiceId) => {
-  const invoice = await api.get(`/api/invoices/${invoiceId}`);
-  if (invoice.businessStatus === 'TRANSMITTED' || invoice.businessStatus === 'ACKNOWLEDGED') {
-    showSuccess('Invoice transmitted to KRA');
-    stopPolling();
-  } else if (invoice.businessStatus === 'FAILED') {
-    showWarning('KRA transmission failed. Auto-retrying...');
-  }
+```ts
+type Me = {
+  expiresAt: string;
+  user: {
+    id: string;
+    email: string;
+    displayName: string;
+    pharmacyId: string;
+    pharmacyName: string;
+    activeBranch: { id: string; code: string; name: string };
+    roles: string[];
+    permissions: string[];
+    featureFlags: Record<string, boolean>;
+  };
 };
 ```
 
-## 5. Receipts (Compliance-Grade)
+Treat `expiresAt` as display/idle-warning information. A server `401` is authoritative.
 
-After invoice issuance, compliance-grade receipts are available:
+## Permission-Driven UI
 
-```javascript
-const receipt = await api.post(`/api/compliance/receipts/generate/${saleId}`);
-// Returns:
-{
-  "receiptNumber": "RCT-001-20260721-000001",
-  "invoiceNumber": "INV-001-20260721-000001",
-  "receiptData": "{...}",
-  "qrCodeContent": "KRA-eTIMS|INV-001-...|580.00|...",
-  "verificationUrl": "https://verify.kra.go.ke/eTIMS?code=...",
-  "reprintCount": 0
-}
+Do not hardcode role checks throughout components. Define a small permission helper:
+
+```ts
+const can = (permission: string) => session.user.permissions.includes(permission);
 ```
 
-- Receipt data is a snapshot — never changes after generation
-- QR code contains verification data for KRA
-- Reprints: `POST /api/compliance/receipts/reprint/{receiptId}` (increments counter)
+Suggested navigation guards:
 
-## 6. What the Cashier UI Needs
+| Frontend area | Required permission |
+| --- | --- |
+| Dashboard | `dashboard.read` |
+| Point of sale | `pos.sell` |
+| Current shift open | `shift.open` |
+| Current shift close | `shift.close` |
+| Medicines read | `medicine.read` |
+| Medicine add/edit | `medicine.write` and `medicine.price.write` |
+| Inventory | `inventory.read` |
+| Receive GRN | `inventory.receive` |
+| Suppliers | `supplier.read` |
+| Supplier add/edit | `supplier.write` |
+| Sales and receipts | `sale.read` |
+| Reprint receipt | `sale.receipt.reprint` |
+| Return sale | `sale.return` |
+| Sales reports | `report.sales.read` |
+| Inventory reports | `report.inventory.read` |
+| Profit reports | `report.profit.read` |
+| Staff management | `user.manage` |
+| Settings | `settings.manage` |
+| Audit | `audit.read` |
 
-```
-+-------------------------------------------+
-|  Sale Complete — KES 580.00               |
-+-------------------------------------------+
-|  Invoice: INV-001-20260721-000001         |
-|  Status: TRANSMITTED (to KRA)             |
-|                                           |
-|  [Print Receipt]  [Issue Credit Note]     |
-|  [View History]                           |
-+-------------------------------------------+
-```
+The five UI roles are `OWNER`, `BRANCH_MANAGER`, `PHARMACIST`, `CASHIER`, and `STORE_KEEPER`. Render labels for roles, but authorize actions with permissions.
 
-**Status indicators:**
-- **PENDING** (gray) — not yet sent
-- **TRANSMITTING** (yellow/pulsing) — being sent now
-- **TRANSMITTED** (blue) — sent to KRA
-- **ACKNOWLEDGED** (green) — confirmed by KRA
-- **FAILED** (red with retry count) — e.g. "Failed (3/10 retries)"
+## Error Handling
 
-## 7. Admin / Manager Dashboard
+Handle these cases centrally:
 
-New tab: **"eTIMS Compliance"** in the admin panel.
+- `401 UNAUTHENTICATED`: clear session state and route to login.
+- `403 CSRF_VALIDATION_FAILED`: refresh CSRF once and retry only the same safe command. Never loop.
+- `403 ACCESS_DENIED`: show a permission message; do not retry.
+- `409 PRICE_CHANGED`: refresh product/cart price and ask the cashier to confirm.
+- `409 INSUFFICIENT_STOCK`: refresh POS lookup and keep the cart for correction.
+- `409 IDEMPOTENCY_KEY_REUSED`: this is a client bug; do not silently generate another key.
+- `400 VALIDATION_ERROR`: map `validationErrors` to fields.
 
-**Top section — Status Cards:**
-```
-  SANDBOX Mode    OSCU Active    Certificate ACTIVE    Device POS-001
-  +--------------------------------------------------------------+
-  | Pending: 12  |  Failed: 2  |  Sent: 147  |  Retry Q: 5     |
-  +--------------------------------------------------------------+
-```
+Generate and optionally send `X-Request-ID` for support tracing. The API exposes the request ID header in CORS responses.
 
-**Endpoints:**
-- Dashboard summary: `GET /api/compliance/dashboard`
-- Transmission log: `GET /api/transmissions?page=&size=&status=&dateFrom=&dateTo=`
-- Dead letter queue: `GET /api/transmissions/dead-letter`
-- Patch dead letter: `PATCH /api/transmissions/dead-letter/{id}?action=retry|review|discard`
+## Shift Workflow
 
-## 8. Sync Management
+The cashier/pharmacist must have an active shift before checkout.
 
-**Button: "Sync to KRA"** — triggers `POST /api/compliance/sync/run?scope=all`
+1. Check `GET /shifts/active` after login.
+2. Open with `POST /shifts` and `{ "openingFloat": 500.00, "shiftName": "Morning" }`.
+3. Store the returned shift ID in current session state, not permanent browser storage.
+4. Send that shift ID in checkout.
+5. Close with `PATCH /shifts/{id}/close` and the physically counted `actualCash`.
 
-After sync, shows results per sync type:
-| Sync Type | Last Run | Records | Status |
-|-----------|----------|---------|--------|
-| Tax Codes | 14:30 | 5 | PASS |
-| Items | 14:31 | 143 | PASS |
-| Branches | 14:31 | 3 | PASS |
-| Purchases | 14:32 | 0 | PASS |
-| Stock | 14:33 | 22 | PASS |
-| Invoices | 14:34 | 147 | PASS |
+Do not send `userId` or `branchId` when opening a shift. The server derives both from login context.
 
-- Sync state: `GET /api/compliance/sync/state`
-- Individual type: `POST /api/compliance/sync/run?scope=ITEM`
+Opening a shift also opens its cash drawer. Closing the shift reconciles and closes it. Do not call direct cash-drawer open/close endpoints.
 
-## 9. Certification Testing UI
+## POS Lookup and Cart
 
-For pre-certification testing with KRA:
+Search with:
 
-```javascript
-// Generate demo data (creates VAT16, VAT8, VAT0, EXEMPT tax categories)
-await api.post('/api/compliance/certification/generate-demo-data');
-
-// Run all test scenarios
-const results = await api.post('/api/compliance/certification/run');
-// Returns array:
-[
-  { scenario: "Invoice Generation", passed: true, durationMs: 450 },
-  { scenario: "Tax Calculation", passed: true, durationMs: 120 },
-  { scenario: "Credit Note", passed: true, durationMs: 300 },
-  { scenario: "Synchronization", passed: true, durationMs: 890 }
-]
-
-// Export certification artifacts (counts summary)
-const exportData = await api.post('/api/compliance/certification/export');
-// { invoicesIssued: 150, transmissionsSent: 142, events: 450 }
+```text
+GET /pos/lookup?barcode=<scan>
+GET /pos/lookup?name=<query>
+GET /pos/quick-items
 ```
 
-## 10. Voiding and Credit Notes
+The lookup response includes current product price, total sellable stock, and non-expired branch batches. Use it to build the cart, but expect checkout to revalidate everything.
 
-```javascript
-// Void (before transmission or after)
-await api.patch(`/api/invoices/${invoiceId}/void`, { reason: "Wrong amount" });
+For each cart line retain:
 
-// Credit Note (proper KRA-compliant reversal)
-await api.post('/api/invoices/credit-notes', {
-  originalInvoiceId: 42,
-  reason: "Customer returned item",
-  amount: 580.00
-});
-
-// Debit Note (additional amount due)
-await api.post('/api/invoices/debit-notes', {
-  originalInvoiceId: 42,
-  reason: "Undercharged by 50.00",
-  amount: 50.00
-});
+```ts
+type CartLine = {
+  lineId: string;          // generated once and stable while retrying
+  medicineId: string;
+  quantity: number;        // positive integer
+  expectedUnitPrice: number;
+  requestedBatchId?: string;
+};
 ```
 
-## 11. New Error States to Handle
+A requested batch may only be the current FEFO batch. Usually omit it and let the server allocate automatically.
 
-| Scenario | HTTP | Display |
-|----------|------|---------|
-| Non-existent sale | 404 | "Sale not found" |
-| Already invoiced | 409 | "Invoice already exists for this sale" |
-| Invalid customer PIN | 400 | "KRA PIN must be 11 characters (P0XXXXXXXXX)" |
-| Invoice already voided | 409 | "Invoice INV-001 is already voided" |
-| Credit note exceeds original | 400 | "Credit note amount exceeds invoice total" |
-| Sync in progress | 409 | "Synchronization already running" |
+## Checkout
 
-## 12. Frontend Navigation Summary
+Checkout is only:
 
-| Path | Component | API Calls |
-|------|-----------|-----------|
-| `/sales/:id` | Sale Detail | Issue invoice, show status, print receipt |
-| `/invoices` | Invoice List | `GET /api/invoices?page=&size=&status=&dateFrom=&dateTo=` |
-| `/invoices/:id` | Invoice Detail | Status, items, history, credit note button |
-| `/admin/compliance` | Compliance Dashboard | `GET /api/compliance/dashboard` |
-| `/admin/compliance/transmissions` | Transmission Log | `GET /api/transmissions?page=&size=&status=` |
-| `/admin/compliance/dead-letter` | Dead Letter Queue | `GET /api/transmissions/dead-letter`, patch actions |
-| `/admin/compliance/sync` | Sync Management | `POST /api/compliance/sync/run`, `GET /api/compliance/sync/state` |
-| `/admin/compliance/certification` | Certification | Run scenarios, export, generate demo data |
-| `/admin/tax-categories` | Tax Settings | CRUD for tax categories |
+```text
+POST /sales
+```
 
-## 13. Key Implementation Notes
+Use one UUID as both `clientSaleId` and `Idempotency-Key`. Keep that UUID and the exact serialized command until a definitive response arrives.
 
-1. **Invoice is separate from Sale** — `GET /api/sales/:id` does NOT include the invoice. Use `GET /api/invoices?saleId=:id` or the sale's `invoiceId` field (after issue).
-2. **Transmission is async** — the invoice response returns immediately. Poll or subscribe to WebSocket for transmission status updates.
-3. **Receipt data is a snapshot** — once generated, it never changes. Price recalculations won't affect printed receipts.
-4. **Tax amounts are computed server-side** — no need to calculate on the frontend. The `taxAmount` on each invoice line is the final value.
-5. **Schema version** — every invoice has a `schemaVersion` field for future KRA schema changes. Old invoices retain their version.
+Do not perform these as separate frontend steps:
 
-## 14. Environment Awareness
+- Create sale items
+- Deduct stock
+- Create payment
+- Create receipt
+- Record movement
 
-The compliance mode affects behavior:
+The backend performs all of them atomically. A timeout is not proof of failure; retry the exact same request with the exact same idempotency key.
 
-| Mode | When | Behavior |
-|------|------|---------|
-| `MOCK` | Local dev | Invoice creates, receipt generates, transmission simulates (no real KRA call) |
-| `SANDBOX` | Staging | Talks to KRA sandbox API. Real payloads, real responses, no legal effect |
-| `CERTIFICATION` | Pre-cert | Same as sandbox but with additional logging for KRA auditors |
-| `PRODUCTION` | Live | Real KRA OSCU/VSCU calls. Transmissions are legally binding |
+Supported payment choices in the current UI:
 
-Check current mode: `GET /api/compliance/health`
+- Cash
+- Manual M-Pesa reference
+- Split cash plus manual M-Pesa
 
-## 15. Full API Reference
+Do not show STK push, card, insurance, credit, or callback-confirmed payment controls yet.
 
-See **`API.md`** for the complete endpoint catalog (all 47 sections, request/response schemas, ERD diagrams, sequence diagrams, and architecture documentation).
+After success, use the response total/change/receipt as final. Preserve `items[].allocations[].saleItemId` so the sale detail screen can construct precise returns.
+
+## Returns
+
+A return is only:
+
+```text
+POST /sale-returns
+```
+
+Use one UUID as both `clientReturnId` and `Idempotency-Key`. Build selectable lines from the original sale allocation `saleItemId` values. Let the user enter a reason and choose `CASH` or `MPESA_MANUAL`.
+
+Do not add returned quantities to the sellable figure in the UI. The backend places them in quarantine pending a future inspection/disposition workflow.
+
+## Adding Stock
+
+The frontend workflow is:
+
+1. Add/select medicine.
+2. Add/select supplier.
+3. Create purchase order.
+4. Manager approves purchase order where required.
+5. Receive stock with `POST /goods-received` and a UUID idempotency key.
+
+The GRN form needs supplier, optional supplier invoice number, optional PO, batch number, expiry date, received quantity, and unit cost. If a PO is selected, send each matching `purchaseOrderLineId`.
+
+Do not expose direct quantity fields backed by `/stock`, `/batches`, or `/stock-movements`. Those screens are reads/audit views; stock enters through a GRN and leaves through checkout/returns or a future approved-adjustment workflow.
+
+## Delete Behavior
+
+Medicine and supplier create/update/delete commands exist for authorized users. A delete may be rejected when history or stock makes physical deletion unsafe. In that case show the backend message and prefer an inactive/disabled status where supported.
+
+Never remove a medicine, supplier, batch, sale, receipt, payment, or movement from local frontend state until the API confirms the command.
+
+## Integration Order
+
+Replace frontend mocks in this order:
+
+1. API client, CSRF, login, `/auth/me`, logout, and route guards
+2. System health and active branch header
+3. Medicine/supplier/reference-data reads and writes
+4. Active shift open/close
+5. POS lookup and authoritative checkout
+6. Sale history, receipt display, and returns
+7. Purchase orders, GRN receiving, inventory, and movement history
+8. Reports and staff/settings screens allowed by permissions
+
+Keep the existing UI components where possible. Replace their data adapters and command handlers rather than rebuilding the visual frontend around backend entity shapes.
+
+## Not Yet Available
+
+Do not integrate UI controls for:
+
+- eTIMS/KRA fiscalization
+- Online gateway callbacks or automated M-Pesa STK
+- Insurance billing
+- Expenses and supplier accounting
+- Credit/debit notes
+- Hybrid sync administration
+
+These need separate acceptance criteria and tests before being exposed to pharmacy users.

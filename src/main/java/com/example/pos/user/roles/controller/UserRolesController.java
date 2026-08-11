@@ -12,6 +12,7 @@ import com.example.pos.user.roles.service.UserRolesService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,6 +28,7 @@ public class UserRolesController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('user.manage')")
     public ResponseEntity<ApiResponse<UserRolesResponseDto>> create(@RequestBody @Valid UserRolesRequestDto dto) {
         UserRoles role = rolesService.createRole(dto);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -34,6 +36,7 @@ public class UserRolesController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('user.manage')")
     public ResponseEntity<ApiResponse<List<UserRolesResponseDto>>> getAll() {
         List<UserRolesResponseDto> roles = rolesService.getAllRoles().stream()
                 .map(UserRolesResponseDto::from)
@@ -42,12 +45,14 @@ public class UserRolesController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('user.manage')")
     public ResponseEntity<ApiResponse<UserRolesResponseDto>> getById(@PathVariable UUID id) {
         UserRoles role = rolesService.getRoleById(id);
         return ResponseEntity.ok(ApiResponse.ok(UserRolesResponseDto.from(role)));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('user.manage')")
     public ResponseEntity<ApiResponse<UserRolesResponseDto>> update(
             @PathVariable UUID id,
             @RequestBody @Valid UserRolesRequestDto dto) {
@@ -56,12 +61,14 @@ public class UserRolesController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('user.manage')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         rolesService.deleteRole(id);
         return ResponseEntity.ok(ApiResponse.deleted());
     }
 
     @PostMapping("/{id}/permissions")
+    @PreAuthorize("hasAuthority('user.manage')")
     public ResponseEntity<ApiResponse<Void>> assignPermissions(
             @PathVariable UUID id,
             @RequestBody @Valid AssignPermissionsRequestDto dto) {
@@ -70,6 +77,7 @@ public class UserRolesController {
     }
 
     @DeleteMapping("/{id}/permissions/{permissionId}")
+    @PreAuthorize("hasAuthority('user.manage')")
     public ResponseEntity<ApiResponse<Void>> removePermission(
             @PathVariable UUID id,
             @PathVariable UUID permissionId) {

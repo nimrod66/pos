@@ -4,6 +4,8 @@ COPY mvnw .
 COPY .mvn .mvn
 COPY pom.xml .
 RUN chmod +x mvnw && ./mvnw dependency:go-offline -B
+# Annotation processor paths are not included by dependency:go-offline.
+RUN ./mvnw dependency:get -Dartifact=org.mapstruct:mapstruct-processor:1.6.3 -B
 COPY src src
 RUN ./mvnw package -DskipTests -B
 
@@ -11,9 +13,9 @@ FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 RUN addgroup -S pos && adduser -S pos -G pos
 RUN apk add --no-cache wget
-RUN mkdir -p /pos-data /connectors && chown pos:pos /pos-data /connectors
+RUN mkdir -p /app/pos-data /connectors && chown -R pos:pos /app/pos-data /connectors
 COPY --from=build /app/target/*.jar app.jar
-COPY connectors/ /connectors/
+COPY --chown=pos:pos connectors/ /connectors/
 EXPOSE 9090
 HEALTHCHECK --interval=30s --timeout=3s --retries=3 CMD wget -qO- http://localhost:9090/actuator/health || exit 1
 USER pos

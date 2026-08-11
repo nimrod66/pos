@@ -30,7 +30,7 @@ public class DeadLetterRecord extends BaseEntity {
     @Column(name = "failure_reason", length = 4000)
     private String failureReason;
 
-    @Column(name = "last_kra_response", columnDefinition = "LONGTEXT")
+    @Column(name = "last_kra_response", columnDefinition = "TEXT")
     private String lastKraResponse;
 
     @Enumerated(EnumType.STRING)

@@ -48,10 +48,10 @@ public class Transmission extends BaseEntity {
     @Builder.Default
     private Integer payloadVersion = 1;
 
-    @Column(name = "kra_request", columnDefinition = "LONGTEXT")
+    @Column(name = "kra_request", columnDefinition = "TEXT")
     private String kraRequest;
 
-    @Column(name = "kra_response", columnDefinition = "LONGTEXT")
+    @Column(name = "kra_response", columnDefinition = "TEXT")
     private String kraResponse;
 
     @Column(name = "kra_receipt_number", length = 100)

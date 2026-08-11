@@ -24,12 +24,13 @@ import java.util.Set;
 @Getter
 @Setter
 @Builder
-@Table(name = "medicine_batches")
+@Table(name = "medicine_batches", uniqueConstraints =
+        @UniqueConstraint(name = "uk_batch_medicine_number", columnNames = {"medicine_id", "batch_number"}))
 public class MedicineBatches extends BaseEntity {
     //link medicine_id, supplier_id
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "medicine_id")
+    @JoinColumn(name = "medicine_id", nullable = false)
     private Medicine medicine;
 
     @Builder.Default
@@ -56,6 +57,7 @@ public class MedicineBatches extends BaseEntity {
     @OneToMany(mappedBy = "medicineBatches", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private Set<ExpiryLogs> expiryLogs = new HashSet<>();
 
+    @Column(nullable = false, length = 100)
     private String batchNumber;
     private LocalDate manufactureDate;
     private LocalDate expirationDate;

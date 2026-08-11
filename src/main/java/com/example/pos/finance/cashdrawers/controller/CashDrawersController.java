@@ -14,6 +14,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -24,17 +25,20 @@ public class CashDrawersController {
     public CashDrawersController(CashDrawersService service) { this.service = service; }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('shift.open')")
     public ResponseEntity<ApiResponse<CashDrawerResponseDto>> openDrawer(@RequestBody @Valid CashDrawerRequestDto dto) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created(CashDrawerResponseDto.from(service.openDrawer(dto))));
     }
 
     @PatchMapping("/{id}/close")
+    @PreAuthorize("hasAuthority('shift.close')")
     public ResponseEntity<ApiResponse<CashDrawerResponseDto>> closeDrawer(@PathVariable UUID id, @RequestBody @Valid CashDrawerRequestDto dto) {
         return ResponseEntity.ok(ApiResponse.updated(CashDrawerResponseDto.from(service.closeDrawer(id, dto))));
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyAuthority('shift.open', 'shift.close', 'shift.variance.approve')")
     public ResponseEntity<ApiResponse<PagedResponse<CashDrawerResponseDto>>> getByShift(
             @PageableDefault(size = 20) Pageable pageable,
             @RequestParam UUID shiftId) {
@@ -43,6 +47,7 @@ public class CashDrawersController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('shift.open', 'shift.close', 'shift.variance.approve')")
     public ResponseEntity<ApiResponse<CashDrawerResponseDto>> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(CashDrawerResponseDto.from(service.getById(id))));
     }

@@ -10,6 +10,7 @@ import com.example.pos.user.userbranchrole.service.UserBranchRoleService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,16 +26,16 @@ public class UserBranchRoleController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('user.manage')")
     public ResponseEntity<ApiResponse<UserBranchRoleResponseDto>> assign(
-            @RequestBody @Valid UserBranchRoleRequestDto dto,
-            @RequestAttribute(required = false) UUID currentUserId) {
-        UUID assignedBy = currentUserId != null ? currentUserId : UUID.randomUUID();
-        UserBranchRole assignment = branchRoleService.assignRole(dto, assignedBy);
+            @RequestBody @Valid UserBranchRoleRequestDto dto) {
+        UserBranchRole assignment = branchRoleService.assignRole(dto);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created(UserBranchRoleResponseDto.from(assignment)));
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('user.manage')")
     public ResponseEntity<ApiResponse<List<UserBranchRoleResponseDto>>> getAll(
             @RequestParam(required = false) UUID userId,
             @RequestParam(required = false) UUID branchId) {
@@ -55,6 +56,7 @@ public class UserBranchRoleController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('user.manage')")
     public ResponseEntity<ApiResponse<Void>> remove(@PathVariable UUID id) {
         branchRoleService.removeAssignment(id);
         return ResponseEntity.ok(ApiResponse.deleted());

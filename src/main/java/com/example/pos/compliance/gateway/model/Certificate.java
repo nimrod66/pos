@@ -33,13 +33,13 @@ public class Certificate extends BaseEntity {
     @Builder.Default
     private CertificateStatus status = CertificateStatus.ACTIVE;
 
-    @Column(name = "encrypted_private_key", columnDefinition = "LONGTEXT")
+    @Column(name = "encrypted_private_key", columnDefinition = "TEXT")
     private String encryptedPrivateKey;
 
     @Column(length = 64)
     private String thumbprint;
 
-    @Column(name = "certificate_data", columnDefinition = "LONGTEXT")
+    @Column(name = "certificate_data", columnDefinition = "TEXT")
     private String certificateData;
 
     @Column(name = "tenant_id")

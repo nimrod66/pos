@@ -29,6 +29,7 @@ public class StockMovementResponseDto {
     private String referenceType;
     private UUID referenceId;
     private LocalDate movementDate;
+    private Integer quantity;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -50,6 +51,7 @@ public class StockMovementResponseDto {
                 .referenceType(movement.getReferenceType())
                 .referenceId(movement.getReferenceId())
                 .movementDate(movement.getMovementDate())
+                .quantity(movement.getQuantity())
                 .createdAt(movement.getCreatedAt())
                 .updatedAt(movement.getUpdatedAt())
                 .build();

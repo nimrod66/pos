@@ -16,6 +16,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -29,6 +30,7 @@ public class UserController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('user.manage')")
     public ResponseEntity<ApiResponse<UserResponseDto>> create(@RequestBody @Valid UserRequestDto dto) {
         User user = userService.createUser(dto);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -36,6 +38,7 @@ public class UserController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('user.manage')")
     public ResponseEntity<ApiResponse<PagedResponse<UserResponseDto>>> getAll(
             @PageableDefault(size = 20) Pageable pageable,
             @RequestParam(required = false) UUID branchId) {
@@ -49,12 +52,14 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('user.manage')")
     public ResponseEntity<ApiResponse<UserResponseDto>> getById(@PathVariable UUID id) {
         User user = userService.getUserById(id);
         return ResponseEntity.ok(ApiResponse.ok(UserResponseDto.from(user)));
     }
 
     @GetMapping("/search")
+    @PreAuthorize("hasAuthority('user.manage')")
     public ResponseEntity<ApiResponse<PagedResponse<UserResponseDto>>> search(
             @RequestParam String q,
             @PageableDefault(size = 20) Pageable pageable) {
@@ -63,6 +68,7 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('user.manage')")
     public ResponseEntity<ApiResponse<UserResponseDto>> update(
             @PathVariable UUID id,
             @RequestBody @Valid UserRequestDto dto) {
@@ -71,6 +77,7 @@ public class UserController {
     }
 
     @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAuthority('user.manage')")
     public ResponseEntity<ApiResponse<UserResponseDto>> updateStatus(
             @PathVariable UUID id,
             @RequestBody @Valid UpdateStatusRequestDto dto) {
@@ -79,6 +86,7 @@ public class UserController {
     }
 
     @PatchMapping("/{id}/password")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Void>> changePassword(
             @PathVariable UUID id,
             @RequestBody @Valid ChangePasswordRequestDto dto) {
@@ -87,6 +95,7 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('user.manage')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         userService.deleteUser(id);
         return ResponseEntity.ok(ApiResponse.deleted());

@@ -34,6 +34,10 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
         if (user.getUserBranchRole() != null) {
             for (UserBranchRole branchRole : user.getUserBranchRole()) {
+                if (user.getBranch() == null || branchRole.getBranch() == null
+                        || !user.getBranch().getId().equals(branchRole.getBranch().getId())) {
+                    continue;
+                }
                 UserRoles role = branchRole.getRole();
                 if (role == null) continue;
 
@@ -43,7 +47,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                 if (role.getRolePermission() != null) {
                     for (RolePermission rp : role.getRolePermission()) {
                         if (rp.getPermissions() != null) {
-                            authorities.add(new SimpleGrantedAuthority("PERM_" + rp.getPermissions().getPermissionName()));
+                            authorities.add(new SimpleGrantedAuthority(rp.getPermissions().getPermissionName()));
                         }
                     }
                 }

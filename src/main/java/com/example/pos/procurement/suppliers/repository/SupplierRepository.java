@@ -13,6 +13,21 @@ import java.util.Optional;
 
 public interface SupplierRepository extends JpaRepository<Suppliers, UUID> {
 
+    Optional<Suppliers> findByIdAndPharmacyId(UUID id, UUID pharmacyId);
+
+    Page<Suppliers> findByPharmacyId(UUID pharmacyId, Pageable pageable);
+
+    boolean existsByPharmacyIdAndSupplierNameIgnoreCase(UUID pharmacyId, String name);
+
+    boolean existsByPharmacyIdAndSupplierNameIgnoreCaseAndIdNot(
+            UUID pharmacyId, String name, UUID id);
+
+    @Query("SELECT s FROM Suppliers s WHERE s.pharmacy.id = :pharmacyId "
+            + "AND LOWER(s.supplierName) LIKE LOWER(CONCAT('%', :q, '%'))")
+    Page<Suppliers> searchByPharmacy(@Param("pharmacyId") UUID pharmacyId,
+                                     @Param("q") String q,
+                                     Pageable pageable);
+
     Optional<Suppliers> findBySupplierName(String name);
     boolean existsBySupplierName(String name);
     boolean existsBySupplierNameAndIdNot(String name, UUID id);

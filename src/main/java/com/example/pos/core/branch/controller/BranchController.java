@@ -10,6 +10,7 @@ import com.example.pos.core.branch.service.BranchService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,6 +26,7 @@ public class BranchController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('settings.manage')")
     public ResponseEntity<ApiResponse<BranchResponseDto>> create(@RequestBody @Valid BranchRequestDto dto) {
         Branch branch = branchService.createBranch(dto);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -32,6 +34,7 @@ public class BranchController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('settings.manage')")
     public ResponseEntity<ApiResponse<List<BranchResponseDto>>> getAll(
             @RequestParam(required = false) UUID pharmacyId) {
         List<Branch> branches;
@@ -47,12 +50,14 @@ public class BranchController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('settings.manage')")
     public ResponseEntity<ApiResponse<BranchResponseDto>> getById(@PathVariable UUID id) {
         Branch branch = branchService.getBranchById(id);
         return ResponseEntity.ok(ApiResponse.ok(BranchResponseDto.from(branch)));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('settings.manage')")
     public ResponseEntity<ApiResponse<BranchResponseDto>> update(
             @PathVariable UUID id,
             @RequestBody @Valid BranchRequestDto dto) {
@@ -61,6 +66,7 @@ public class BranchController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('settings.manage')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         branchService.deleteBranch(id);
         return ResponseEntity.ok(ApiResponse.deleted());

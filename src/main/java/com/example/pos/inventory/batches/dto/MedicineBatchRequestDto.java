@@ -3,6 +3,9 @@ package com.example.pos.inventory.batches.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -27,15 +30,17 @@ public class MedicineBatchRequestDto {
     private LocalDate expirationDate;
 
     @NotNull(message = "Initial quantity is required")
-    @Positive(message = "Initial quantity must be positive")
+    @Min(value = 0, message = "Initial quantity must be zero or positive")
     private Integer initialQuantity;
 
     @NotNull(message = "Buying price is required")
-    @Positive(message = "Buying price must be positive")
+    @DecimalMin(value = "0.01")
+    @Digits(integer = 12, fraction = 2)
     private BigDecimal buyingPrice;
 
     @NotNull(message = "Selling price is required")
-    @Positive(message = "Selling price must be positive")
+    @DecimalMin(value = "0.00")
+    @Digits(integer = 12, fraction = 2)
     private BigDecimal sellingPrice;
 }
 

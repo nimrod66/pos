@@ -1,0 +1,126 @@
+@import "tailwindcss";
+
+:root {
+  --surface: #ffffff;
+  --surface-muted: #f4f7f6;
+  --surface-raised: #ffffff;
+  --text: #17211e;
+  --text-muted: #61706b;
+  --text-subtle: #87938f;
+  --border: #d8e1de;
+  --border-strong: #b9c7c2;
+  --brand: #0f766e;
+  --brand-strong: #0b625c;
+  --brand-deep: #083f3b;
+  --brand-soft: #e4f4f1;
+  --brand-ring: rgb(15 118 110 / 18%);
+  --accent: #2563a9;
+  --accent-soft: #e9f2fb;
+  --success: #167a4a;
+  --success-soft: #e8f6ee;
+  --warning: #b45309;
+  --warning-soft: #fff4df;
+  --danger: #c24136;
+  --danger-soft: #fff0ee;
+  --danger-border: #f1b8b2;
+}
+
+@theme inline {
+  --color-background: var(--surface);
+  --color-foreground: var(--text);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--surface-muted);
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  background: var(--surface-muted);
+  color: var(--text);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+summary {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+summary::-webkit-details-marker {
+  display: none;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+::selection {
+  background: #b9ebe2;
+  color: #0b3d38;
+}
+
+@page {
+  margin: 0;
+}
+
+@media print {
+  html,
+  body {
+    background: #ffffff;
+  }
+
+  .receipt-print {
+    position: fixed;
+    inset: 0 auto auto 0;
+    z-index: 50;
+    margin: 0;
+    padding: 4mm !important;
+    color: #000000;
+    font-size: 10px;
+  }
+
+  .receipt-print--58mm {
+    width: 58mm !important;
+  }
+
+  .receipt-print--80mm {
+    width: 80mm !important;
+  }
+
+  .receipt-print table {
+    table-layout: fixed;
+  }
+
+  .receipt-print th:first-child,
+  .receipt-print td:first-child {
+    width: 42%;
+  }
+}

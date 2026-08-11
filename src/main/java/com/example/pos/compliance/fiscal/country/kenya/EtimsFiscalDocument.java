@@ -41,7 +41,7 @@ public class EtimsFiscalDocument extends FiscalDocument {
     @Column(name = "control_unit_serial", length = 50)
     private String controlUnitSerial;
 
-    @Column(name = "raw_response", columnDefinition = "LONGTEXT")
+    @Column(name = "raw_response", columnDefinition = "TEXT")
     private String rawResponse;
 
     @Column(name = "transmission_id")

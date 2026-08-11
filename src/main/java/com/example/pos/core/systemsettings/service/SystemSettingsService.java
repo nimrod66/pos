@@ -9,6 +9,7 @@ import com.example.pos.core.pharmacy.repository.PharmacyRepository;
 import com.example.pos.core.systemsettings.dto.SystemSettingsRequestDto;
 import com.example.pos.core.systemsettings.model.SystemSettings;
 import com.example.pos.core.systemsettings.repository.SystemSettingsRepository;
+import com.example.pos.security.auth.AuthenticatedUserContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,22 +23,25 @@ public class SystemSettingsService {
     private final SystemSettingsRepository settingsRepository;
     private final BranchRepository branchRepository;
     private final PharmacyRepository pharmacyRepository;
+    private final AuthenticatedUserContext current;
 
     public SystemSettingsService(SystemSettingsRepository settingsRepository,
                                  BranchRepository branchRepository,
-                                 PharmacyRepository pharmacyRepository) {
+                                 PharmacyRepository pharmacyRepository,
+                                 AuthenticatedUserContext current) {
         this.settingsRepository = settingsRepository;
         this.branchRepository = branchRepository;
         this.pharmacyRepository = pharmacyRepository;
+        this.current = current;
     }
 
     public SystemSettings createSetting(SystemSettingsRequestDto dto) {
-        Pharmacy pharmacy = pharmacyRepository.findById(dto.getPharmacyId())
-                .orElseThrow(() -> new ResourceNotFoundException("Pharmacy", dto.getPharmacyId()));
+        current.requirePharmacy(dto.getPharmacyId());
+        Pharmacy pharmacy = current.pharmacy();
 
         Branch branch = null;
         if (dto.getBranchId() != null) {
-            branch = branchRepository.findById(dto.getBranchId())
+            branch = branchRepository.findByIdAndPharmacyId(dto.getBranchId(), pharmacy.getId())
                     .orElseThrow(() -> new ResourceNotFoundException("Branch", dto.getBranchId()));
         }
 
@@ -55,12 +59,14 @@ public class SystemSettingsService {
 
     @Transactional(readOnly = true)
     public List<SystemSettings> getSettingsByPharmacy(UUID pharmacyId) {
-        return settingsRepository.findByPharmacyId(pharmacyId);
+        UUID scopedId = pharmacyId != null ? pharmacyId : current.pharmacy().getId();
+        current.requirePharmacy(scopedId);
+        return settingsRepository.findByPharmacyId(scopedId);
     }
 
     @Transactional(readOnly = true)
     public List<SystemSettings> getSettingsByBranch(UUID branchId) {
-        Branch branch = branchRepository.findById(branchId)
+        Branch branch = branchRepository.findByIdAndPharmacyId(branchId, current.pharmacy().getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Branch", branchId));
         return settingsRepository.findByPharmacyIdAndBranchId(
                 branch.getPharmacy().getId(), branchId);
@@ -68,17 +74,20 @@ public class SystemSettingsService {
 
     @Transactional(readOnly = true)
     public List<SystemSettings> getPharmacyWideSettings(UUID pharmacyId) {
+        current.requirePharmacy(pharmacyId);
         return settingsRepository.findByPharmacyIdAndBranchIsNull(pharmacyId);
     }
 
     @Transactional(readOnly = true)
     public SystemSettings getSettingById(UUID id) {
-        return settingsRepository.findById(id)
+        return settingsRepository.findByIdAndPharmacyId(id, current.pharmacy().getId())
                 .orElseThrow(() -> new ResourceNotFoundException("SystemSetting", id));
     }
 
     @Transactional(readOnly = true)
     public SystemSettings resolveSetting(String key, UUID branchId, UUID pharmacyId) {
+        current.requirePharmacy(pharmacyId);
+        if (branchId != null) current.requireBranch(branchId);
         SystemSettings override = settingsRepository.findSetting(key, branchId, pharmacyId).orElse(null);
         if (override != null) {
             return override;
@@ -98,7 +107,8 @@ public class SystemSettingsService {
 
         if (dto.getBranchId() != null) {
             if (settings.getBranch() == null || !settings.getBranch().getId().equals(dto.getBranchId())) {
-                Branch branch = branchRepository.findById(dto.getBranchId())
+                Branch branch = branchRepository.findByIdAndPharmacyId(
+                                dto.getBranchId(), current.pharmacy().getId())
                         .orElseThrow(() -> new ResourceNotFoundException("Branch", dto.getBranchId()));
                 settings.setBranch(branch);
             }
@@ -106,11 +116,7 @@ public class SystemSettingsService {
             settings.setBranch(null);
         }
 
-        if (!settings.getPharmacy().getId().equals(dto.getPharmacyId())) {
-            Pharmacy pharmacy = pharmacyRepository.findById(dto.getPharmacyId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Pharmacy", dto.getPharmacyId()));
-            settings.setPharmacy(pharmacy);
-        }
+        current.requirePharmacy(dto.getPharmacyId());
 
         mapToEntity(dto, settings);
         return settingsRepository.save(settings);

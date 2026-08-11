@@ -2,23 +2,25 @@ package com.example.pos.user.users.service;
 
 import com.example.pos.common.exception.BadRequestException;
 import com.example.pos.common.exception.ConflictException;
+import com.example.pos.common.exception.ForbiddenException;
 import com.example.pos.common.exception.ResourceNotFoundException;
 import com.example.pos.core.branch.model.Branch;
 import com.example.pos.core.branch.repository.BranchRepository;
-import com.example.pos.notification.email.EmailService;
+import com.example.pos.security.auth.AuthService;
+import com.example.pos.security.auth.AuthenticatedUserContext;
+import com.example.pos.user.userbranchrole.repository.UserBranchRoleRepository;
 import com.example.pos.user.users.dto.ChangePasswordRequestDto;
 import com.example.pos.user.users.dto.UpdateStatusRequestDto;
 import com.example.pos.user.users.dto.UserRequestDto;
 import com.example.pos.user.users.model.User;
 import com.example.pos.user.users.repository.UserRepository;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -27,125 +29,165 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final BranchRepository branchRepository;
+    private final UserBranchRoleRepository branchRoleRepository;
     private final PasswordEncoder passwordEncoder;
-    private final EmailService emailService;
+    private final AuthenticatedUserContext current;
+    private final AuthService authService;
 
     public UserService(UserRepository userRepository,
                        BranchRepository branchRepository,
+                       UserBranchRoleRepository branchRoleRepository,
                        PasswordEncoder passwordEncoder,
-                       EmailService emailService) {
+                       AuthenticatedUserContext current,
+                       AuthService authService) {
         this.userRepository = userRepository;
         this.branchRepository = branchRepository;
+        this.branchRoleRepository = branchRoleRepository;
         this.passwordEncoder = passwordEncoder;
-        this.emailService = emailService;
+        this.current = current;
+        this.authService = authService;
     }
 
     public User createUser(UserRequestDto dto) {
-        if (userRepository.existsByEmail(dto.getEmail())) {
-            throw new ConflictException("Email " + dto.getEmail() + " is already registered");
+        String email = normalizeEmail(dto.getEmail());
+        if (userRepository.existsByEmail(email)) {
+            throw new ConflictException("Email " + email + " is already registered");
         }
-
-        Branch branch = branchRepository.findById(dto.getBranchId())
-                .orElseThrow(() -> new ResourceNotFoundException("Branch", dto.getBranchId()));
-
+        if (dto.getPassword() == null || dto.getPassword().isBlank()) {
+            throw new BadRequestException("Password is required");
+        }
+        Branch branch = scopedBranch(dto.getBranchId());
         User user = new User();
         user.setBranch(branch);
-        mapToEntity(dto, user);
-        String rawPassword = dto.getPassword();
-        user.setPasswordHash(passwordEncoder.encode(rawPassword));
+        mapProfile(dto, user);
+        user.setEmail(email);
+        user.setPasswordHash(passwordEncoder.encode(dto.getPassword()));
         user.setStatus(User.Status.ACTIVE);
-
-        user = userRepository.save(user);
-        emailService.sendWelcomeEmail(user.getEmail(), user.getFirstName(), user.getEmail(), rawPassword);
-
-        return user;
+        return userRepository.save(user);
     }
 
     @Transactional(readOnly = true)
     public Page<User> getAllUsers(Pageable pageable) {
-        return userRepository.findAll(pageable);
+        return userRepository.findByBranchPharmacyId(current.pharmacy().getId(), pageable);
     }
 
     @Transactional(readOnly = true)
     public Page<User> getUsersByBranch(UUID branchId, Pageable pageable) {
-        List<User> users = userRepository.findByBranchId(branchId);
-        return new PageImpl<>(users, pageable, users.size());
+        scopedBranch(branchId);
+        return userRepository.findByBranchIdAndBranchPharmacyId(
+                branchId, current.pharmacy().getId(), pageable);
     }
 
     @Transactional(readOnly = true)
     public Page<User> search(String q, Pageable pageable) {
-        return userRepository.search(q, pageable);
+        return userRepository.searchByPharmacy(current.pharmacy().getId(), q.trim(), pageable);
     }
 
     @Transactional(readOnly = true)
     public User getUserById(UUID id) {
-        return userRepository.findById(id)
+        return userRepository.findByIdAndBranchPharmacyId(id, current.pharmacy().getId())
                 .orElseThrow(() -> new ResourceNotFoundException("User", id));
     }
 
     @Transactional(readOnly = true)
     public User getUserByEmail(String email) {
-        return userRepository.findByEmail(email)
+        User user = userRepository.findByEmail(normalizeEmail(email))
                 .orElseThrow(() -> new ResourceNotFoundException("User with email " + email));
+        if (!user.getBranch().getPharmacy().getId().equals(current.pharmacy().getId())) {
+            throw new ResourceNotFoundException("User with email " + email);
+        }
+        return user;
     }
 
     public User updateUser(UUID id, UserRequestDto dto) {
         User user = getUserById(id);
-
-        if (userRepository.existsByEmailAndIdNot(dto.getEmail(), id)) {
-            throw new ConflictException("Email " + dto.getEmail() + " is already in use");
+        String email = normalizeEmail(dto.getEmail());
+        if (userRepository.existsByEmailAndIdNot(email, id)) {
+            throw new ConflictException("Email " + email + " is already in use");
         }
-
-        if (!user.getBranch().getId().equals(dto.getBranchId())) {
-            Branch branch = branchRepository.findById(dto.getBranchId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Branch", dto.getBranchId()));
-            user.setBranch(branch);
-        }
-
-        mapToEntity(dto, user);
+        Branch branch = scopedBranch(dto.getBranchId());
+        user.setBranch(branch);
+        mapProfile(dto, user);
+        user.setEmail(email);
         if (dto.getPassword() != null && !dto.getPassword().isBlank()) {
             user.setPasswordHash(passwordEncoder.encode(dto.getPassword()));
+            authService.revokeUserSessions(user.getId());
         }
-
         return userRepository.save(user);
     }
 
     public User updateStatus(UUID id, UpdateStatusRequestDto dto) {
+        User actor = current.user();
         User user = getUserById(id);
+        if (actor.getId().equals(user.getId())) {
+            throw new ForbiddenException("You cannot change your own account status");
+        }
+        User.Status status;
         try {
-            user.setStatus(User.Status.valueOf(dto.getStatus().toUpperCase()));
-        } catch (IllegalArgumentException e) {
+            status = User.Status.valueOf(dto.getStatus().trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
             throw new BadRequestException("Invalid status: " + dto.getStatus());
         }
-        return userRepository.save(user);
+        if (status != User.Status.ACTIVE) ensureNotFinalOwner(user);
+        user.setStatus(status);
+        User saved = userRepository.save(user);
+        if (status != User.Status.ACTIVE) authService.revokeUserSessions(user.getId());
+        return saved;
     }
 
     public void changePassword(UUID id, ChangePasswordRequestDto dto) {
+        if (!current.userId().equals(id)) {
+            throw new ForbiddenException("You can only change your own password");
+        }
         User user = getUserById(id);
         if (!passwordEncoder.matches(dto.getCurrentPassword(), user.getPasswordHash())) {
             throw new BadRequestException("Current password is incorrect");
         }
+        if (passwordEncoder.matches(dto.getNewPassword(), user.getPasswordHash())) {
+            throw new BadRequestException("New password must differ from the current password");
+        }
         user.setPasswordHash(passwordEncoder.encode(dto.getNewPassword()));
         userRepository.save(user);
+        authService.revokeUserSessions(user.getId());
     }
 
     public void deleteUser(UUID id) {
+        User actor = current.user();
         User user = getUserById(id);
-        userRepository.delete(user);
+        if (actor.getId().equals(user.getId())) {
+            throw new ForbiddenException("You cannot deactivate your own account");
+        }
+        ensureNotFinalOwner(user);
+        user.setStatus(User.Status.INACTIVE);
+        userRepository.save(user);
+        authService.revokeUserSessions(user.getId());
     }
 
-    private void mapToEntity(UserRequestDto dto, User user) {
-        user.setFirstName(dto.getFirstName());
-        user.setMiddleName(dto.getMiddleName());
-        user.setLastName(dto.getLastName());
-        user.setPhoneNumber(dto.getPhoneNumber());
-        user.setEmail(dto.getEmail());
-        if (dto.getStatus() != null) {
-            try {
-                user.setStatus(User.Status.valueOf(dto.getStatus().toUpperCase()));
-            } catch (IllegalArgumentException e) {
-                throw new BadRequestException("Invalid status: " + dto.getStatus());
-            }
+    private void ensureNotFinalOwner(User user) {
+        if (branchRoleRepository.existsByUserIdAndRoleRoleName(user.getId(), "OWNER")
+                && branchRoleRepository.countActiveOwners(current.pharmacy().getId()) <= 1) {
+            throw new ConflictException("A pharmacy must retain at least one active owner",
+                    "FINAL_OWNER_REQUIRED");
         }
+    }
+
+    private Branch scopedBranch(UUID branchId) {
+        return branchRepository.findByIdAndPharmacyId(branchId, current.pharmacy().getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Branch", branchId));
+    }
+
+    private void mapProfile(UserRequestDto dto, User user) {
+        user.setFirstName(dto.getFirstName().trim());
+        user.setMiddleName(trimToNull(dto.getMiddleName()));
+        user.setLastName(dto.getLastName().trim());
+        user.setPhoneNumber(dto.getPhoneNumber().trim());
+    }
+
+    private String normalizeEmail(String value) {
+        return value.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String trimToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 }

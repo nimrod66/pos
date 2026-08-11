@@ -26,21 +26,28 @@ public class SaleItems extends BaseEntity {
     private Set<SaleReturnItems> saleReturnItems = new HashSet<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "sales_id")
+    @JoinColumn(name = "sales_id", nullable = false)
     private Sales sales;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "medicine_batches_id")
+    @JoinColumn(name = "medicine_batches_id", nullable = false)
     private MedicineBatches medicineBatches;
 
+    @Column(nullable = false)
     private Integer quantity;
+    @Column(name = "client_line_id", nullable = false)
+    private java.util.UUID clientLineId;
+    @Column(nullable = false)
     private BigDecimal price;
+    @Column(nullable = false)
     private BigDecimal discount;
     @Column(name = "tax_rate")
     private BigDecimal taxRate;
     @Column(name = "taxable_amount")
     private BigDecimal taxableAmount;
+    @Column(nullable = false)
     private BigDecimal tax;
+    @Column(nullable = false)
     private BigDecimal total;
 }
 

@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.util.UUID;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -16,6 +17,7 @@ import java.time.LocalDateTime;
 public class MedicineResponseDto {
 
     private UUID id;
+    private UUID pharmacyId;
     private String barcode;
     private String manufacturerBarcode;
     private String internalBarcode;
@@ -32,6 +34,9 @@ public class MedicineResponseDto {
     private String brandName;
     private String genericName;
     private String strength;
+    private BigDecimal buyingPrice;
+    private BigDecimal sellingPrice;
+    private Integer reorderLevel;
     private String status;
     private UUID manufacturerId;
     private String manufacturerName;
@@ -55,6 +60,7 @@ public class MedicineResponseDto {
     public static MedicineResponseDto from(Medicine medicine) {
         return MedicineResponseDto.builder()
                 .id(medicine.getId())
+                .pharmacyId(medicine.getPharmacy() != null ? medicine.getPharmacy().getId() : null)
                 .barcode(medicine.getBarcode())
                 .manufacturerBarcode(medicine.getManufacturerBarcode())
                 .internalBarcode(medicine.getInternalBarcode())
@@ -71,6 +77,9 @@ public class MedicineResponseDto {
                 .brandName(medicine.getBrandName())
                 .genericName(medicine.getGenericName())
                 .strength(medicine.getStrength())
+                .buyingPrice(medicine.getBuyingPrice())
+                .sellingPrice(medicine.getSellingPrice())
+                .reorderLevel(medicine.getReorderLevel())
                 .status(medicine.getStatus() != null ? medicine.getStatus().name() : null)
                 .manufacturerId(medicine.getManufacturer() != null ? medicine.getManufacturer().getId() : null)
                 .manufacturerName(medicine.getManufacturer() != null ? medicine.getManufacturer().getManufacturerName() : null)

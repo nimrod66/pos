@@ -14,6 +14,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -24,11 +25,13 @@ public class PrescriptionsController {
     public PrescriptionsController(PrescriptionsService service) { this.service = service; }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('prescription.approve')")
     public ResponseEntity<ApiResponse<PrescriptionResponseDto>> create(@RequestBody @Valid PrescriptionRequestDto dto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.created(service.toDto(service.create(dto))));
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('prescription.approve')")
     public ResponseEntity<ApiResponse<PagedResponse<PrescriptionResponseDto>>> getAll(
             @PageableDefault(size = 20) Pageable pageable) {
         Page<Prescriptions> page = service.getAll(pageable);
@@ -36,11 +39,13 @@ public class PrescriptionsController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('prescription.approve')")
     public ResponseEntity<ApiResponse<PrescriptionResponseDto>> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(service.toDto(service.getById(id))));
     }
 
     @PatchMapping("/{id}/dispense")
+    @PreAuthorize("hasAuthority('prescription.approve')")
     public ResponseEntity<ApiResponse<PrescriptionResponseDto>> dispense(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.updated(service.toDto(service.dispense(id))));
     }

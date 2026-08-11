@@ -1,9 +1,6 @@
 package com.example.pos.security.auth;
 
 import com.example.pos.common.dto.ApiResponse;
-import com.example.pos.user.users.model.User;
-import com.example.pos.user.users.repository.UserRepository;
-import com.example.pos.user.users.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -17,11 +14,9 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
-    private final UserRepository userRepository;
 
-    public AuthController(AuthService authService, UserRepository userRepository) {
+    public AuthController(AuthService authService) {
         this.authService = authService;
-        this.userRepository = userRepository;
     }
 
     @GetMapping("/csrf")
@@ -37,8 +32,9 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<MeResponse>> login(
             @RequestBody @Valid LoginRequestDto dto,
-            HttpServletRequest request) {
-        MeResponse result = authService.login(dto.getEmail(), dto.getPassword(), request);
+            HttpServletRequest request,
+            HttpServletResponse response) {
+        MeResponse result = authService.login(dto.getEmail(), dto.getPassword(), request, response);
         return ResponseEntity.ok(ApiResponse.ok(result, "Login successful"));
     }
 
@@ -46,17 +42,17 @@ public class AuthController {
     public ResponseEntity<ApiResponse<MeResponse>> me(
             @AuthenticationPrincipal UserDetailsImpl userDetails,
             HttpServletRequest request) {
-        User user = userRepository.findById(userDetails.getUserId())
-                .orElseThrow();
-        return ResponseEntity.ok(ApiResponse.ok(authService.me(user, request)));
+        return ResponseEntity.ok(ApiResponse.ok(authService.me(userDetails.getUserId(), request)));
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<ApiResponse<Void>> logout(
+    public ResponseEntity<ApiResponse<LogoutResponse>> logout(
             HttpServletRequest request, HttpServletResponse response) {
         authService.logout(request, response);
-        return ResponseEntity.ok(ApiResponse.ok(null, "Logged out"));
+        return ResponseEntity.ok(ApiResponse.ok(new LogoutResponse(true), "Logged out"));
     }
 
     public record CsrfResponse(String token, String headerName) {}
+
+    public record LogoutResponse(boolean signedOut) {}
 }

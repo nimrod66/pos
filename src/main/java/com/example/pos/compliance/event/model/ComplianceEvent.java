@@ -38,7 +38,7 @@ public class ComplianceEvent extends BaseEntity {
     @Column(name = "actor_name")
     private String actorName;
 
-    @Column(name = "payload", columnDefinition = "LONGTEXT")
+    @Column(name = "payload", columnDefinition = "TEXT")
     private String payload;
 
     @Column(name = "tenant_id")

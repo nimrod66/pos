@@ -14,6 +14,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -29,6 +30,7 @@ public class MedicineBatchesController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('inventory.adjust.approve')")
     public ResponseEntity<ApiResponse<MedicineBatchResponseDto>> create(
             @RequestBody @Valid MedicineBatchRequestDto dto) {
         MedicineBatches batch = batchService.createBatch(dto);
@@ -37,6 +39,7 @@ public class MedicineBatchesController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('inventory.read')")
     public ResponseEntity<ApiResponse<PagedResponse<MedicineBatchResponseDto>>> getAll(
             @PageableDefault(size = 20) Pageable pageable,
             @RequestParam(required = false) UUID medicineId,
@@ -54,12 +57,14 @@ public class MedicineBatchesController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('inventory.read')")
     public ResponseEntity<ApiResponse<MedicineBatchResponseDto>> getById(@PathVariable UUID id) {
         MedicineBatches batch = batchService.getBatchById(id);
         return ResponseEntity.ok(ApiResponse.ok(MedicineBatchResponseDto.from(batch)));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('inventory.adjust.approve')")
     public ResponseEntity<ApiResponse<MedicineBatchResponseDto>> update(
             @PathVariable UUID id,
             @RequestBody @Valid MedicineBatchRequestDto dto) {
@@ -68,6 +73,7 @@ public class MedicineBatchesController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('inventory.adjust.approve')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         batchService.deleteBatch(id);
         return ResponseEntity.ok(ApiResponse.deleted());

@@ -15,7 +15,8 @@ import java.time.LocalDateTime;
 @Builder
 @Getter
 @Setter
-@Table(name = "user_branch_role")
+@Table(name = "user_branch_role", uniqueConstraints =
+        @UniqueConstraint(name = "uk_user_branch_role", columnNames = {"user_id", "branch_id", "user_roles_id"}))
 public class UserBranchRole extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "branch_id", nullable = false)

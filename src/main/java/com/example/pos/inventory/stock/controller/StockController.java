@@ -15,6 +15,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -30,6 +31,7 @@ public class StockController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('inventory.adjust.approve')")
     public ResponseEntity<ApiResponse<StockResponseDto>> create(
             @RequestBody @Valid StockRequestDto dto) {
         Stock stock = stockService.createStock(dto);
@@ -38,6 +40,7 @@ public class StockController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('inventory.read')")
     public ResponseEntity<ApiResponse<PagedResponse<StockResponseDto>>> getAll(
             @PageableDefault(size = 20) Pageable pageable,
             @RequestParam(required = false) UUID branchId) {
@@ -46,6 +49,7 @@ public class StockController {
     }
 
     @GetMapping("/low")
+    @PreAuthorize("hasAuthority('inventory.read')")
     public ResponseEntity<ApiResponse<List<StockResponseDto>>> getLowStock(
             @RequestParam UUID branchId) {
         List<Stock> stockList = stockService.getLowStockByBranch(branchId);
@@ -56,12 +60,14 @@ public class StockController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('inventory.read')")
     public ResponseEntity<ApiResponse<StockResponseDto>> getById(@PathVariable UUID id) {
         Stock stock = stockService.getStockById(id);
         return ResponseEntity.ok(ApiResponse.ok(StockResponseDto.from(stock)));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('inventory.adjust.approve')")
     public ResponseEntity<ApiResponse<StockResponseDto>> update(
             @PathVariable UUID id,
             @RequestBody @Valid StockRequestDto dto) {
@@ -70,6 +76,7 @@ public class StockController {
     }
 
     @PostMapping("/receive")
+    @PreAuthorize("hasAuthority('inventory.adjust.approve')")
     public ResponseEntity<ApiResponse<StockResponseDto>> receive(
             @RequestBody @Valid StockAdjustmentDto dto) {
         Stock stock = stockService.receiveStock(dto);
@@ -77,6 +84,7 @@ public class StockController {
     }
 
     @PostMapping("/deduct")
+    @PreAuthorize("hasAuthority('inventory.adjust.approve')")
     public ResponseEntity<ApiResponse<StockResponseDto>> deduct(
             @RequestBody @Valid StockAdjustmentDto dto) {
         Stock stock = stockService.deductStock(dto);
@@ -84,6 +92,7 @@ public class StockController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('inventory.adjust.approve')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         stockService.deleteStock(id);
         return ResponseEntity.ok(ApiResponse.deleted());

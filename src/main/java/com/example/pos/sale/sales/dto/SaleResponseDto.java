@@ -18,12 +18,22 @@ import java.util.List;
 public class SaleResponseDto {
 
     private UUID id;
+    private UUID saleId;
     private String invoiceNumber;
+    private String saleNumber;
+    private String status;
     private String saleStatus;
     private String paymentStatus;
+    private String currency;
     private BigDecimal subtotal;
+    private BigDecimal discountTotal;
     private BigDecimal tax;
+    private BigDecimal taxTotal;
     private BigDecimal total;
+    private BigDecimal paidTotal;
+    private BigDecimal changeDue;
+    private UUID shiftId;
+    private UUID prescriptionReferenceId;
     private UUID branchId;
     private String branchName;
     private UUID userId;
@@ -34,20 +44,35 @@ public class SaleResponseDto {
     private List<PaymentResponse> payments;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private LocalDateTime completedAt;
+    private ReceiptResponse receipt;
 
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
     public static class SaleItemResponse {
         private UUID id;
+        private UUID lineId;
+        private UUID medicineId;
         private UUID medicineBatchesId;
         private String batchNumber;
         private String medicineName;
         private Integer quantity;
         private BigDecimal price;
+        private BigDecimal unitPrice;
         private BigDecimal discount;
         private BigDecimal taxRate;
         private BigDecimal taxableAmount;
         private BigDecimal tax;
         private BigDecimal total;
+        private BigDecimal lineTotal;
+        private List<BatchAllocationResponse> allocations;
+    }
+
+    @Data @Builder @NoArgsConstructor @AllArgsConstructor
+    public static class BatchAllocationResponse {
+        private UUID saleItemId;
+        private UUID batchId;
+        private String batchNumber;
+        private Integer quantity;
     }
 
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
@@ -61,21 +86,43 @@ public class SaleResponseDto {
         private LocalDateTime paymentDate;
     }
 
+    @Data @Builder @NoArgsConstructor @AllArgsConstructor
+    public static class ReceiptResponse {
+        private String receiptNumber;
+        private boolean printable;
+    }
+
     public static SaleResponseDto from(Sales sale) {
         return SaleResponseDto.builder()
                 .id(sale.getId())
+                .saleId(sale.getId())
                 .invoiceNumber(sale.getInvoiceNumber())
+                .saleNumber(sale.getInvoiceNumber())
+                .status(sale.getSaleStatus() != null ? sale.getSaleStatus().name() : null)
                 .saleStatus(sale.getSaleStatus() != null ? sale.getSaleStatus().name() : null)
                 .paymentStatus(sale.getPaymentStatus() != null ? sale.getPaymentStatus().name() : null)
+                .currency(sale.getCurrency())
                 .subtotal(sale.getSubtotal())
+                .discountTotal(sale.getDiscountTotal())
                 .tax(sale.getTax())
+                .taxTotal(sale.getTax())
                 .total(sale.getTotal())
+                .paidTotal(sale.getPaidTotal())
+                .changeDue(sale.getChangeDue())
+                .shiftId(sale.getShift() != null ? sale.getShift().getId() : null)
                 .branchId(sale.getBranch() != null ? sale.getBranch().getId() : null)
                 .branchName(sale.getBranch() != null ? sale.getBranch().getBranchName() : null)
                 .userId(sale.getUser() != null ? sale.getUser().getId() : null)
                 .userName(sale.getUser() != null ? sale.getUser().getFirstName() : null)
                 .createdAt(sale.getCreatedAt())
                 .updatedAt(sale.getUpdatedAt())
+                .completedAt(sale.getCompletedAt())
+                .receipt(sale.getReceipts() != null ? sale.getReceipts().stream().findFirst()
+                        .map(receipt -> ReceiptResponse.builder()
+                                .receiptNumber(receipt.getReceiptNumber())
+                                .printable(true)
+                                .build())
+                        .orElse(null) : null)
                 .build();
     }
 }

@@ -1,6 +1,7 @@
 package com.example.pos.procurement.goodsreceived.dto;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -32,8 +33,6 @@ public class GoodsReceivedRequestDto {
 
     private String remarks;
 
-    private String idempotencyKey;
-
     @NotEmpty(message = "At least one received line is required")
     @Valid
     private List<GRNLineDto> lines;
@@ -58,7 +57,7 @@ public class GoodsReceivedRequestDto {
         private Integer quantity;
 
         @NotNull
-        @Min(0)
+        @DecimalMin(value = "0.00", inclusive = true)
         private BigDecimal unitCost;
     }
 }

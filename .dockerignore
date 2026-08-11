@@ -1,0 +1,9 @@
+.git
+.github
+.env
+.env.*
+target
+outputs
+installer
+pharmacy-frontend
+*.log

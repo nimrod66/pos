@@ -21,9 +21,6 @@ public class TerminalConfig {
     @Getter
     private String terminalId;
 
-    @Getter
-    private boolean offline;
-
     private final SyncProperties syncProperties;
 
     public TerminalConfig(SyncProperties syncProperties) {
@@ -32,8 +29,6 @@ public class TerminalConfig {
 
     @PostConstruct
     public void init() {
-        offline = "offline".equalsIgnoreCase(syncProperties.getMode());
-
         try {
             Files.createDirectories(CONFIG_DIR);
             if (Files.exists(ID_FILE)) {
@@ -42,7 +37,7 @@ public class TerminalConfig {
                 terminalId = "TERM-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
                 Files.writeString(ID_FILE, terminalId);
             }
-            log.info("Terminal ID: {} (mode: {})", terminalId, offline ? "OFFLINE" : "ONLINE");
+            log.info("Terminal ID: {} (sync mode: {})", terminalId, syncProperties.getMode().toUpperCase());
         } catch (IOException e) {
             terminalId = "TERM-UNKNOWN";
             log.error("Failed to read/write terminal ID", e);

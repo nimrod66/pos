@@ -1,55 +1,85 @@
 package com.example.pos.sale.sales.dto;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import java.util.UUID;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class SaleRequestDto {
 
-    @NotNull(message = "Branch ID is required")
-    private UUID branchId;
+    @NotNull
+    private UUID clientSaleId;
 
-    @NotNull(message = "User ID is required")
-    private UUID userId;
+    @NotNull
+    private UUID shiftId;
 
-    private String invoiceNumber;
-    private String idempotencyKey;
+    private UUID prescriptionReferenceId;
     private UUID customerId;
 
-    @NotNull(message = "Items are required")
-    private List<SaleItemDto> items;
+    @NotEmpty
+    private List<@Valid SaleItemDto> items;
 
-    private List<PaymentItemDto> payments;
+    @NotEmpty
+    private List<@Valid PaymentItemDto> payments;
+
+    @DecimalMin(value = "0.00")
+    @Digits(integer = 12, fraction = 2)
+    private BigDecimal cashTendered;
+
+    @Size(max = 500)
+    private String note;
 
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
     public static class SaleItemDto {
-        @NotNull private UUID medicineBatchesId;
-        @NotNull @Positive private Integer quantity;
-        @NotNull @Positive private BigDecimal price;
-        private BigDecimal discount;
-        private BigDecimal tax;
+        @NotNull
+        private UUID lineId;
+
+        @NotNull
+        private UUID medicineId;
+
+        private UUID sellingUnitId;
+
+        @NotNull
+        @DecimalMin(value = "1", inclusive = true)
+        private BigDecimal quantity;
+
+        @NotNull
+        @DecimalMin(value = "0.00", inclusive = true)
+        @Digits(integer = 12, fraction = 2)
+        private BigDecimal expectedUnitPrice;
+
+        private UUID requestedBatchId;
+        private UUID discountRequestId;
     }
 
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
     public static class PaymentItemDto {
-        @NotBlank private String paymentMethod;
-        @NotNull @Positive private BigDecimal amount;
-        private String currency;
-        private String transactionReference;
+        @NotBlank
+        private String method;
+
+        @NotNull
+        @DecimalMin(value = "0.01", inclusive = true)
+        @Digits(integer = 12, fraction = 2)
+        private BigDecimal amount;
+
+        @Size(max = 100)
+        private String reference;
     }
 }
-

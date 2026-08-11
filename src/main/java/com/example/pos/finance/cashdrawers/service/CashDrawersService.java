@@ -2,11 +2,14 @@ package com.example.pos.finance.cashdrawers.service;
 
 import com.example.pos.common.exception.BadRequestException;
 import com.example.pos.common.exception.ResourceNotFoundException;
+import com.example.pos.common.exception.ForbiddenException;
 import com.example.pos.finance.cashdrawers.dto.CashDrawerRequestDto;
 import com.example.pos.finance.cashdrawers.model.CashDrawers;
 import com.example.pos.finance.cashdrawers.repository.CashDrawersRepository;
 import com.example.pos.user.staffshifts.model.StaffShifts;
 import com.example.pos.user.staffshifts.repository.StaffShiftsRepository;
+import com.example.pos.security.auth.AuthenticatedUserContext;
+import com.example.pos.security.auth.PermissionCodes;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -24,48 +27,48 @@ public class CashDrawersService {
 
     private final CashDrawersRepository repo;
     private final StaffShiftsRepository shiftRepo;
+    private final AuthenticatedUserContext current;
 
-    public CashDrawersService(CashDrawersRepository repo, StaffShiftsRepository shiftRepo) {
+    public CashDrawersService(CashDrawersRepository repo, StaffShiftsRepository shiftRepo,
+                              AuthenticatedUserContext current) {
         this.repo = repo;
         this.shiftRepo = shiftRepo;
+        this.current = current;
     }
 
     public CashDrawers openDrawer(CashDrawerRequestDto dto) {
-        StaffShifts shift = shiftRepo.findById(dto.getStaffShiftsId())
-                .orElseThrow(() -> new ResourceNotFoundException("StaffShift", dto.getStaffShiftsId()));
-
-        CashDrawers drawer = new CashDrawers();
-        drawer.setStaffShifts(shift);
-        drawer.setOpeningBalance(dto.getOpeningBalance() != null ? dto.getOpeningBalance() : BigDecimal.ZERO);
-        drawer.setExpectedClosingBalance(dto.getExpectedClosingBalance());
-        drawer.setOpeningTime(LocalTime.now());
-        drawer.setStatus("OPEN");
-        return repo.save(drawer);
+        throw new BadRequestException("Cash drawers are opened with a staff shift",
+                "DIRECT_DRAWER_OPEN_DISABLED");
     }
 
     public CashDrawers closeDrawer(UUID id, CashDrawerRequestDto dto) {
-        CashDrawers drawer = repo.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("CashDrawer", id));
-        if (!"OPEN".equals(drawer.getStatus())) {
-            throw new BadRequestException("Drawer is not open");
-        }
-        drawer.setActualClosingBalance(dto.getActualClosingBalance());
-        drawer.setClosingTime(LocalTime.now());
-        drawer.setStatus("CLOSED");
-        if (dto.getActualClosingBalance() != null && drawer.getExpectedClosingBalance() != null) {
-            drawer.setVariance(dto.getActualClosingBalance().subtract(drawer.getExpectedClosingBalance()));
-        }
-        return repo.save(drawer);
+        throw new BadRequestException("Cash drawers are closed with a staff shift",
+                "DIRECT_DRAWER_CLOSE_DISABLED");
     }
 
     @Transactional(readOnly = true)
     public Page<CashDrawers> getByShift(UUID shiftId, Pageable pageable) {
-        List<CashDrawers> list = repo.findByStaffShiftsId(shiftId);
+        StaffShifts shift = shiftRepo.findById(shiftId)
+                .orElseThrow(() -> new ResourceNotFoundException("StaffShift", shiftId));
+        current.requireBranch(shift.getBranch().getId());
+        requireOwnerOrApprover(shift);
+        List<CashDrawers> list = repo.findByStaffShiftsIdAndStaffShiftsBranchId(
+                shiftId, current.branchId());
         return new PageImpl<>(list, pageable, list.size());
     }
 
     @Transactional(readOnly = true)
     public CashDrawers getById(UUID id) {
-        return repo.findById(id).orElseThrow(() -> new ResourceNotFoundException("CashDrawer", id));
+        CashDrawers drawer = repo.findByIdAndStaffShiftsBranchId(id, current.branchId())
+                .orElseThrow(() -> new ResourceNotFoundException("CashDrawer", id));
+        requireOwnerOrApprover(drawer.getStaffShifts());
+        return drawer;
+    }
+
+    private void requireOwnerOrApprover(StaffShifts shift) {
+        if (!shift.getUser().getId().equals(current.userId())
+                && !current.hasAuthority(PermissionCodes.SHIFT_VARIANCE_APPROVE)) {
+            throw new ForbiddenException("Another user's cash drawer is not accessible");
+        }
     }
 }

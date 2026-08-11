@@ -28,10 +28,10 @@ public class TransmissionAttempt extends BaseEntity {
     @Column(name = "response_at")
     private LocalDateTime responseAt;
 
-    @Column(name = "request_payload", columnDefinition = "LONGTEXT")
+    @Column(name = "request_payload", columnDefinition = "TEXT")
     private String requestPayload;
 
-    @Column(name = "response_payload", columnDefinition = "LONGTEXT")
+    @Column(name = "response_payload", columnDefinition = "TEXT")
     private String responsePayload;
 
     @Column(name = "success")

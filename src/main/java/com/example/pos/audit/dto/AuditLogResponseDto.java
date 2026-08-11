@@ -17,6 +17,8 @@ public class AuditLogResponseDto {
 
     private UUID id;
     private UUID userId;
+    private UUID pharmacyId;
+    private UUID branchId;
     private String userName;
     private String tableName;
     private String recordId;
@@ -27,6 +29,8 @@ public class AuditLogResponseDto {
         return AuditLogResponseDto.builder()
                 .id(log.getId())
                 .userId(log.getUser() != null ? log.getUser().getId() : null)
+                .pharmacyId(log.getPharmacy() != null ? log.getPharmacy().getId() : null)
+                .branchId(log.getBranch() != null ? log.getBranch().getId() : null)
                 .userName(log.getUser() != null ? log.getUser().getFirstName() : null)
                 .tableName(log.getTableName())
                 .recordId(log.getRecordId())

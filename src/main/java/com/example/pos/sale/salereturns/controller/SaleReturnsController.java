@@ -14,6 +14,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -27,22 +28,26 @@ public class SaleReturnsController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('sale.return')")
     public ResponseEntity<ApiResponse<SaleReturnResponseDto>> create(
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
             @RequestBody @Valid SaleReturnRequestDto dto) {
-        SaleReturns sr = returnsService.createReturn(dto);
+        SaleReturns sr = returnsService.createReturn(dto, idempotencyKey);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created(returnsService.toResponseDto(sr)));
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyAuthority('sale.return', 'sale.read')")
     public ResponseEntity<ApiResponse<PagedResponse<SaleReturnResponseDto>>> getBySale(
             @PageableDefault(size = 20) Pageable pageable,
             @RequestParam UUID saleId) {
-        Page<SaleReturns> page = returnsService.getReturnsBySale(saleId, pageable);
-        return ResponseEntity.ok(ApiResponse.ok(PagedResponse.from(page, returnsService::toResponseDto)));
+        Page<SaleReturnResponseDto> page = returnsService.getReturnsBySale(saleId, pageable);
+        return ResponseEntity.ok(ApiResponse.ok(PagedResponse.fromPage(page)));
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('sale.return', 'sale.read')")
     public ResponseEntity<ApiResponse<SaleReturnResponseDto>> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(returnsService.toResponseDto(returnsService.getReturnById(id))));
     }

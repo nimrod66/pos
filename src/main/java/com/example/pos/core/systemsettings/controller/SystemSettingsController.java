@@ -10,6 +10,7 @@ import com.example.pos.core.systemsettings.service.SystemSettingsService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,6 +26,7 @@ public class SystemSettingsController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('settings.manage')")
     public ResponseEntity<ApiResponse<SystemSettingsResponseDto>> create(
             @RequestBody @Valid SystemSettingsRequestDto dto) {
         SystemSettings settings = settingsService.createSetting(dto);
@@ -33,6 +35,7 @@ public class SystemSettingsController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('settings.manage')")
     public ResponseEntity<ApiResponse<List<SystemSettingsResponseDto>>> getAll(
             @RequestParam(required = false) UUID pharmacyId,
             @RequestParam(required = false) UUID branchId) {
@@ -51,6 +54,7 @@ public class SystemSettingsController {
     }
 
     @GetMapping("/resolve")
+    @PreAuthorize("hasAuthority('settings.manage')")
     public ResponseEntity<ApiResponse<SystemSettingsResponseDto>> resolve(
             @RequestParam String key,
             @RequestParam(required = false) UUID branchId,
@@ -63,12 +67,14 @@ public class SystemSettingsController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('settings.manage')")
     public ResponseEntity<ApiResponse<SystemSettingsResponseDto>> getById(@PathVariable UUID id) {
         SystemSettings settings = settingsService.getSettingById(id);
         return ResponseEntity.ok(ApiResponse.ok(SystemSettingsResponseDto.from(settings)));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('settings.manage')")
     public ResponseEntity<ApiResponse<SystemSettingsResponseDto>> update(
             @PathVariable UUID id,
             @RequestBody @Valid SystemSettingsRequestDto dto) {
@@ -77,6 +83,7 @@ public class SystemSettingsController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('settings.manage')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         settingsService.deleteSetting(id);
         return ResponseEntity.ok(ApiResponse.deleted());

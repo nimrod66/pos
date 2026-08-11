@@ -1,24 +1,69 @@
-version: '3.8'
-
 services:
-  mysql:
-    image: mysql:8.0
+  postgres:
+    image: postgres:17.7-alpine
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: pos
+      POSTGRES_DB: ${POSTGRES_DB:-pos}
+      POSTGRES_USER: ${POSTGRES_USER:-pos}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pos}
     ports:
-      - "3306:3306"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - mysql_data:/var/lib/mysql
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 12
+    restart: unless-stopped
+
+  app:
+    build: .
+    ports:
+      - "${SERVER_PORT:-9090}:9090"
+    environment:
+      JAVA_TOOL_OPTIONS: -Duser.timezone=${POS_TIMEZONE:-Africa/Nairobi}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-offline}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-pos}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-pos}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-pos}
+      POS_TIMEZONE: ${POS_TIMEZONE:-Africa/Nairobi}
+      POS_ALLOWED_ORIGINS: ${POS_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      POS_SESSION_COOKIE_SECURE: ${POS_SESSION_COOKIE_SECURE:-false}
+      POS_SESSION_COOKIE_SAME_SITE: ${POS_SESSION_COOKIE_SAME_SITE:-strict}
+      POS_SESSION_IDLE_TIMEOUT: ${POS_SESSION_IDLE_TIMEOUT:-30m}
+      POS_SESSION_ABSOLUTE_TIMEOUT: ${POS_SESSION_ABSOLUTE_TIMEOUT:-12h}
+      POS_SEED_DEMO_ENABLED: ${POS_SEED_DEMO_ENABLED:-false}
+      POS_SYNC_MODE: ${POS_SYNC_MODE:-local}
+      POS_SYNC_CENTRAL_URL: ${POS_SYNC_CENTRAL_URL:-http://host.docker.internal:9090}
+      POS_SYNC_POLL_INTERVAL_SECONDS: ${POS_SYNC_POLL_INTERVAL_SECONDS:-30}
+      POS_FEATURES_FISCAL: ${POS_FEATURES_FISCAL:-false}
+      POS_FISCAL_ENABLED: ${POS_FISCAL_ENABLED:-false}
+      POS_FEATURES_DEVICES: ${POS_FEATURES_DEVICES:-false}
+      POS_FEATURES_EMAIL: ${POS_FEATURES_EMAIL:-false}
+      POS_FEATURES_SMS: ${POS_FEATURES_SMS:-false}
+      POS_SALES_RETURN_WINDOW_DAYS: ${POS_SALES_RETURN_WINDOW_DAYS:-7}
+      POS_RATE_LIMIT_ENABLED: ${POS_RATE_LIMIT_ENABLED:-false}
+      POS_RATE_LIMIT_RPS: ${POS_RATE_LIMIT_RPS:-20}
+      POS_RATE_LIMIT_AUTH_RPS: ${POS_RATE_LIMIT_AUTH_RPS:-5}
+      MANAGEMENT_HEALTH_MAIL_ENABLED: "false"
+      MANAGEMENT_HEALTH_RABBIT_ENABLED: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - pos_data:/app/pos-data
+      - connectors_data:/connectors
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 30s
     restart: unless-stopped
 
   rabbitmq:
-    image: rabbitmq:3-management
+    image: rabbitmq:4-management-alpine
+    profiles: ["messaging"]
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -29,45 +74,7 @@ services:
       retries: 5
     restart: unless-stopped
 
-  app:
-    build: .
-    ports:
-      - "9090:9090"
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/pos
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: root
-      SPRING_RABBITMQ_HOST: rabbitmq
-      POS_SYNC_MODE: online
-      # Payment gateways — sandbox test keys (replace for production)
-      STRIPE_SECRET_KEY: sk_test_51TvURfB2SyHK5onUZH0lmhlIhGntwwECkmxgwrvJpAWp5NptRHKxC7k4iY91haiVofSUQLvzD8fLnMK7Da17DKbR00pdQAG3dg
-      STRIPE_PUBLISHABLE_KEY: pk_test_51TvURfB2SyHK5onURe919SSW88qJBwIPNeHYBnp173sU5mhBpg4xikHW8qgMYY7gzRhiJXONbmTUFRzmfn7wu5Ap006aClwITa
-      STRIPE_WEBHOOK_SECRET: whsec_placeholder
-      PAYSTACK_SECRET_KEY: sk_test_259754a18576f005cffa3d50146487761a923ab3
-      PAYSTACK_PUBLIC_KEY: pk_test_680dee8c2f914dde8471f40a428936bc704eead7
-      MPESA_CONSUMER_KEY: eUH72pO5oOtMIzGAsyAGlcOGlpUEILZGGYVSWEGzidq8pVGs
-      MPESA_CONSUMER_SECRET: dFnZAIxGGIdYA0bhKrmO1FZPkyG2IHQ2GhNGYGqIKFfMS2X6lzTxOCglWEiA9Eqq
-      MPESA_PASSKEY: bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919
-      # Compliance
-      FISCAL_MODE: LOCAL
-      FISCAL_API_KEY: change-me
-      COMPLIANCE_MODE: MOCK
-    depends_on:
-      mysql:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    volumes:
-      - pos_data:/pos-data
-      - connectors_data:/app/connectors
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:9090/actuator/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-    restart: unless-stopped
-
 volumes:
-  mysql_data:
+  postgres_data:
   pos_data:
   connectors_data:

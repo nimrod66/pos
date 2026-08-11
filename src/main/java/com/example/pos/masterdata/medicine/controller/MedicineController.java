@@ -14,6 +14,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -27,6 +28,7 @@ public class MedicineController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('medicine.write') and hasAuthority('medicine.price.write')")
     public ResponseEntity<ApiResponse<MedicineResponseDto>> create(
             @RequestBody @Valid MedicineRequestDto dto) {
         Medicine medicine = medicineService.createMedicine(dto);
@@ -35,6 +37,7 @@ public class MedicineController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('medicine.read')")
     public ResponseEntity<ApiResponse<PagedResponse<MedicineResponseDto>>> getAll(
             @RequestParam(required = false) UUID categoryId,
             @RequestParam(required = false) UUID manufacturerId,
@@ -54,6 +57,7 @@ public class MedicineController {
     }
 
     @GetMapping("/barcode/{barcode}")
+    @PreAuthorize("hasAuthority('medicine.read')")
     public ResponseEntity<ApiResponse<MedicineResponseDto>> getByBarcode(
             @PathVariable String barcode) {
         Medicine medicine = medicineService.getMedicineByBarcode(barcode);
@@ -61,6 +65,7 @@ public class MedicineController {
     }
 
     @GetMapping("/search")
+    @PreAuthorize("hasAuthority('medicine.read')")
     public ResponseEntity<ApiResponse<PagedResponse<MedicineResponseDto>>> search(
             @RequestParam String q,
             @PageableDefault(size = 20) Pageable pageable) {
@@ -69,12 +74,14 @@ public class MedicineController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('medicine.read')")
     public ResponseEntity<ApiResponse<MedicineResponseDto>> getById(@PathVariable UUID id) {
         Medicine medicine = medicineService.getMedicineById(id);
         return ResponseEntity.ok(ApiResponse.ok(MedicineResponseDto.from(medicine)));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('medicine.write') and hasAuthority('medicine.price.write')")
     public ResponseEntity<ApiResponse<MedicineResponseDto>> update(
             @PathVariable UUID id,
             @RequestBody @Valid MedicineRequestDto dto) {
@@ -83,6 +90,7 @@ public class MedicineController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('medicine.write')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         medicineService.deleteMedicine(id);
         return ResponseEntity.ok(ApiResponse.deleted());

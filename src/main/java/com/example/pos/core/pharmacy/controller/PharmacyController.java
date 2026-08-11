@@ -10,6 +10,7 @@ import com.example.pos.core.pharmacy.service.PharmacyService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,6 +26,7 @@ public class PharmacyController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('settings.manage')")
     public ResponseEntity<ApiResponse<PharmacyResponseDto>> create(@RequestBody @Valid PharmacyRequestDto dto) {
         Pharmacy pharmacy = pharmacyService.createPharmacy(dto);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -32,6 +34,7 @@ public class PharmacyController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('settings.manage')")
     public ResponseEntity<ApiResponse<List<PharmacyResponseDto>>> getAll() {
         List<PharmacyResponseDto> pharmacies = pharmacyService.getAllPharmacies()
                 .stream()
@@ -41,12 +44,14 @@ public class PharmacyController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('settings.manage')")
     public ResponseEntity<ApiResponse<PharmacyResponseDto>> getById(@PathVariable UUID id) {
         Pharmacy pharmacy = pharmacyService.getPharmacyById(id);
         return ResponseEntity.ok(ApiResponse.ok(PharmacyResponseDto.from(pharmacy)));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('settings.manage')")
     public ResponseEntity<ApiResponse<PharmacyResponseDto>> update(
             @PathVariable UUID id,
             @RequestBody @Valid PharmacyRequestDto dto) {
@@ -55,6 +60,7 @@ public class PharmacyController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('settings.manage')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         pharmacyService.deletePharmacy(id);
         return ResponseEntity.ok(ApiResponse.deleted());

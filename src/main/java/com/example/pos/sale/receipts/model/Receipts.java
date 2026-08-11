@@ -17,9 +17,10 @@ import java.time.LocalDateTime;
 public class Receipts extends BaseEntity {
     //link sale id
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "sales_id")
+    @JoinColumn(name = "sales_id", nullable = false)
     private Sales sales;
 
+    @Column(nullable = false, unique = true, length = 64)
     private String receiptNumber;
     private LocalDateTime printedDate;
 }

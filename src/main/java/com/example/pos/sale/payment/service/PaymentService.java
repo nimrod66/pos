@@ -11,6 +11,7 @@ import com.example.pos.sale.payment.model.Payment;
 import com.example.pos.sale.payment.repository.PaymentRepository;
 import com.example.pos.sale.sales.model.Sales;
 import com.example.pos.sale.sales.repository.SalesRepository;
+import com.example.pos.security.auth.AuthenticatedUserContext;
 import com.example.pos.sync.config.TerminalConfig;
 import com.example.pos.sync.event.EventType;
 import com.example.pos.sync.service.SyncService;
@@ -42,6 +43,7 @@ public class PaymentService {
     private final PaymentGatewayFactory gatewayFactory;
     private final SyncService syncService;
     private final TerminalConfig terminalConfig;
+    private final AuthenticatedUserContext current;
 
     @Value("${mpesa.callback-hmac-key:}")
     private String callbackHmacKey;
@@ -56,42 +58,20 @@ public class PaymentService {
                           SalesRepository salesRepository,
                           PaymentGatewayFactory gatewayFactory,
                           SyncService syncService,
-                          TerminalConfig terminalConfig) {
+                          TerminalConfig terminalConfig,
+                          AuthenticatedUserContext current) {
         this.paymentRepository = paymentRepository;
         this.salesRepository = salesRepository;
         this.gatewayFactory = gatewayFactory;
         this.syncService = syncService;
         this.terminalConfig = terminalConfig;
+        this.current = current;
     }
 
     public Payment addPayment(PaymentRequestDto dto) {
-        Sales sale = salesRepository.findById(dto.getSaleId())
-                .orElseThrow(() -> new ResourceNotFoundException("Sale", dto.getSaleId()));
-
-        Payment payment = new Payment();
-        payment.setSales(sale);
-        try {
-            payment.setPaymentMethod(Payment.PaymentMethod.valueOf(dto.getPaymentMethod().toUpperCase()));
-        } catch (IllegalArgumentException e) {
-            throw new BadRequestException("Invalid payment method: " + dto.getPaymentMethod()
-                    + ". Valid: " + gatewayFactory.listConfigured().keySet());
-        }
-        payment.setAmount(dto.getAmount());
-        payment.setCurrency(dto.getCurrency() != null ? dto.getCurrency() : "KES");
-        payment.setDescription(dto.getDescription());
-        payment.setPaymentDate(LocalDateTime.now());
-
-        if (dto.getPaymentMethod().equalsIgnoreCase("CASH")) {
-            payment.setTransactionReference("CASH-" + System.currentTimeMillis());
-            payment.setPaymentStatus("COMPLETED");
-        } else {
-            payment.setPaymentStatus("PENDING");
-        }
-
-        payment = paymentRepository.save(payment);
-        recalculateSalePaymentStatus(sale);
-
-        return payment;
+        throw new BadRequestException(
+                "Payments must be submitted as part of authoritative checkout",
+                "DIRECT_PAYMENT_DISABLED");
     }
 
     public PaymentGatewayResponse processPayment(Payment payment, String phoneNumber) {
@@ -134,13 +114,13 @@ public class PaymentService {
     }
 
     public PaymentGatewayResponse processPayment(UUID paymentId, String phoneNumber) {
-        Payment payment = paymentRepository.findById(paymentId)
+        Payment payment = paymentRepository.findByIdAndSalesBranchId(paymentId, current.branchId())
                 .orElseThrow(() -> new ResourceNotFoundException("Payment", paymentId));
         return processPayment(payment, phoneNumber);
     }
 
     public PaymentGatewayResponse queryStatus(UUID paymentId) {
-        Payment payment = paymentRepository.findById(paymentId)
+        Payment payment = paymentRepository.findByIdAndSalesBranchId(paymentId, current.branchId())
                 .orElseThrow(() -> new ResourceNotFoundException("Payment", paymentId));
 
         if (payment.getTransactionReference() == null) {
@@ -238,25 +218,9 @@ public class PaymentService {
     }
 
     public PaymentGatewayResponse refundPayment(UUID paymentId) {
-        Payment payment = paymentRepository.findById(paymentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Payment", paymentId));
-
-        if (!"COMPLETED".equals(payment.getPaymentStatus())) {
-            throw new BadRequestException("Only completed payments can be refunded");
-        }
-
-        PaymentGateway gateway = gatewayFactory.getGateway(payment.getPaymentMethod());
-        PaymentGatewayResponse response = gateway.refund(
-                payment.getTransactionReference(), payment.getAmount());
-
-        if (response.isSuccess()) {
-            payment.setPaymentStatus("REFUNDED");
-            payment.setDescription("Refunded: " + response.getResponseDescription());
-            paymentRepository.save(payment);
-            recalculateSalePaymentStatus(payment.getSales());
-        }
-
-        return response;
+        throw new BadRequestException(
+                "Refunds must be recorded through the sale return workflow",
+                "DIRECT_REFUND_DISABLED");
     }
 
     public void handlePaystackCallback(Map<String, Object> callback) {
@@ -356,7 +320,10 @@ public class PaymentService {
 
     @Transactional(readOnly = true)
     public Page<Payment> getPaymentsBySale(UUID saleId, Pageable pageable) {
-        return paymentRepository.findBySalesId(saleId, pageable);
+        salesRepository.findDetailedByIdAndBranchId(saleId, current.branchId())
+                .orElseThrow(() -> new ResourceNotFoundException("Sale", saleId));
+        return paymentRepository.findBySalesIdAndSalesBranchId(
+                saleId, current.branchId(), pageable);
     }
 
     private void recalculateSalePaymentStatus(Sales sale) {

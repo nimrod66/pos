@@ -25,7 +25,7 @@ public class Receipt extends BaseEntity {
     @Column(name = "invoice_id")
     private UUID invoiceId;
 
-    @Column(name = "receipt_data", columnDefinition = "LONGTEXT")
+    @Column(name = "receipt_data", columnDefinition = "TEXT")
     private String receiptData;
 
     @Column(name = "printed_date")

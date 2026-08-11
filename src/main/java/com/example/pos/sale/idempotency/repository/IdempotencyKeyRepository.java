@@ -11,5 +11,9 @@ public interface IdempotencyKeyRepository extends JpaRepository<IdempotencyKey, 
 
     Optional<IdempotencyKey> findByIdempotencyKey(String key);
 
+    Optional<IdempotencyKey> findByPharmacyIdAndIdempotencyKey(UUID pharmacyId, String key);
+
     boolean existsByIdempotencyKey(String key);
+
+    boolean existsByPharmacyIdAndIdempotencyKey(UUID pharmacyId, String key);
 }

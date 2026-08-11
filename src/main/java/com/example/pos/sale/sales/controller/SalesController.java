@@ -14,11 +14,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/sales")
@@ -31,13 +31,17 @@ public class SalesController {
     }
 
     @PostMapping
-    public ResponseEntity<ApiResponse<SaleResponseDto>> create(@RequestBody @Valid SaleRequestDto dto) {
-        Sales sale = saleService.createSale(dto);
+    @PreAuthorize("hasAuthority('pos.sell')")
+    public ResponseEntity<ApiResponse<SaleResponseDto>> create(
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @RequestBody @Valid SaleRequestDto dto) {
+        Sales sale = saleService.createSale(dto, idempotencyKey);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created(saleService.toResponseDto(sale)));
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('sale.read')")
     public ResponseEntity<ApiResponse<PagedResponse<SaleResponseDto>>> getAll(
             @PageableDefault(size = 20) Pageable pageable,
             @RequestParam(required = false) UUID branchId) {
@@ -46,8 +50,9 @@ public class SalesController {
     }
 
     @GetMapping("/suspended")
+    @PreAuthorize("hasAuthority('sale.read')")
     public ResponseEntity<ApiResponse<List<SaleResponseDto>>> getSuspended(
-            @RequestParam UUID branchId) {
+            @RequestParam(required = false) UUID branchId) {
         List<Sales> sales = saleService.getSuspendedSales(branchId);
         List<SaleResponseDto> response = sales.stream()
                 .map(saleService::toResponseDto)
@@ -56,6 +61,7 @@ public class SalesController {
     }
 
     @GetMapping("/last")
+    @PreAuthorize("hasAuthority('sale.read')")
     public ResponseEntity<ApiResponse<SaleResponseDto>> getLast(
             @RequestParam UUID userId,
             @RequestParam UUID branchId) {
@@ -65,30 +71,35 @@ public class SalesController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('sale.read')")
     public ResponseEntity<ApiResponse<SaleResponseDto>> getById(@PathVariable UUID id) {
         Sales sale = saleService.getSaleById(id);
         return ResponseEntity.ok(ApiResponse.ok(saleService.toResponseDto(sale)));
     }
 
     @PatchMapping("/{id}/cancel")
+    @PreAuthorize("hasAuthority('sale.void')")
     public ResponseEntity<ApiResponse<SaleResponseDto>> cancel(@PathVariable UUID id) {
         Sales sale = saleService.cancelSale(id);
         return ResponseEntity.ok(ApiResponse.updated(saleService.toResponseDto(sale)));
     }
 
     @PatchMapping("/{id}/suspend")
+    @PreAuthorize("hasAuthority('pos.sell')")
     public ResponseEntity<ApiResponse<SaleResponseDto>> suspend(@PathVariable UUID id) {
         Sales sale = saleService.suspendSale(id);
         return ResponseEntity.ok(ApiResponse.updated(saleService.toResponseDto(sale)));
     }
 
     @PatchMapping("/{id}/resume")
+    @PreAuthorize("hasAuthority('pos.sell')")
     public ResponseEntity<ApiResponse<SaleResponseDto>> resume(@PathVariable UUID id) {
         Sales sale = saleService.resumeSale(id);
         return ResponseEntity.ok(ApiResponse.updated(saleService.toResponseDto(sale)));
     }
 
     @PatchMapping("/{id}/items/{itemId}/override-price")
+    @PreAuthorize("hasAuthority('medicine.price.write')")
     public ResponseEntity<ApiResponse<SaleResponseDto>> overridePrice(
             @PathVariable UUID id,
             @PathVariable UUID itemId,

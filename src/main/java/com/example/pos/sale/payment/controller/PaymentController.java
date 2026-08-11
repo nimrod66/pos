@@ -15,6 +15,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -30,6 +31,7 @@ public class PaymentController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('pos.sell')")
     public ResponseEntity<ApiResponse<PaymentGatewayResponse>> addPayment(@RequestBody @Valid PaymentRequestDto dto) {
         Payment payment = paymentService.addPayment(dto);
 
@@ -43,6 +45,7 @@ public class PaymentController {
     }
 
     @PostMapping("/{id}/process")
+    @PreAuthorize("hasAuthority('pos.sell')")
     public ResponseEntity<ApiResponse<PaymentGatewayResponse>> processPayment(
             @PathVariable UUID id,
             @RequestParam(required = false) String phoneNumber) {
@@ -51,12 +54,14 @@ public class PaymentController {
     }
 
     @GetMapping("/{id}/status")
+    @PreAuthorize("hasAnyAuthority('pos.sell', 'sale.read')")
     public ResponseEntity<ApiResponse<PaymentGatewayResponse>> queryStatus(@PathVariable UUID id) {
         PaymentGatewayResponse response = paymentService.queryStatus(id);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('sale.read')")
     public ResponseEntity<ApiResponse<PagedResponse<SaleResponseDto.PaymentResponse>>> getBySale(
             @PageableDefault(size = 20) Pageable pageable,
             @RequestParam UUID saleId) {
@@ -75,25 +80,29 @@ public class PaymentController {
 
     @PostMapping("/mpesa/callback")
     public ResponseEntity<ApiResponse<Void>> mpesaCallback(@RequestBody Map<String, Object> callback) {
-        paymentService.handleMpesaCallback(callback);
-        return ResponseEntity.ok(ApiResponse.ok(null));
+        throw callbacksDisabled();
     }
 
     @PostMapping("/paystack/callback")
     public ResponseEntity<ApiResponse<Void>> paystackCallback(@RequestBody Map<String, Object> callback) {
-        paymentService.handlePaystackCallback(callback);
-        return ResponseEntity.ok(ApiResponse.ok(null));
+        throw callbacksDisabled();
     }
 
     @PostMapping("/stripe/callback")
     public ResponseEntity<ApiResponse<Void>> stripeCallback(@RequestBody Map<String, Object> payload) {
-        paymentService.handleStripeCallback(payload);
-        return ResponseEntity.ok(ApiResponse.ok(null));
+        throw callbacksDisabled();
     }
 
     @PostMapping("/{id}/refund")
+    @PreAuthorize("hasAuthority('sale.return')")
     public ResponseEntity<ApiResponse<PaymentGatewayResponse>> refundPayment(@PathVariable UUID id) {
         PaymentGatewayResponse response = paymentService.refundPayment(id);
         return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    private com.example.pos.common.exception.BadRequestException callbacksDisabled() {
+        return new com.example.pos.common.exception.BadRequestException(
+                "Online gateway callbacks are disabled until provider signature verification is configured",
+                "PAYMENT_CALLBACKS_DISABLED");
     }
 }

@@ -1,8 +1,10 @@
 package com.example.pos.procurement.goodsreceived.model;
 
 import com.example.pos.common.BaseEntity;
+import com.example.pos.core.branch.model.Branch;
 import com.example.pos.procurement.purchaseorders.model.PurchaseOrders;
 import com.example.pos.procurement.suppliers.model.Suppliers;
+import com.example.pos.user.users.model.User;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -29,6 +31,14 @@ public class GoodsReceivedNotes extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "purchase_orders_id")
     private PurchaseOrders purchaseOrders;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "branch_id", nullable = false)
+    private Branch branch;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "received_by_user_id", nullable = false)
+    private User receivedBy;
 
     @Column(name = "received_at", nullable = false)
     @Builder.Default

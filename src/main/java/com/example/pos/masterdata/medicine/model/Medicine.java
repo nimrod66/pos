@@ -1,6 +1,7 @@
 package com.example.pos.masterdata.medicine.model;
 
 import com.example.pos.common.BaseEntity;
+import com.example.pos.core.pharmacy.model.Pharmacy;
 import com.example.pos.pharmacy.regulatory.controlledrugs.model.ControlledDrugs;
 import com.example.pos.inventory.batches.model.MedicineBatches;
 import com.example.pos.masterdata.categories.model.MedicineCategories;
@@ -16,6 +17,7 @@ import com.example.pos.terminal.barcode.BarcodeType;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -25,9 +27,14 @@ import java.util.Set;
 @Getter
 @Setter
 @Builder
-@Table(name = "medicine")
+@Table(name = "medicine", uniqueConstraints =
+        @UniqueConstraint(name = "uk_medicine_pharmacy_barcode", columnNames = {"pharmacy_id", "barcode"}))
 public class Medicine extends BaseEntity {
     //link manufacturer id, category id, dosage form id, unit id, tax category id
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "pharmacy_id", nullable = false)
+    private Pharmacy pharmacy;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "manufacturer_id")
@@ -112,6 +119,12 @@ public class Medicine extends BaseEntity {
     private String brandName;
     private String genericName;
     private String strength;
+    @Column(name = "default_buying_price", nullable = false)
+    private BigDecimal buyingPrice;
+    @Column(name = "selling_price", nullable = false)
+    private BigDecimal sellingPrice;
+    @Column(name = "reorder_level", nullable = false)
+    private Integer reorderLevel;
     @Enumerated(EnumType.STRING)
     private Status status;
 

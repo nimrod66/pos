@@ -3,8 +3,11 @@ package com.example.pos.common;
 import com.example.pos.common.dto.ErrorDetail;
 import com.example.pos.common.exception.BaseException;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -15,6 +18,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(BaseException.class)
@@ -76,12 +80,41 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(error);
     }
 
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ErrorDetail> handleAuthentication(
+            AuthenticationException ex, HttpServletRequest request) {
+        ErrorDetail error = ErrorDetail.builder()
+                .status(HttpStatus.UNAUTHORIZED.value())
+                .error("Unauthorized")
+                .message("Invalid email or password")
+                .errorCode("INVALID_CREDENTIALS")
+                .path(request.getRequestURI())
+                .timestamp(LocalDateTime.now())
+                .build();
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorDetail> handleAccessDenied(
+            AccessDeniedException ex, HttpServletRequest request) {
+        ErrorDetail error = ErrorDetail.builder()
+                .status(HttpStatus.FORBIDDEN.value())
+                .error("Forbidden")
+                .message("You do not have permission to perform this action")
+                .errorCode("ACCESS_DENIED")
+                .path(request.getRequestURI())
+                .timestamp(LocalDateTime.now())
+                .build();
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorDetail> handleUnexpected(Exception ex, HttpServletRequest request) {
+        log.error("Unhandled request failure for {} {}", request.getMethod(), request.getRequestURI(), ex);
         ErrorDetail error = ErrorDetail.builder()
                 .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
                 .error("Internal Server Error")
-                .message(ex.getMessage() != null ? ex.getMessage() : "An unexpected error occurred")
+                .message("An unexpected error occurred")
                 .errorCode("INTERNAL_ERROR")
                 .path(request.getRequestURI())
                 .timestamp(LocalDateTime.now())

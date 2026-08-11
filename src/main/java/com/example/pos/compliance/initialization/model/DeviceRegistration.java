@@ -22,7 +22,7 @@ public class DeviceRegistration extends BaseEntity {
     @Column(name = "kra_pin", nullable = false, length = 20)
     private String kraPin;
 
-    @Column(name = "encrypted_cmc_key", nullable = false, columnDefinition = "LONGTEXT")
+    @Column(name = "encrypted_cmc_key", nullable = false, columnDefinition = "TEXT")
     private String encryptedCmcKey;
 
     @Column(name = "registration_status", nullable = false, length = 20)

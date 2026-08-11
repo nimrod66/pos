@@ -1,6 +1,7 @@
 package com.example.pos.procurement.suppliers.model;
 
 import com.example.pos.common.BaseEntity;
+import com.example.pos.core.pharmacy.model.Pharmacy;
 import com.example.pos.procurement.purchaseorders.model.PurchaseOrders;
 import com.example.pos.procurement.supplierinvoices.model.SupplierInvoices;
 import jakarta.persistence.*;
@@ -15,10 +16,15 @@ import java.util.Set;
 @Getter
 @Setter
 @Builder
-@Table(name = "suppliers")
+@Table(name = "suppliers", uniqueConstraints =
+        @UniqueConstraint(name = "uk_supplier_pharmacy_name", columnNames = {"pharmacy_id", "supplier_name"}))
 public class Suppliers extends BaseEntity {
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "pharmacy_id", nullable = false)
+    private Pharmacy pharmacy;
 
+    @Column(nullable = false)
     private String supplierName;
     private String licenseNumber;
     private String phoneNumber;
@@ -28,6 +34,7 @@ public class Suppliers extends BaseEntity {
     private String paymentTerms;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private Status status;
 
     public enum Status {

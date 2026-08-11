@@ -23,4 +23,6 @@ public interface SystemSettingsRepository extends JpaRepository<SystemSettings, 
     List<SystemSettings> findByPharmacyIdAndBranchId(UUID pharmacyId, UUID branchId);
 
     List<SystemSettings> findByPharmacyId(UUID pharmacyId);
+
+    Optional<SystemSettings> findByIdAndPharmacyId(UUID id, UUID pharmacyId);
 }

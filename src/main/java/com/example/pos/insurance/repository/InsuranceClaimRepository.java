@@ -22,7 +22,7 @@ public interface InsuranceClaimRepository extends JpaRepository<InsuranceClaim, 
 
     List<InsuranceClaim> findByInsurerIdAndClaimStatus(UUID insurerId, ClaimStatus status);
 
-    List<InsuranceClaim> findByBatchReference(String batchReference);
+    List<InsuranceClaim> findByBatch_BatchReference(String batchReference);
 
     @Query("SELECT c FROM InsuranceClaim c WHERE c.claimStatus IN (" +
             "com.example.pos.insurance.model.ClaimStatus.PENDING, " +

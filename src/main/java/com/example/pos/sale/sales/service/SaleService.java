@@ -3,476 +3,760 @@ package com.example.pos.sale.sales.service;
 import com.example.pos.common.annotation.Auditable;
 import com.example.pos.common.exception.BadRequestException;
 import com.example.pos.common.exception.ConflictException;
+import com.example.pos.common.exception.ForbiddenException;
 import com.example.pos.common.exception.ResourceNotFoundException;
 import com.example.pos.core.branch.model.Branch;
-import com.example.pos.core.branch.repository.BranchRepository;
+import com.example.pos.core.pharmacy.model.Pharmacy;
 import com.example.pos.customer.model.Customer;
 import com.example.pos.customer.repository.CustomerRepository;
 import com.example.pos.inventory.batches.model.MedicineBatches;
-import com.example.pos.inventory.batches.repository.MedicineBatchesRepository;
 import com.example.pos.inventory.stock.model.Stock;
 import com.example.pos.inventory.stock.repository.StockRepository;
 import com.example.pos.inventory.stockmovements.model.StockMovements;
-import com.example.pos.inventory.stockmovements.service.StockMovementsService;
+import com.example.pos.inventory.stockmovements.repository.StockMovementsRepository;
 import com.example.pos.masterdata.medicine.model.Medicine;
 import com.example.pos.masterdata.tax.model.Tax;
+import com.example.pos.prescriptions.prescriptions.model.Prescriptions;
+import com.example.pos.prescriptions.prescriptions.repository.PrescriptionsRepository;
 import com.example.pos.sale.idempotency.model.IdempotencyKey;
 import com.example.pos.sale.idempotency.repository.IdempotencyKeyRepository;
 import com.example.pos.sale.payment.model.Payment;
 import com.example.pos.sale.payment.repository.PaymentRepository;
 import com.example.pos.sale.receipts.model.Receipts;
-import com.example.pos.sale.receipts.repository.ReceiptsRepository;
 import com.example.pos.sale.saleitems.model.SaleItems;
 import com.example.pos.sale.sales.dto.SaleRequestDto;
 import com.example.pos.sale.sales.dto.SaleResponseDto;
 import com.example.pos.sale.sales.model.Sales;
 import com.example.pos.sale.sales.repository.SalesRepository;
+import com.example.pos.security.auth.AuthenticatedUserContext;
+import com.example.pos.security.auth.PermissionCodes;
+import com.example.pos.sync.config.SyncProperties;
 import com.example.pos.sync.config.TerminalConfig;
 import com.example.pos.sync.event.EventType;
 import com.example.pos.sync.service.SyncService;
 import com.example.pos.terminal.auth.TerminalContext;
+import com.example.pos.user.staffshifts.model.StaffShifts;
+import com.example.pos.user.staffshifts.repository.StaffShiftsRepository;
 import com.example.pos.user.users.model.User;
-import com.example.pos.user.users.repository.UserRepository;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
+import jakarta.persistence.EntityManager;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.HashMap;
+import java.util.HexFormat;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
 @Transactional
 public class SaleService {
 
-    private final SalesRepository salesRepository;
-    private final BranchRepository branchRepository;
-    private final UserRepository userRepository;
-    private final CustomerRepository customerRepository;
-    private final MedicineBatchesRepository batchesRepository;
-    private final StockRepository stockRepository;
-    private final PaymentRepository paymentRepository;
-    private final ReceiptsRepository receiptsRepository;
-    private final IdempotencyKeyRepository idempotencyRepository;
-    private final TerminalConfig terminalConfig;
-    private final SyncService syncService;
-    private final StockMovementsService stockMovementsService;
+    private static final BigDecimal HUNDRED = new BigDecimal("100");
+    private static final String CURRENCY = "KES";
 
-    public SaleService(SalesRepository salesRepository, BranchRepository branchRepository,
-                       UserRepository userRepository, CustomerRepository customerRepository,
-                       MedicineBatchesRepository batchesRepository,
-                       StockRepository stockRepository, PaymentRepository paymentRepository,
-                       ReceiptsRepository receiptsRepository, IdempotencyKeyRepository idempotencyRepository,
-                       TerminalConfig terminalConfig, SyncService syncService,
-                       StockMovementsService stockMovementsService) {
+    private final SalesRepository salesRepository;
+    private final CustomerRepository customerRepository;
+    private final StockRepository stockRepository;
+    private final StockMovementsRepository movementsRepository;
+    private final IdempotencyKeyRepository idempotencyRepository;
+    private final StaffShiftsRepository shiftsRepository;
+    private final PaymentRepository paymentRepository;
+    private final PrescriptionsRepository prescriptionsRepository;
+    private final AuthenticatedUserContext current;
+    private final TerminalConfig terminalConfig;
+    private final SyncProperties syncProperties;
+    private final SyncService syncService;
+    private final ObjectMapper objectMapper;
+    private final EntityManager entityManager;
+
+    public SaleService(SalesRepository salesRepository,
+                       CustomerRepository customerRepository,
+                       StockRepository stockRepository,
+                       StockMovementsRepository movementsRepository,
+                       IdempotencyKeyRepository idempotencyRepository,
+                       StaffShiftsRepository shiftsRepository,
+                       PaymentRepository paymentRepository,
+                       PrescriptionsRepository prescriptionsRepository,
+                       AuthenticatedUserContext current,
+                       TerminalConfig terminalConfig,
+                       SyncProperties syncProperties,
+                       SyncService syncService,
+                       ObjectMapper objectMapper,
+                       EntityManager entityManager) {
         this.salesRepository = salesRepository;
-        this.branchRepository = branchRepository;
-        this.userRepository = userRepository;
         this.customerRepository = customerRepository;
-        this.batchesRepository = batchesRepository;
         this.stockRepository = stockRepository;
-        this.paymentRepository = paymentRepository;
-        this.receiptsRepository = receiptsRepository;
+        this.movementsRepository = movementsRepository;
         this.idempotencyRepository = idempotencyRepository;
+        this.shiftsRepository = shiftsRepository;
+        this.paymentRepository = paymentRepository;
+        this.prescriptionsRepository = prescriptionsRepository;
+        this.current = current;
         this.terminalConfig = terminalConfig;
+        this.syncProperties = syncProperties;
         this.syncService = syncService;
-        this.stockMovementsService = stockMovementsService;
+        this.objectMapper = objectMapper;
+        this.entityManager = entityManager;
     }
 
     @Auditable(action = "CREATE_SALE", entity = "Sale")
-    public Sales createSale(SaleRequestDto dto) {
-        if (dto.getIdempotencyKey() != null && !dto.getIdempotencyKey().isBlank()) {
-            var existing = idempotencyRepository.findByIdempotencyKey(dto.getIdempotencyKey());
-            if (existing.isPresent()) {
-                IdempotencyKey ik = existing.get();
-                if (ik.getStatus() == IdempotencyKey.Status.COMPLETED
-                        && "SALE".equals(ik.getResourceType()) && ik.getResourceId() != null) {
-                    return salesRepository.findById(UUID.fromString(ik.getResourceId()))
-                            .orElseThrow(() -> new ResourceNotFoundException("Sale", ik.getResourceId()));
-                }
-                throw new ConflictException("Duplicate transaction detected");
+    public Sales createSale(SaleRequestDto dto, String idempotencyHeader) {
+        String idempotencyKey = validateIdempotencyKey(dto, idempotencyHeader);
+        User cashier = current.user();
+        Branch branch = cashier.getBranch();
+        Pharmacy pharmacy = branch.getPharmacy();
+        String requestHash = hashRequest(dto);
+
+        acquireIdempotencyLock(pharmacy.getId(), idempotencyKey);
+        Sales repeated = findRepeatedSale(pharmacy, branch, idempotencyKey, requestHash);
+        if (repeated != null) return repeated;
+
+        IdempotencyKey key = idempotencyRepository.saveAndFlush(IdempotencyKey.builder()
+                .pharmacy(pharmacy)
+                .idempotencyKey(idempotencyKey)
+                .requestHash(requestHash)
+                .resourceType("SALE")
+                .status(IdempotencyKey.Status.IN_PROGRESS)
+                .build());
+
+        StaffShifts shift = shiftsRepository.findForUpdateById(dto.getShiftId())
+                .orElseThrow(() -> new ResourceNotFoundException("StaffShift", dto.getShiftId()));
+        validateShift(shift, cashier, branch);
+
+        Customer customer = dto.getCustomerId() == null ? null
+                : customerRepository.findByIdAndPharmacyId(dto.getCustomerId(), pharmacy.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Customer", dto.getCustomerId()));
+        Prescriptions prescription = resolvePrescription(dto.getPrescriptionReferenceId());
+        Map<UUID, Integer> prescriptionAllowance = prescriptionAllowance(prescription);
+        boolean prescriptionUsed = false;
+        LocalDateTime completedAt = LocalDateTime.now();
+
+        Sales sale = Sales.builder()
+                .clientSaleId(dto.getClientSaleId())
+                .invoiceNumber(generateInvoiceNumber(dto.getClientSaleId(), completedAt))
+                .branch(branch)
+                .user(cashier)
+                .shift(shift)
+                .customer(customer)
+                .prescription(prescription)
+                .idempotencyKey(key)
+                .saleStatus(Sales.SaleStatus.COMPLETED)
+                .paymentStatus(Sales.PaymentStatus.PAID)
+                .currency(CURRENCY)
+                .note(trimToNull(dto.getNote()))
+                .completedAt(completedAt)
+                .terminalId(getEffectiveTerminalId())
+                .synced(!syncProperties.isEnabled())
+                .build();
+
+        Set<UUID> lineIds = new HashSet<>();
+        List<StockAllocation> allocations = new ArrayList<>();
+        BigDecimal subtotal = money(BigDecimal.ZERO);
+        BigDecimal taxTotal = money(BigDecimal.ZERO);
+        BigDecimal grandTotal = money(BigDecimal.ZERO);
+
+        for (SaleRequestDto.SaleItemDto line : dto.getItems()) {
+            if (!lineIds.add(line.getLineId())) {
+                throw new BadRequestException("Each sale line ID must be unique", "DUPLICATE_LINE_ID");
+            }
+            if (line.getDiscountRequestId() != null) {
+                throw new BadRequestException("Discount approvals are not available in this release",
+                        "DISCOUNT_NOT_IMPLEMENTED");
             }
 
-            IdempotencyKey key = new IdempotencyKey();
-            key.setIdempotencyKey(dto.getIdempotencyKey());
-            key.setStatus(IdempotencyKey.Status.IN_PROGRESS);
-            key.setResourceType("SALE");
-            idempotencyRepository.save(key);
-        }
-
-
-        Branch branch = branchRepository.findById(dto.getBranchId())
-                .orElseThrow(() -> new ResourceNotFoundException("Branch", dto.getBranchId()));
-        User user = userRepository.findById(dto.getUserId())
-                .orElseThrow(() -> new ResourceNotFoundException("User", dto.getUserId()));
-
-        Sales sale = new Sales();
-        sale.setBranch(branch);
-        sale.setUser(user);
-        sale.setInvoiceNumber(dto.getInvoiceNumber() != null ? dto.getInvoiceNumber() : generateInvoiceNumber());
-
-        if (dto.getCustomerId() != null) {
-            Customer customer = customerRepository.findById(dto.getCustomerId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Customer", dto.getCustomerId()));
-            sale.setCustomer(customer);
-        }
-
-        BigDecimal subtotal = BigDecimal.ZERO;
-        BigDecimal totalTax = BigDecimal.ZERO;
-        List<SaleItems> items = new ArrayList<>();
-
-        for (SaleRequestDto.SaleItemDto itemDto : dto.getItems()) {
-            MedicineBatches batch = batchesRepository.findById(itemDto.getMedicineBatchesId())
-                    .orElseThrow(() -> new ResourceNotFoundException("MedicineBatch", itemDto.getMedicineBatchesId()));
-
-            Stock stock = stockRepository.findByBranchIdAndMedicineBatchesId(dto.getBranchId(), itemDto.getMedicineBatchesId())
-                    .orElseThrow(() -> new ResourceNotFoundException(
-                            "Stock for branch " + dto.getBranchId() + " and batch " + itemDto.getMedicineBatchesId()));
-
-            int available = stock.getQuantityAvailable() != null ? stock.getQuantityAvailable() : 0;
-            if (available < itemDto.getQuantity()) {
-                throw new BadRequestException("Insufficient stock for batch " + batch.getBatchNumber()
-                        + ". Available: " + available + ", requested: " + itemDto.getQuantity());
+            int requestedQuantity = exactQuantity(line.getQuantity());
+            List<Stock> stocks = stockRepository.findSellableFefoForUpdate(
+                    branch.getId(), line.getMedicineId(), completedAt.toLocalDate());
+            if (stocks.isEmpty()) {
+                throw new ConflictException("No sellable stock is available for this medicine",
+                        "INSUFFICIENT_STOCK");
             }
 
-            SaleItems si = new SaleItems();
-            si.setSales(sale);
-            si.setMedicineBatches(batch);
-            si.setQuantity(itemDto.getQuantity());
-            si.setPrice(itemDto.getPrice());
-            si.setDiscount(itemDto.getDiscount() != null ? itemDto.getDiscount() : BigDecimal.ZERO);
-            si.setTax(itemDto.getTax() != null ? itemDto.getTax() : BigDecimal.ZERO);
+            Medicine medicine = stocks.getFirst().getMedicineBatches().getMedicine();
+            validateSellingUnit(line, medicine);
+            if (medicine.isRequiresPrescription() || medicine.isControlledDrug()) {
+                validatePrescription(medicine, prescription, requestedQuantity, prescriptionAllowance);
+                prescriptionUsed = true;
+            }
+            validateRequestedBatch(line, stocks);
 
-            Medicine medicine = batch.getMedicine();
-            Tax taxCategory = medicine != null ? medicine.getTax() : null;
-            BigDecimal taxRate = taxCategory != null ? taxCategory.getTaxRate() : BigDecimal.ZERO;
-            si.setTaxRate(taxRate);
+            int remaining = requestedQuantity;
+            for (Stock stock : stocks) {
+                if (remaining == 0) break;
+                int available = stock.getQuantityAvailable() == null ? 0 : stock.getQuantityAvailable();
+                if (available <= 0) continue;
 
-            BigDecimal lineSubtotal = itemDto.getPrice().multiply(BigDecimal.valueOf(itemDto.getQuantity()));
-            si.setTaxableAmount(lineSubtotal.subtract(si.getDiscount()));
+                MedicineBatches batch = stock.getMedicineBatches();
+                BigDecimal unitPrice = requiredPrice(medicine, line.getExpectedUnitPrice());
+                int allocatedQuantity = Math.min(available, remaining);
+                LineAmounts amounts = calculateLineAmounts(unitPrice, allocatedQuantity, medicine.getTax());
 
-            BigDecimal lineTotal = lineSubtotal
-                    .subtract(si.getDiscount())
-                    .add(si.getTax());
-            si.setTotal(lineTotal);
+                SaleItems saleItem = SaleItems.builder()
+                        .sales(sale)
+                        .medicineBatches(batch)
+                        .clientLineId(line.getLineId())
+                        .quantity(allocatedQuantity)
+                        .price(unitPrice)
+                        .discount(money(BigDecimal.ZERO))
+                        .taxRate(amounts.taxRate())
+                        .taxableAmount(amounts.taxableAmount())
+                        .tax(amounts.tax())
+                        .total(amounts.total())
+                        .build();
+                sale.getSaleItems().add(saleItem);
 
-            subtotal = subtotal.add(itemDto.getPrice().multiply(BigDecimal.valueOf(itemDto.getQuantity())));
-            totalTax = totalTax.add(si.getTax());
+                stock.setQuantityAvailable(available - allocatedQuantity);
+                stock.setLastStockDate(completedAt.toLocalDate());
+                allocations.add(new StockAllocation(batch, allocatedQuantity));
+                remaining -= allocatedQuantity;
+                subtotal = subtotal.add(amounts.taxableAmount());
+                taxTotal = taxTotal.add(amounts.tax());
+                grandTotal = grandTotal.add(amounts.total());
+            }
 
-            stock.setQuantityAvailable(available - itemDto.getQuantity());
-            stockRepository.save(stock);
-
-            items.add(si);
+            if (remaining > 0) {
+                throw new ConflictException("Insufficient stock. Requested " + requestedQuantity
+                        + " but only " + (requestedQuantity - remaining) + " is available",
+                        "INSUFFICIENT_STOCK");
+            }
         }
+
+        subtotal = money(subtotal);
+        taxTotal = money(taxTotal);
+        grandTotal = money(grandTotal);
+        PaymentTotals paymentTotals = buildPayments(sale, dto, grandTotal, completedAt);
 
         sale.setSubtotal(subtotal);
-        sale.setTax(totalTax);
-        sale.setTotal(subtotal.subtract(BigDecimal.ZERO).add(totalTax));
-        sale.setSaleStatus(Sales.SaleStatus.DONE);
-        sale.setTerminalId(getEffectiveTerminalId());
-        sale.setSynced(!terminalConfig.isOffline());
+        sale.setDiscountTotal(money(BigDecimal.ZERO));
+        sale.setTax(taxTotal);
+        sale.setTotal(grandTotal);
+        sale.setPaidTotal(paymentTotals.paidTotal());
+        sale.setCashTendered(paymentTotals.cashTendered());
+        sale.setChangeDue(paymentTotals.changeDue());
 
-        List<Payment> payments = new ArrayList<>();
-        BigDecimal totalPaid = BigDecimal.ZERO;
-        if (dto.getPayments() != null) {
-            for (SaleRequestDto.PaymentItemDto pDto : dto.getPayments()) {
-                Payment p = new Payment();
-                p.setSales(sale);
-                try {
-                    p.setPaymentMethod(Payment.PaymentMethod.valueOf(pDto.getPaymentMethod().toUpperCase()));
-                } catch (IllegalArgumentException e) {
-                    throw new BadRequestException("Invalid payment method: " + pDto.getPaymentMethod());
-                }
-                p.setAmount(pDto.getAmount());
-                p.setCurrency(pDto.getCurrency() != null ? pDto.getCurrency() : "KES");
-                p.setTransactionReference(pDto.getTransactionReference());
-                p.setPaymentStatus("COMPLETED");
-                p.setPaymentDate(LocalDateTime.now());
-                totalPaid = totalPaid.add(pDto.getAmount());
-                payments.add(p);
-            }
+        sale.getReceipts().add(Receipts.builder()
+                .sales(sale)
+                .receiptNumber(generateReceiptNumber(dto.getClientSaleId(), completedAt))
+                .printedDate(completedAt)
+                .build());
+
+        Sales saved = salesRepository.saveAndFlush(sale);
+        for (StockAllocation allocation : allocations) {
+            movementsRepository.save(StockMovements.builder()
+                    .medicineBatches(allocation.batch())
+                    .branch(branch)
+                    .user(cashier)
+                    .movementType(StockMovements.MovementType.SALE)
+                    .referenceType("SALE")
+                    .referenceId(saved.getId())
+                    .movementDate(completedAt.toLocalDate())
+                    .quantity(allocation.quantity())
+                    .build());
+            writeStockEvent(saved, branch, allocation);
         }
 
-        sale.setPaymentStatus(totalPaid.compareTo(sale.getTotal()) >= 0
-                ? Sales.PaymentStatus.PAID : Sales.PaymentStatus.NOT_PAID);
-
-        if (dto.getIdempotencyKey() != null && !dto.getIdempotencyKey().isBlank()) {
-            UUID saleId = sale.getId();
-            idempotencyRepository.findByIdempotencyKey(dto.getIdempotencyKey()).ifPresent(ik -> {
-                ik.setResourceId(saleId.toString());
-                ik.setStatus(IdempotencyKey.Status.COMPLETED);
-                ik.setCreatedTime(LocalTime.now());
-                idempotencyRepository.save(ik);
-            });
-            sale.setIdempotencyKey(idempotencyRepository.findByIdempotencyKey(dto.getIdempotencyKey()).orElse(null));
+        if (prescriptionUsed) {
+            prescription.setStatus("DISPENSED");
+            prescription.setDispensedAt(completedAt);
         }
 
-        salesRepository.save(sale);
-        items.forEach(i -> i.setSales(sale));
-        payments.forEach(p -> p.setSales(sale));
-        paymentRepository.saveAll(payments);
-
-        for (SaleRequestDto.SaleItemDto itemDto : dto.getItems()) {
-            stockMovementsService.recordDirect(dto.getBranchId(), itemDto.getMedicineBatchesId(),
-                    dto.getUserId(), "SALE", itemDto.getQuantity(), "SALE", sale.getId());
-            syncService.writeOutboxEvent(EventType.STOCK_DEDUCTED, "STOCK",
-                    String.valueOf(dto.getBranchId()) + "-" + itemDto.getMedicineBatchesId(),
-                    "{\"batchId\":" + itemDto.getMedicineBatchesId()
-                            + ",\"quantity\":" + itemDto.getQuantity()
-                            + ",\"branchId\":" + dto.getBranchId()
-                            + ",\"saleUuid\":\"" + sale.getUuid() + "\"}");
-        }
-
-        Receipts receipt = new Receipts();
-        receipt.setSales(sale);
-        receipt.setReceiptNumber("RCT-" + sale.getInvoiceNumber());
-        receipt.setPrintedDate(LocalDateTime.now());
-        receiptsRepository.save(receipt);
-
-        syncService.writeOutboxEvent(EventType.SALE_CREATED, "SALE", sale.getUuid(),
-                "{\"invoiceNumber\":\"" + sale.getInvoiceNumber() + "\","
-                        + "\"total\":" + sale.getTotal() + ","
-                        + "\"terminalId\":\"" + terminalConfig.getTerminalId() + "\"}");
-
-        return sale;
+        key.setResourceId(saved.getId().toString());
+        key.setStatus(IdempotencyKey.Status.COMPLETED);
+        idempotencyRepository.save(key);
+        writeSaleEvent(saved);
+        return saved;
     }
 
     @Transactional(readOnly = true)
     public Page<Sales> getSalesByBranch(UUID branchId, Pageable pageable) {
-        return salesRepository.findByBranchId(branchId, pageable);
+        Branch branch = current.branch();
+        if (branchId != null) current.requireBranch(branchId);
+        return salesRepository.findByBranchId(branch.getId(), pageable);
     }
 
     @Transactional(readOnly = true)
     public Sales getSaleById(UUID id) {
-        return salesRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Sale", id));
+        return findDetailedSale(id, current.branch().getId());
     }
 
     @Auditable(action = "CANCEL_SALE", entity = "Sale")
     public Sales cancelSale(UUID id) {
         Sales sale = getSaleById(id);
         if (sale.getSaleStatus() == Sales.SaleStatus.CANCELLED) {
-            throw new BadRequestException("Sale is already cancelled");
+            throw new ConflictException("Sale is already cancelled", "SALE_ALREADY_CANCELLED");
         }
-        if (sale.getPaymentStatus() == Sales.PaymentStatus.PAID) {
-            throw new BadRequestException("Cannot cancel a fully paid sale; process as return instead");
-        }
-        sale.setSaleStatus(Sales.SaleStatus.CANCELLED);
-        restockItems(sale);
-        Sales savedCancel = salesRepository.save(sale);
-
-        for (SaleItems si : sale.getSaleItems()) {
-            stockMovementsService.recordDirect(sale.getBranch().getId(), si.getMedicineBatches().getId(),
-                    sale.getUser().getId(), "RETURN", si.getQuantity(), "SALE_CANCEL", sale.getId());
-            syncService.writeOutboxEvent(EventType.STOCK_RECEIVED, "STOCK",
-                    String.valueOf(sale.getBranch().getId()) + "-" + si.getMedicineBatches().getId(),
-                    "{\"batchId\":" + si.getMedicineBatches().getId()
-                            + ",\"quantity\":" + si.getQuantity()
-                            + ",\"branchId\":" + sale.getBranch().getId()
-                            + ",\"saleUuid\":\"" + sale.getUuid() + "\"}");
-        }
-
-        syncService.writeOutboxEvent(EventType.SALE_CANCELLED, "SALE", savedCancel.getUuid(),
-                "{\"invoiceNumber\":\"" + savedCancel.getInvoiceNumber() + "\"}");
-
-        return savedCancel;
+        throw new ConflictException("Completed sales are immutable; use the returns workflow",
+                "SALE_RETURN_REQUIRED");
     }
 
     public Sales suspendSale(UUID id) {
-        Sales sale = getSaleById(id);
-        if (sale.getSaleStatus() == Sales.SaleStatus.CANCELLED) {
-            throw new BadRequestException("Cannot suspend a cancelled sale");
-        }
-        if (sale.getSaleStatus() == Sales.SaleStatus.SUSPENDED) {
-            throw new BadRequestException("Sale is already suspended");
-        }
-        if (sale.getPaymentStatus() == Sales.PaymentStatus.PAID) {
-            throw new BadRequestException("Cannot suspend a fully paid sale");
-        }
-        sale.setSaleStatus(Sales.SaleStatus.SUSPENDED);
-        restockItems(sale);
-        Sales savedSuspend = salesRepository.save(sale);
-
-        for (SaleItems si : sale.getSaleItems()) {
-            stockMovementsService.recordDirect(sale.getBranch().getId(), si.getMedicineBatches().getId(),
-                    sale.getUser().getId(), "RESERVATION_RELEASE", si.getQuantity(),
-                    "SALE_SUSPEND", sale.getId());
-            syncService.writeOutboxEvent(EventType.STOCK_RECEIVED, "STOCK",
-                    String.valueOf(sale.getBranch().getId()) + "-" + si.getMedicineBatches().getId(),
-                    "{\"batchId\":" + si.getMedicineBatches().getId()
-                            + ",\"quantity\":" + si.getQuantity()
-                            + ",\"branchId\":" + sale.getBranch().getId()
-                            + ",\"saleUuid\":\"" + sale.getUuid() + "\"}");
-        }
-
-        syncService.writeOutboxEvent(EventType.SALE_SUSPENDED, "SALE", savedSuspend.getUuid(),
-                "{\"invoiceNumber\":\"" + savedSuspend.getInvoiceNumber() + "\"}");
-
-        return savedSuspend;
+        getSaleById(id);
+        throw new ConflictException("Only draft sales can be suspended", "SALE_NOT_DRAFT");
     }
 
     public Sales resumeSale(UUID id) {
-        Sales sale = getSaleById(id);
-        if (sale.getSaleStatus() != Sales.SaleStatus.SUSPENDED) {
-            throw new BadRequestException("Only suspended sales can be resumed");
-        }
-        for (SaleItems si : sale.getSaleItems()) {
-            Stock stock = stockRepository.findByBranchIdAndMedicineBatchesId(
-                    sale.getBranch().getId(), si.getMedicineBatches().getId())
-                    .orElseThrow(() -> new ResourceNotFoundException(
-                            "Stock for branch " + sale.getBranch().getId() + " and batch " + si.getMedicineBatches().getId()));
-            int available = stock.getQuantityAvailable() != null ? stock.getQuantityAvailable() : 0;
-            if (available < si.getQuantity()) {
-                throw new BadRequestException("Cannot resume: insufficient stock for " + si.getMedicineBatches().getBatchNumber());
-            }
-            stock.setQuantityAvailable(available - si.getQuantity());
-            stockRepository.save(stock);
-        }
-        sale.setSaleStatus(Sales.SaleStatus.DONE);
-        Sales saved = salesRepository.save(sale);
-
-        for (SaleItems si : sale.getSaleItems()) {
-            stockMovementsService.recordDirect(sale.getBranch().getId(), si.getMedicineBatches().getId(),
-                    sale.getUser().getId(), "SALE", si.getQuantity(), "SALE_RESUME", sale.getId());
-            syncService.writeOutboxEvent(EventType.STOCK_DEDUCTED, "STOCK",
-                    String.valueOf(sale.getBranch().getId()) + "-" + si.getMedicineBatches().getId(),
-                    "{\"batchId\":" + si.getMedicineBatches().getId()
-                            + ",\"quantity\":" + si.getQuantity()
-                            + ",\"branchId\":" + sale.getBranch().getId()
-                            + ",\"saleUuid\":\"" + sale.getUuid() + "\"}");
-        }
-
-        syncService.writeOutboxEvent(EventType.SALE_RESUMED, "SALE", saved.getUuid(),
-                "{\"invoiceNumber\":\"" + saved.getInvoiceNumber() + "\"}");
-
-        return saved;
+        getSaleById(id);
+        throw new ConflictException("Only draft sales can be resumed", "SALE_NOT_SUSPENDED");
     }
 
     public Sales overrideItemPrice(UUID saleId, UUID itemId, BigDecimal newPrice, String reason) {
-        Sales sale = getSaleById(saleId);
-        if (sale.getSaleStatus() == Sales.SaleStatus.CANCELLED) {
-            throw new BadRequestException("Cannot modify a cancelled sale");
-        }
-        SaleItems targetItem = null;
-        for (SaleItems si : sale.getSaleItems()) {
-            if (si.getId().equals(itemId)) {
-                targetItem = si;
-                break;
-            }
-        }
-        if (targetItem == null) {
-            throw new ResourceNotFoundException("SaleItem", itemId);
-        }
-
-        BigDecimal oldPrice = targetItem.getPrice();
-        targetItem.setPrice(newPrice);
-        BigDecimal lineTotal = newPrice.multiply(BigDecimal.valueOf(targetItem.getQuantity()))
-                .subtract(targetItem.getDiscount())
-                .add(targetItem.getTax());
-        targetItem.setTotal(lineTotal);
-
-        BigDecimal newSubtotal = BigDecimal.ZERO;
-        for (SaleItems si : sale.getSaleItems()) {
-            newSubtotal = newSubtotal.add(si.getPrice().multiply(BigDecimal.valueOf(si.getQuantity())));
-        }
-        sale.setSubtotal(newSubtotal);
-        sale.setTotal(newSubtotal.add(sale.getTax()));
-        return salesRepository.save(sale);
-    }
-
-    private void restockItems(Sales sale) {
-        for (SaleItems si : sale.getSaleItems()) {
-            Stock stock = stockRepository.findByBranchIdAndMedicineBatchesId(
-                    sale.getBranch().getId(), si.getMedicineBatches().getId()).orElse(null);
-            if (stock != null) {
-                stock.setQuantityAvailable(
-                        (stock.getQuantityAvailable() != null ? stock.getQuantityAvailable() : 0)
-                                + si.getQuantity());
-                stockRepository.save(stock);
-            }
-        }
+        getSaleById(saleId);
+        throw new ConflictException("Completed sale prices are immutable", "IMMUTABLE_SALE");
     }
 
     @Transactional(readOnly = true)
     public Sales getLastSaleByUserAndBranch(UUID userId, UUID branchId) {
-        return salesRepository.findTop1ByUserIdAndBranchIdOrderByCreatedAtDesc(userId, branchId).orElse(null);
+        User user = current.user();
+        Branch branch = user.getBranch();
+        if (!user.getId().equals(userId) || !branch.getId().equals(branchId)) {
+            throw new ForbiddenException("The requested sale is outside the active session");
+        }
+        return salesRepository.findTop1ByUserIdAndBranchIdOrderByCreatedAtDesc(userId, branchId)
+                .map(sale -> findDetailedSale(sale.getId(), branchId))
+                .orElse(null);
     }
 
     @Transactional(readOnly = true)
     public List<Sales> getSuspendedSales(UUID branchId) {
-        return salesRepository.findByBranchIdAndSaleStatus(branchId, Sales.SaleStatus.SUSPENDED);
+        Branch branch = current.branch();
+        if (branchId != null) current.requireBranch(branchId);
+        return salesRepository.findByBranchIdAndSaleStatus(branch.getId(), Sales.SaleStatus.SUSPENDED);
     }
 
     @Transactional(readOnly = true)
     public List<Sales> getSalesByBranchAndDate(UUID branchId, LocalDateTime start, LocalDateTime end) {
+        current.requireBranch(branchId);
+        if (start == null || end == null || !start.isBefore(end)) {
+            throw new BadRequestException("A valid sale date range is required", "INVALID_DATE_RANGE");
+        }
         return salesRepository.findByBranchIdAndCreatedAtBetween(branchId, start, end);
     }
 
-    private String generateInvoiceNumber() {
-        return "INV-" + System.currentTimeMillis();
-    }
-
+    @Transactional(readOnly = true)
     public SaleResponseDto toResponseDto(Sales sale) {
-        SaleResponseDto dto = SaleResponseDto.from(sale);
+        Sales detailed = findDetailedSale(sale.getId(), current.branch().getId());
+        SaleResponseDto dto = SaleResponseDto.from(detailed);
+        dto.setPrescriptionReferenceId(detailed.getPrescription() == null
+                ? null : detailed.getPrescription().getId());
+        dto.setCustomerId(detailed.getCustomer() == null ? null : detailed.getCustomer().getId());
+        dto.setCustomerName(customerName(detailed.getCustomer()));
 
-        List<SaleResponseDto.SaleItemResponse> itemResponses = new ArrayList<>();
-        List<SaleResponseDto.PaymentResponse> paymentResponses = new ArrayList<>();
-
-        if (sale.getSaleItems() != null) {
-            for (SaleItems si : sale.getSaleItems()) {
-                itemResponses.add(SaleResponseDto.SaleItemResponse.builder()
-                        .id(si.getId())
-                        .medicineBatchesId(si.getMedicineBatches() != null ? si.getMedicineBatches().getId() : null)
-                        .batchNumber(si.getMedicineBatches() != null ? si.getMedicineBatches().getBatchNumber() : null)
-                        .medicineName(si.getMedicineBatches() != null && si.getMedicineBatches().getMedicine() != null
-                                ? si.getMedicineBatches().getMedicine().getBrandName() : null)
-                        .quantity(si.getQuantity())
-                        .price(si.getPrice())
-                        .discount(si.getDiscount())
-                        .taxRate(si.getTaxRate())
-                        .taxableAmount(si.getTaxableAmount())
-                        .tax(si.getTax())
-                        .total(si.getTotal())
-                        .build());
-            }
+        Map<UUID, SaleResponseDto.SaleItemResponse> lines = new LinkedHashMap<>();
+        for (SaleItems item : detailed.getSaleItems()) {
+            MedicineBatches batch = item.getMedicineBatches();
+            Medicine medicine = batch.getMedicine();
+            SaleResponseDto.SaleItemResponse line = lines.computeIfAbsent(item.getClientLineId(), ignored ->
+                    SaleResponseDto.SaleItemResponse.builder()
+                            .id(item.getId())
+                            .lineId(item.getClientLineId())
+                            .medicineId(medicine.getId())
+                            .medicineBatchesId(batch.getId())
+                            .batchNumber(batch.getBatchNumber())
+                            .medicineName(medicine.getBrandName())
+                            .quantity(0)
+                            .price(item.getPrice())
+                            .unitPrice(item.getPrice())
+                            .discount(money(BigDecimal.ZERO))
+                            .taxRate(item.getTaxRate())
+                            .taxableAmount(money(BigDecimal.ZERO))
+                            .tax(money(BigDecimal.ZERO))
+                            .total(money(BigDecimal.ZERO))
+                            .lineTotal(money(BigDecimal.ZERO))
+                            .allocations(new ArrayList<>())
+                            .build());
+            line.setQuantity(line.getQuantity() + item.getQuantity());
+            line.setDiscount(money(line.getDiscount().add(item.getDiscount())));
+            line.setTaxableAmount(money(line.getTaxableAmount().add(item.getTaxableAmount())));
+            line.setTax(money(line.getTax().add(item.getTax())));
+            line.setTotal(money(line.getTotal().add(item.getTotal())));
+            line.setLineTotal(line.getTotal());
+            line.getAllocations().add(SaleResponseDto.BatchAllocationResponse.builder()
+                    .saleItemId(item.getId())
+                    .batchId(batch.getId())
+                    .batchNumber(batch.getBatchNumber())
+                    .quantity(item.getQuantity())
+                    .build());
         }
+        dto.setItems(new ArrayList<>(lines.values()));
 
-        if (sale.getPayment() != null) {
-            for (Payment p : sale.getPayment()) {
-                paymentResponses.add(SaleResponseDto.PaymentResponse.builder()
-                        .id(p.getId())
-                        .paymentMethod(p.getPaymentMethod() != null ? p.getPaymentMethod().name() : null)
-                        .amount(p.getAmount())
-                        .currency(p.getCurrency())
-                        .transactionReference(p.getTransactionReference())
-                        .paymentStatus(p.getPaymentStatus())
-                        .paymentDate(p.getPaymentDate())
-                        .build());
-            }
-        }
-
-        dto.setItems(itemResponses);
-        dto.setPayments(paymentResponses);
-        dto.setCustomerId(sale.getCustomer() != null ? sale.getCustomer().getId() : null);
-        dto.setCustomerName(sale.getCustomer() != null
-                ? sale.getCustomer().getFirstName() + " " + (sale.getCustomer().getLastName() != null
-                        ? sale.getCustomer().getLastName() : "")
-                : null);
+        List<SaleResponseDto.PaymentResponse> payments = detailed.getPayment().stream()
+                .map(payment -> SaleResponseDto.PaymentResponse.builder()
+                        .id(payment.getId())
+                        .paymentMethod(responsePaymentMethod(payment.getPaymentMethod()))
+                        .amount(payment.getAmount())
+                        .currency(payment.getCurrency())
+                        .transactionReference(payment.getTransactionReference())
+                        .paymentStatus(payment.getPaymentStatus())
+                        .paymentDate(payment.getPaymentDate())
+                        .build())
+                .toList();
+        dto.setPayments(payments);
         return dto;
     }
 
-    private String getEffectiveTerminalId() {
-        String newTerminalId = TerminalContext.getCurrentTerminalId();
-        if (newTerminalId != null) {
-            return newTerminalId;
+    private Sales findRepeatedSale(Pharmacy pharmacy,
+                                   Branch branch,
+                                   String idempotencyKey,
+                                   String requestHash) {
+        var existing = idempotencyRepository.findByPharmacyIdAndIdempotencyKey(
+                pharmacy.getId(), idempotencyKey);
+        if (existing.isEmpty()) return null;
+
+        IdempotencyKey key = existing.get();
+        if (!requestHash.equals(key.getRequestHash())) {
+            throw new ConflictException("Idempotency key already used with a different payload",
+                    "IDEMPOTENCY_KEY_REUSED");
         }
-        return terminalConfig.getTerminalId();
+        if (key.getStatus() == IdempotencyKey.Status.COMPLETED
+                && "SALE".equals(key.getResourceType()) && key.getResourceId() != null) {
+            return findDetailedSale(UUID.fromString(key.getResourceId()), branch.getId());
+        }
+        throw new ConflictException("The checkout request is already in progress",
+                "IDEMPOTENCY_IN_PROGRESS");
+    }
+
+    private void validateShift(StaffShifts shift, User user, Branch branch) {
+        if (shift.getStatus() != StaffShifts.Status.ACTIVE) {
+            throw new ConflictException("The cashier shift is not active", "SHIFT_NOT_ACTIVE");
+        }
+        if (shift.getUser() == null || !user.getId().equals(shift.getUser().getId())) {
+            throw new ForbiddenException("The shift belongs to another user");
+        }
+        if (shift.getBranch() == null || !branch.getId().equals(shift.getBranch().getId())) {
+            throw new ForbiddenException("The shift belongs to another branch");
+        }
+    }
+
+    private Prescriptions resolvePrescription(UUID prescriptionId) {
+        if (prescriptionId == null) return null;
+        Prescriptions prescription = prescriptionsRepository.findDetailedByIdAndBranchId(
+                        prescriptionId, current.branch().getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Prescription", prescriptionId));
+        if (!"ACTIVE".equalsIgnoreCase(prescription.getStatus())) {
+            throw new ConflictException("The prescription is not active", "PRESCRIPTION_NOT_ACTIVE");
+        }
+        return prescription;
+    }
+
+    private void validatePrescription(Medicine medicine,
+                                      Prescriptions prescription,
+                                      int requestedQuantity,
+                                      Map<UUID, Integer> allowance) {
+        if (prescription == null) {
+            throw new BadRequestException("A valid prescription reference is required for "
+                    + medicine.getBrandName(), "PRESCRIPTION_REQUIRED");
+        }
+        if (!current.hasAuthority(PermissionCodes.PRESCRIPTION_APPROVE)) {
+            throw new ForbiddenException("A pharmacist must complete prescription sales");
+        }
+        int remaining = allowance.getOrDefault(medicine.getId(), 0);
+        if (remaining < requestedQuantity) {
+            throw new BadRequestException("Prescription does not authorize the requested quantity of "
+                    + medicine.getBrandName(), "PRESCRIPTION_QUANTITY_EXCEEDED");
+        }
+        allowance.put(medicine.getId(), remaining - requestedQuantity);
+    }
+
+    private Map<UUID, Integer> prescriptionAllowance(Prescriptions prescription) {
+        Map<UUID, Integer> allowance = new HashMap<>();
+        if (prescription == null) return allowance;
+        prescription.getPrescriptionItems().forEach(item -> {
+            if (item.getMedicine() != null && item.getQuantity() != null) {
+                allowance.merge(item.getMedicine().getId(), item.getQuantity(), Integer::sum);
+            }
+        });
+        return allowance;
+    }
+
+    private void validateSellingUnit(SaleRequestDto.SaleItemDto line, Medicine medicine) {
+        if (line.getSellingUnitId() == null) return;
+        if (medicine.getUnit() == null || !line.getSellingUnitId().equals(medicine.getUnit().getId())) {
+            throw new BadRequestException("Selling unit does not match the medicine",
+                    "SELLING_UNIT_MISMATCH");
+        }
+    }
+
+    private void validateRequestedBatch(SaleRequestDto.SaleItemDto line, List<Stock> stocks) {
+        if (line.getRequestedBatchId() == null) return;
+        UUID fefoBatchId = stocks.getFirst().getMedicineBatches().getId();
+        if (!line.getRequestedBatchId().equals(fefoBatchId)) {
+            throw new ConflictException("The requested batch is not the current FEFO batch",
+                    "FEFO_OVERRIDE_REQUIRED");
+        }
+    }
+
+    private BigDecimal requiredPrice(Medicine medicine, BigDecimal expectedPrice) {
+        if (medicine.getSellingPrice() == null) {
+            throw new ConflictException("Medicine " + medicine.getBrandName() + " has no selling price",
+                    "SELLING_PRICE_MISSING");
+        }
+        BigDecimal currentPrice = money(medicine.getSellingPrice());
+        if (currentPrice.compareTo(money(expectedPrice)) != 0) {
+            throw new ConflictException("The selling price changed to " + currentPrice,
+                    "PRICE_CHANGED");
+        }
+        return currentPrice;
+    }
+
+    private LineAmounts calculateLineAmounts(BigDecimal unitPrice, int quantity, Tax taxCategory) {
+        BigDecimal taxRate = taxCategory == null || !taxCategory.isActive()
+                || taxCategory.getTaxRate() == null ? BigDecimal.ZERO : taxCategory.getTaxRate();
+        if (taxRate.signum() < 0 || taxRate.compareTo(HUNDRED) > 0) {
+            throw new ConflictException("The medicine has an invalid tax rate", "INVALID_TAX_RATE");
+        }
+        BigDecimal total = money(unitPrice.multiply(BigDecimal.valueOf(quantity)));
+        BigDecimal tax = taxRate.signum() == 0 ? money(BigDecimal.ZERO)
+                : total.multiply(taxRate)
+                .divide(HUNDRED.add(taxRate), 2, RoundingMode.HALF_UP);
+        return new LineAmounts(taxRate, money(total.subtract(tax)), money(tax), total);
+    }
+
+    private PaymentTotals buildPayments(Sales sale,
+                                        SaleRequestDto dto,
+                                        BigDecimal total,
+                                        LocalDateTime completedAt) {
+        BigDecimal paid = money(BigDecimal.ZERO);
+        BigDecimal cashApplied = money(BigDecimal.ZERO);
+        Set<String> manualReferences = new HashSet<>();
+
+        for (SaleRequestDto.PaymentItemDto input : dto.getPayments()) {
+            Payment.PaymentMethod method = requestPaymentMethod(input.getMethod());
+            BigDecimal amount = money(input.getAmount());
+            String reference = trimToNull(input.getReference());
+            if (method == Payment.PaymentMethod.MPESA_MANUAL) {
+                if (reference == null) {
+                    throw new BadRequestException("M-Pesa reference is required",
+                            "PAYMENT_REFERENCE_REQUIRED");
+                }
+                reference = reference.toUpperCase(Locale.ROOT);
+                if (reference.length() > 100) {
+                    throw new BadRequestException("M-Pesa reference is too long",
+                            "INVALID_PAYMENT_REFERENCE");
+                }
+                if (!manualReferences.add(reference)) {
+                    throw new BadRequestException("M-Pesa references must be unique within a sale",
+                            "DUPLICATE_PAYMENT_REFERENCE");
+                }
+                acquireTransactionLock("mpesa:" + reference);
+                if (paymentRepository.existsByTransactionReferenceIgnoreCase(reference)) {
+                    throw new ConflictException("M-Pesa reference has already been used",
+                            "PAYMENT_REFERENCE_REUSED");
+                }
+            } else if (reference != null) {
+                throw new BadRequestException("Cash payments cannot include a transaction reference",
+                        "INVALID_PAYMENT_REFERENCE");
+            }
+
+            Payment payment = Payment.builder()
+                    .sales(sale)
+                    .paymentMethod(method)
+                    .amount(amount)
+                    .currency(CURRENCY)
+                    .transactionReference(reference)
+                    .paymentStatus("COMPLETED")
+                    .paymentDate(completedAt)
+                    .build();
+            sale.getPayment().add(payment);
+            paid = paid.add(amount);
+            if (method == Payment.PaymentMethod.CASH) cashApplied = cashApplied.add(amount);
+        }
+
+        paid = money(paid);
+        cashApplied = money(cashApplied);
+        if (paid.compareTo(total) != 0) {
+            throw new BadRequestException("Payments must equal the sale total of " + total,
+                    "PAYMENT_TOTAL_MISMATCH");
+        }
+
+        BigDecimal tendered = dto.getCashTendered() == null
+                ? money(BigDecimal.ZERO) : money(dto.getCashTendered());
+        if (cashApplied.signum() > 0 && dto.getCashTendered() == null) {
+            throw new BadRequestException("Cash tendered is required for cash payments",
+                    "CASH_TENDERED_REQUIRED");
+        }
+        if (cashApplied.signum() == 0 && tendered.signum() != 0) {
+            throw new BadRequestException("Cash tendered is only valid for cash payments",
+                    "UNEXPECTED_CASH_TENDERED");
+        }
+        if (tendered.compareTo(cashApplied) < 0) {
+            throw new BadRequestException("Cash tendered is less than the cash amount due",
+                    "INSUFFICIENT_CASH_TENDERED");
+        }
+        return new PaymentTotals(paid, tendered, money(tendered.subtract(cashApplied)));
+    }
+
+    private Payment.PaymentMethod requestPaymentMethod(String value) {
+        String method = value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
+        return switch (method) {
+            case "CASH" -> Payment.PaymentMethod.CASH;
+            case "MPESA", "M_PESA", "MPESA_MANUAL" -> Payment.PaymentMethod.MPESA_MANUAL;
+            default -> throw new BadRequestException("Only CASH and MPESA_MANUAL are supported",
+                    "UNSUPPORTED_PAYMENT_METHOD");
+        };
+    }
+
+    private String responsePaymentMethod(Payment.PaymentMethod method) {
+        return method == Payment.PaymentMethod.MPESA_MANUAL ? "MPESA" : method.name();
+    }
+
+    private int exactQuantity(BigDecimal quantity) {
+        try {
+            int value = quantity.intValueExact();
+            if (value <= 0) throw new ArithmeticException();
+            return value;
+        } catch (ArithmeticException ex) {
+            throw new BadRequestException("Sale quantities must be positive whole numbers",
+                    "INVALID_QUANTITY");
+        }
+    }
+
+    private String validateIdempotencyKey(SaleRequestDto dto, String header) {
+        if (header == null || header.isBlank()) {
+            throw new BadRequestException("Idempotency-Key header is required",
+                    "IDEMPOTENCY_KEY_REQUIRED");
+        }
+        UUID key;
+        try {
+            key = UUID.fromString(header.trim());
+        } catch (IllegalArgumentException ex) {
+            throw new BadRequestException("Idempotency-Key must be a UUID",
+                    "INVALID_IDEMPOTENCY_KEY");
+        }
+        if (!key.equals(dto.getClientSaleId())) {
+            throw new BadRequestException("Idempotency-Key must match clientSaleId",
+                    "IDEMPOTENCY_KEY_MISMATCH");
+        }
+        return key.toString();
+    }
+
+    private void acquireIdempotencyLock(UUID pharmacyId, String idempotencyKey) {
+        acquireTransactionLock("checkout:" + pharmacyId + ":" + idempotencyKey);
+    }
+
+    private void acquireTransactionLock(String lockName) {
+        entityManager.createNativeQuery("select pg_advisory_xact_lock(?1)")
+                .setParameter(1, lockId(lockName))
+                .getSingleResult();
+    }
+
+    private long lockId(String value) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(value.getBytes(StandardCharsets.UTF_8));
+            return ByteBuffer.wrap(digest).getLong();
+        } catch (Exception ex) {
+            throw new IllegalStateException("Could not create idempotency lock", ex);
+        }
+    }
+
+    private String hashRequest(SaleRequestDto dto) {
+        try {
+            byte[] payload = objectMapper.writeValueAsBytes(dto);
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(payload));
+        } catch (Exception ex) {
+            throw new IllegalStateException("Could not fingerprint checkout request", ex);
+        }
+    }
+
+    private Sales findDetailedSale(UUID saleId, UUID branchId) {
+        return salesRepository.findDetailedByIdAndBranchId(saleId, branchId)
+                .orElseThrow(() -> new ResourceNotFoundException("Sale", saleId));
+    }
+
+    private void writeStockEvent(Sales sale, Branch branch, StockAllocation allocation) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("saleId", sale.getId());
+        payload.put("branchId", branch.getId());
+        payload.put("batchId", allocation.batch().getId());
+        payload.put("quantity", allocation.quantity());
+        syncService.writeOutboxEvent(EventType.STOCK_DEDUCTED, "STOCK",
+                branch.getId() + "-" + allocation.batch().getId(), json(payload));
+    }
+
+    private void writeSaleEvent(Sales sale) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("saleId", sale.getId());
+        payload.put("clientSaleId", sale.getClientSaleId());
+        payload.put("invoiceNumber", sale.getInvoiceNumber());
+        payload.put("branchId", sale.getBranch().getId());
+        payload.put("total", sale.getTotal());
+        payload.put("currency", sale.getCurrency());
+        payload.put("terminalId", sale.getTerminalId());
+        syncService.writeOutboxEvent(EventType.SALE_CREATED, "SALE", sale.getUuid(), json(payload));
+    }
+
+    private String json(Map<String, Object> payload) {
+        try {
+            return objectMapper.writeValueAsString(payload);
+        } catch (Exception ex) {
+            throw new IllegalStateException("Could not serialize sync event", ex);
+        }
+    }
+
+    private String generateInvoiceNumber(UUID clientSaleId, LocalDateTime completedAt) {
+        return "SL-" + completedAt.toLocalDate().toString().replace("-", "") + "-"
+                + clientSaleId.toString().replace("-", "").toUpperCase(Locale.ROOT);
+    }
+
+    private String generateReceiptNumber(UUID clientSaleId, LocalDateTime completedAt) {
+        return "RC-" + completedAt.toLocalDate().toString().replace("-", "") + "-"
+                + clientSaleId.toString().replace("-", "").toUpperCase(Locale.ROOT);
+    }
+
+    private String getEffectiveTerminalId() {
+        String terminalId = TerminalContext.getCurrentTerminalId();
+        return terminalId != null ? terminalId : terminalConfig.getTerminalId();
+    }
+
+    private String customerName(Customer customer) {
+        if (customer == null) return null;
+        String first = customer.getFirstName() == null ? "" : customer.getFirstName().trim();
+        String last = customer.getLastName() == null ? "" : customer.getLastName().trim();
+        return (first + " " + last).trim();
+    }
+
+    private String trimToNull(String value) {
+        if (value == null || value.isBlank()) return null;
+        return value.trim();
+    }
+
+    private BigDecimal money(BigDecimal value) {
+        if (value == null) return null;
+        try {
+            return value.setScale(2, RoundingMode.UNNECESSARY);
+        } catch (ArithmeticException ex) {
+            throw new BadRequestException("Money values may have at most two decimal places",
+                    "INVALID_MONEY_SCALE");
+        }
+    }
+
+    private record StockAllocation(MedicineBatches batch, int quantity) {
+    }
+
+    private record LineAmounts(BigDecimal taxRate,
+                               BigDecimal taxableAmount,
+                               BigDecimal tax,
+                               BigDecimal total) {
+    }
+
+    private record PaymentTotals(BigDecimal paidTotal,
+                                 BigDecimal cashTendered,
+                                 BigDecimal changeDue) {
     }
 }

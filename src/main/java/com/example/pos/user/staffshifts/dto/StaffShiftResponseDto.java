@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.util.UUID;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -28,10 +29,37 @@ public class StaffShiftResponseDto {
     private LocalDateTime shiftStartTime;
     private LocalDateTime shiftEndTime;
     private String remarks;
+    private BigDecimal openingFloat;
+    private BigDecimal cashSales;
+    private BigDecimal mpesaSales;
+    private BigDecimal cashRefunds;
+    private BigDecimal expectedCash;
+    private BigDecimal actualCash;
+    private BigDecimal variance;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
     public static StaffShiftResponseDto from(StaffShifts shift) {
+        return from(
+                shift,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                null,
+                null);
+    }
+
+    public static StaffShiftResponseDto from(
+            StaffShifts shift,
+            BigDecimal openingFloat,
+            BigDecimal cashSales,
+            BigDecimal mpesaSales,
+            BigDecimal cashRefunds,
+            BigDecimal expectedCash,
+            BigDecimal actualCash,
+            BigDecimal variance) {
         return StaffShiftResponseDto.builder()
                 .id(shift.getId())
                 .shiftName(shift.getShiftName())
@@ -48,6 +76,13 @@ public class StaffShiftResponseDto {
                 .shiftStartTime(shift.getShiftStartTime())
                 .shiftEndTime(shift.getShiftEndTime())
                 .remarks(shift.getRemarks())
+                .openingFloat(openingFloat)
+                .cashSales(cashSales)
+                .mpesaSales(mpesaSales)
+                .cashRefunds(cashRefunds)
+                .expectedCash(expectedCash)
+                .actualCash(actualCash)
+                .variance(variance)
                 .createdAt(shift.getCreatedAt())
                 .updatedAt(shift.getUpdatedAt())
                 .build();

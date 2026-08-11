@@ -15,6 +15,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -30,6 +31,7 @@ public class StockMovementsController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyAuthority('inventory.adjust.request', 'inventory.adjust.approve')")
     public ResponseEntity<ApiResponse<StockMovementResponseDto>> record(
             @RequestBody @Valid StockMovementRequestDto dto) {
         StockMovements movement = movementsService.recordMovement(dto);
@@ -38,6 +40,7 @@ public class StockMovementsController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('inventory.read')")
     public ResponseEntity<ApiResponse<PagedResponse<StockMovementResponseDto>>> getAll(
             @PageableDefault(size = 20) Pageable pageable,
             @RequestParam(required = false) UUID batchId,
@@ -49,15 +52,14 @@ public class StockMovementsController {
             page = movementsService.getMovementsByBranchAndDateRange(branchId, start, end, pageable);
         } else if (batchId != null) {
             page = movementsService.getMovementsByBatch(batchId, pageable);
-        } else if (branchId != null) {
-            page = movementsService.getMovementsByBranch(branchId, pageable);
         } else {
-            page = Page.empty();
+            page = movementsService.getMovementsByBranch(branchId, pageable);
         }
         return ResponseEntity.ok(ApiResponse.ok(PagedResponse.from(page, StockMovementResponseDto::from)));
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('inventory.read')")
     public ResponseEntity<ApiResponse<StockMovementResponseDto>> getById(@PathVariable UUID id) {
         StockMovements movement = movementsService.getMovementById(id);
         return ResponseEntity.ok(ApiResponse.ok(StockMovementResponseDto.from(movement)));
