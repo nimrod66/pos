@@ -54,7 +54,7 @@ public class SystemSettingsController {
     }
 
     @GetMapping("/resolve")
-    @PreAuthorize("hasAuthority('settings.manage')")
+    @PreAuthorize("hasAnyAuthority('settings.manage', 'inventory.read', 'dashboard.read')")
     public ResponseEntity<ApiResponse<SystemSettingsResponseDto>> resolve(
             @RequestParam String key,
             @RequestParam(required = false) UUID branchId,

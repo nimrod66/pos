@@ -22,6 +22,9 @@ public interface StockRepository extends JpaRepository<Stock, UUID> {
     List<Stock> findByBranchId(UUID branchId);
 
     @EntityGraph(attributePaths = {"branch", "medicineBatches", "medicineBatches.medicine"})
+    List<Stock> findByBranchIdIn(List<UUID> branchIds);
+
+    @EntityGraph(attributePaths = {"branch", "medicineBatches", "medicineBatches.medicine"})
     Page<Stock> findByBranchId(UUID branchId, Pageable pageable);
 
     Optional<Stock> findByMedicineBatchesId(UUID batchId);
@@ -48,7 +51,9 @@ public interface StockRepository extends JpaRepository<Stock, UUID> {
 
     List<Stock> findByBranchIdAndQuantityAvailableLessThanEqual(UUID branchId, Integer threshold);
 
+    @EntityGraph(attributePaths = {"branch", "medicineBatches", "medicineBatches.medicine"})
     List<Stock> findByBranchIdAndMedicineBatches_Medicine_Id(UUID branchId, UUID medicineId);
 
+    @EntityGraph(attributePaths = {"branch", "medicineBatches", "medicineBatches.medicine"})
     List<Stock> findByBranchIdAndQuantityAvailableGreaterThan(UUID branchId, int minQuantity);
 }

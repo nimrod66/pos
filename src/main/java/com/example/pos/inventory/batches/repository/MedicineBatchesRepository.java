@@ -47,14 +47,17 @@ public interface MedicineBatchesRepository extends JpaRepository<MedicineBatches
 
     Page<MedicineBatches> findByMedicineId(UUID medicineId, Pageable pageable);
 
+    @EntityGraph(attributePaths = {"medicine", "medicine.pharmacy"})
     @Query("select distinct b from MedicineBatches b join b.stock s where s.branch.id = :branchId")
     Page<MedicineBatches> findByBranchId(@Param("branchId") UUID branchId, Pageable pageable);
 
+    @EntityGraph(attributePaths = {"medicine", "medicine.pharmacy"})
     @Query("select distinct b from MedicineBatches b join b.stock s where s.branch.id = :branchId and b.medicine.id = :medicineId")
     Page<MedicineBatches> findByBranchIdAndMedicineId(@Param("branchId") UUID branchId,
                                                        @Param("medicineId") UUID medicineId,
                                                        Pageable pageable);
 
+    @EntityGraph(attributePaths = {"medicine", "medicine.pharmacy"})
     @Query("select distinct b from MedicineBatches b join b.stock s where s.branch.id = :branchId and b.expirationDate < :date")
     Page<MedicineBatches> findByBranchIdAndExpirationDateBefore(@Param("branchId") UUID branchId,
                                                                   @Param("date") LocalDate date,

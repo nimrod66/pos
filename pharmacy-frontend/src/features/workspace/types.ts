@@ -3,7 +3,13 @@ import type { TenantRole } from "@/features/auth/access-control";
 export type MedicineStatus = "ACTIVE" | "INACTIVE";
 export type SupplierStatus = "ACTIVE" | "INACTIVE";
 export type PaymentMethod = "CASH" | "MPESA";
-export type SaleStatus = "COMPLETED" | "PARTIALLY_RETURNED" | "RETURNED";
+export type SaleStatus =
+  | "COMPLETED"
+  | "PARTIALLY_RETURNED"
+  | "RETURNED"
+  | "CANCELLED"
+  | "SUSPENDED"
+  | "UNKNOWN";
 export type ShiftStatus = "OPEN" | "CLOSED";
 export type MovementType = "PURCHASE" | "SALE" | "SALE_RETURN" | "ADJUSTMENT";
 export type StaffRole = TenantRole;
@@ -201,6 +207,7 @@ export interface SupplierInput {
 }
 
 export interface ReceiveStockInput {
+  idempotencyKey: string;
   supplierId: string;
   medicineId: string;
   batchNumber: string;
@@ -223,6 +230,7 @@ export interface CheckoutInput {
 }
 
 export interface ReturnInput {
+  idempotencyKey: string;
   saleId: string;
   saleItemId: string;
   quantity: number;
@@ -231,4 +239,73 @@ export interface ReturnInput {
   actor: string;
   refundMethod?: PaymentMethod;
   refundReference?: string;
+}
+
+export interface PosLookupItem {
+  id: string;
+  sku: string;
+  barcode: string;
+  brandName: string;
+  genericName: string;
+  categoryId: string;
+  prescriptionRequired: boolean;
+  controlledDrug: boolean;
+  stockAvailable: number;
+  sellingPrice: string;
+}
+
+export interface DashboardReport {
+  pharmacyWide: boolean;
+  date: string;
+  completedSalesCount: number;
+  grossSales: string;
+  refunds: string;
+  netSales: string;
+  lowStockCount: number;
+  totalStockItems: number;
+  nearExpiryCount: number;
+  expiredCount: number;
+  nearExpiryDays: number;
+}
+
+export interface SalesReport {
+  pharmacyWide: boolean;
+  from: string;
+  to: string;
+  completedSalesCount: number;
+  grossSales: string;
+  refunds: string;
+  netSales: string;
+  cashPayments: string;
+  mpesaPayments: string;
+  otherPayments: string;
+  cashRefunds: string;
+  mpesaRefunds: string;
+  otherRefunds: string;
+  topProducts: Array<{
+    medicineId: string;
+    medicineName: string;
+    quantity: number;
+    netRevenue: string;
+  }>;
+}
+
+export interface InventoryReport {
+  pharmacyWide: boolean;
+  asOf: string;
+  stockValue: string;
+  lowStockCount: number;
+  batchCount: number;
+  nearExpiryCount: number;
+  expiredCount: number;
+  nearExpiryDays: number;
+  lowStockItems: Array<{
+    branchId: string;
+    branchName: string;
+    medicineId: string;
+    medicineName: string;
+    sku: string;
+    available: number;
+    reorderLevel: number;
+  }>;
 }

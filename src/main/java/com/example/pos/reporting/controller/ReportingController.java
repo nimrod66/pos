@@ -1,16 +1,12 @@
 package com.example.pos.reporting.controller;
 
 import com.example.pos.common.dto.ApiResponse;
-import com.example.pos.reporting.dto.DashboardResponseDto;
-import com.example.pos.reporting.dto.InventoryReportResponseDto;
-import com.example.pos.reporting.service.BranchScopeService;
+import com.example.pos.reporting.dto.DashboardReportDto;
+import com.example.pos.reporting.dto.InventoryReportDto;
+import com.example.pos.reporting.dto.SalesReportDto;
 import com.example.pos.reporting.service.ReportingService;
-import com.example.pos.security.auth.UserDetailsImpl;
-import jakarta.validation.constraints.AssertTrue;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -24,37 +20,39 @@ import java.util.UUID;
 public class ReportingController {
 
     private final ReportingService service;
-    private final BranchScopeService branchScopeService;
 
-    public ReportingController(ReportingService service, BranchScopeService branchScopeService) {
+    public ReportingController(ReportingService service) {
         this.service = service;
-        this.branchScopeService = branchScopeService;
     }
 
     @GetMapping("/dashboard")
-    @PreAuthorize("hasAuthority('report.sales.read')")
-    public ResponseEntity<ApiResponse<DashboardResponseDto>> getDashboard(
-            @AuthenticationPrincipal UserDetailsImpl principal,
-            @RequestParam(required = false) UUID branchId,
-            @RequestParam(required = false) UUID pharmacyId,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        LocalDate end = to != null ? to : LocalDate.now();
-        LocalDate start = from != null ? from : end;
-        if (start.isAfter(end)) {
-            throw new IllegalArgumentException("from must not be after to");
-        }
-        return ResponseEntity.ok(ApiResponse.ok(service.getDashboard(
-                branchScopeService.resolve(principal, branchId, pharmacyId), start, end)));
+    @PreAuthorize("hasAuthority('dashboard.read')")
+    public ResponseEntity<ApiResponse<DashboardReportDto>> getDashboard(
+            @RequestParam UUID branchId,
+            @RequestParam(required = false) LocalDate date,
+            @RequestParam(defaultValue = "false") boolean pharmacyWide) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                service.getDashboard(branchId, date, pharmacyWide)));
     }
 
-    @GetMapping("/inventory")
+    @GetMapping("/sales-summary")
+    @PreAuthorize("hasAuthority('report.sales.read')")
+    public ResponseEntity<ApiResponse<SalesReportDto>> getSalesReport(
+            @RequestParam UUID branchId,
+            @RequestParam LocalDate from,
+            @RequestParam LocalDate to,
+            @RequestParam(defaultValue = "false") boolean pharmacyWide) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                service.getSalesReport(branchId, from, to, pharmacyWide)));
+    }
+
+    @GetMapping("/inventory-summary")
     @PreAuthorize("hasAuthority('report.inventory.read')")
-    public ResponseEntity<ApiResponse<InventoryReportResponseDto>> getInventoryReport(
-            @AuthenticationPrincipal UserDetailsImpl principal,
-            @RequestParam(required = false) UUID branchId,
-            @RequestParam(required = false) UUID pharmacyId) {
-        return ResponseEntity.ok(ApiResponse.ok(service.getInventoryReport(
-                branchScopeService.resolve(principal, branchId, pharmacyId))));
+    public ResponseEntity<ApiResponse<InventoryReportDto>> getInventoryReport(
+            @RequestParam UUID branchId,
+            @RequestParam(required = false) LocalDate asOf,
+            @RequestParam(defaultValue = "false") boolean pharmacyWide) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                service.getInventoryReport(branchId, asOf, pharmacyWide)));
     }
 }

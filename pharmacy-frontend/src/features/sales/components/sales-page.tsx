@@ -14,9 +14,11 @@ import { formatDateTime } from "@/lib/format";
 
 function saleStatusTone(status: string) {
   if (status === "COMPLETED") return "success" as const;
-  if (status === "RETURNED") return "danger" as const;
+  if (status === "RETURNED" || status === "CANCELLED") return "danger" as const;
   return "warning" as const;
 }
+
+const reportableStatuses = new Set(["COMPLETED", "PARTIALLY_RETURNED", "RETURNED"]);
 
 export function SalesPage() {
   const sales = useWorkspaceQuery((state) => state.sales);
@@ -28,14 +30,15 @@ export function SalesPage() {
     () =>
       sales.filter((sale) =>
         (!normalized || [sale.receiptNumber, sale.cashierName, ...sale.items.map((item) => item.medicineName)].some((value) => value.toLowerCase().includes(normalized))) &&
-        (payment === "ALL" || sale.payments[0]?.method === payment) &&
+        (payment === "ALL" || sale.payments.some((item) => item.method === payment)) &&
         (status === "ALL" || sale.status === status),
       ),
     [normalized, payment, sales, status],
   );
-  const netSales = addMoney(...sales.map((sale) => addMoney(sale.total, `-${sale.refundTotal}`)));
-  const cashSales = addMoney(...sales.filter((sale) => sale.payments[0]?.method === "CASH").map((sale) => addMoney(sale.total, `-${sale.refundTotal}`)));
-  const mpesaSales = addMoney(...sales.filter((sale) => sale.payments[0]?.method === "MPESA").map((sale) => addMoney(sale.total, `-${sale.refundTotal}`)));
+  const completedSales = sales.filter((sale) => reportableStatuses.has(sale.status));
+  const netSales = addMoney(...completedSales.map((sale) => addMoney(sale.total, `-${sale.refundTotal}`)));
+  const cashSales = addMoney(...completedSales.flatMap((sale) => sale.payments.filter((item) => item.method === "CASH").map((item) => item.amount)));
+  const mpesaSales = addMoney(...completedSales.flatMap((sale) => sale.payments.filter((item) => item.method === "MPESA").map((item) => item.amount)));
 
   return (
     <div>
@@ -49,7 +52,7 @@ export function SalesPage() {
         <div className="grid gap-3 border-b border-[var(--border)] p-4 md:grid-cols-[minmax(240px,1fr)_180px_200px]">
           <label className="relative"><span className="sr-only">Search sales</span><Search aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-subtle)]" size={17} /><Input className="pl-9" placeholder="Receipt, cashier, or medicine" value={query} onChange={(event) => setQuery(event.target.value)} /></label>
           <label><span className="sr-only">Payment method</span><Select value={payment} onChange={(event) => setPayment(event.target.value)}><option value="ALL">All payments</option><option value="CASH">Cash</option><option value="MPESA">M-Pesa</option></Select></label>
-          <label><span className="sr-only">Sale status</span><Select value={status} onChange={(event) => setStatus(event.target.value)}><option value="ALL">All statuses</option><option value="COMPLETED">Completed</option><option value="PARTIALLY_RETURNED">Partially returned</option><option value="RETURNED">Returned</option></Select></label>
+          <label><span className="sr-only">Sale status</span><Select value={status} onChange={(event) => setStatus(event.target.value)}><option value="ALL">All statuses</option><option value="COMPLETED">Completed</option><option value="PARTIALLY_RETURNED">Partially returned</option><option value="RETURNED">Returned</option><option value="SUSPENDED">Suspended</option><option value="CANCELLED">Cancelled</option><option value="UNKNOWN">Unknown</option></Select></label>
         </div>
         {visibleSales.length ? (
           <div className="overflow-x-auto">
@@ -60,7 +63,7 @@ export function SalesPage() {
                   <td className="px-4 py-3.5"><Link href={`/sales/${sale.id}`} className="font-semibold text-[var(--brand-strong)] hover:underline">{sale.receiptNumber}</Link></td>
                   <td className="whitespace-nowrap px-4 py-3.5 text-[var(--text-muted)]">{formatDateTime(sale.completedAt)}</td>
                   <td className="px-4 py-3.5">{sale.cashierName}</td>
-                  <td className="px-4 py-3.5"><p className="font-medium">{sale.payments[0]?.method === "MPESA" ? "M-Pesa" : "Cash"}</p>{sale.payments[0]?.reference ? <p className="mt-0.5 font-mono text-xs text-[var(--text-muted)]">{sale.payments[0].reference}</p> : null}</td>
+                  <td className="px-4 py-3.5"><p className="font-medium">{sale.payments.length > 1 ? "Mixed" : sale.payments[0]?.method === "MPESA" ? "M-Pesa" : "Cash"}</p>{sale.payments[0]?.reference ? <p className="mt-0.5 font-mono text-xs text-[var(--text-muted)]">{sale.payments[0].reference}</p> : null}</td>
                   <td className="px-4 py-3.5 text-right">{sale.items.reduce((sum, item) => sum + item.quantity, 0)}</td>
                   <td className="px-4 py-3.5 text-right font-semibold">{formatKes(addMoney(sale.total, `-${sale.refundTotal}`))}</td>
                   <td className="px-4 py-3.5"><StatusBadge tone={saleStatusTone(sale.status)}>{sale.status.replaceAll("_", " ").toLowerCase()}</StatusBadge></td>
