@@ -85,6 +85,7 @@ describe("workspace transactions", () => {
     const quantityAfterSale = useWorkspaceStore.getState().batches.find((batch) => batch.id === "batch-pan-1")?.quantity;
 
     useWorkspaceStore.getState().returnSaleItem({
+      idempotencyKey: "return-one",
       saleId,
       saleItemId: saleItem?.id ?? "",
       quantity: 1,
@@ -101,6 +102,7 @@ describe("workspace transactions", () => {
     );
     expect(() =>
       useWorkspaceStore.getState().returnSaleItem({
+        idempotencyKey: "return-excess",
         saleId,
         saleItemId: saleItem?.id ?? "",
         quantity: 2,
@@ -115,6 +117,7 @@ describe("workspace transactions", () => {
     const before = useWorkspaceStore.getState();
     const grn = before.receiveStock(
       {
+        idempotencyKey: "receive-stock",
         supplierId: "sup-medsource",
         medicineId: "med-brufen",
         batchNumber: "BRU-NEW",
@@ -245,6 +248,7 @@ describe("workspace transactions", () => {
     expect(() =>
       useWorkspaceStore.getState().receiveStock(
         {
+          idempotencyKey: "receive-archived",
           supplierId: "sup-medsource",
           medicineId: "med-brufen",
           batchNumber: "ARCHIVED-SUPPLIER",

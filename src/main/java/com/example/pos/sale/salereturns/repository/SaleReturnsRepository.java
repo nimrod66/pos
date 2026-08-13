@@ -1,6 +1,7 @@
 package com.example.pos.sale.salereturns.repository;
 
 import java.util.UUID;
+import java.time.LocalDateTime;
 
 import com.example.pos.sale.salereturns.model.SaleReturns;
 import org.springframework.data.domain.Page;
@@ -27,6 +28,11 @@ public interface SaleReturnsRepository extends JpaRepository<SaleReturns, UUID> 
             "saleReturnItems.saleItems", "saleReturnItems.medicineBatches",
             "saleReturnItems.medicineBatches.medicine"})
     Optional<SaleReturns> findDetailedByClientReturnIdAndBranchId(UUID clientReturnId, UUID branchId);
+
+    @EntityGraph(attributePaths = {"saleReturnItems", "saleReturnItems.medicineBatches",
+            "saleReturnItems.medicineBatches.medicine"})
+    List<SaleReturns> findByBranchIdInAndStatusIgnoreCaseAndReturnDateGreaterThanEqualAndReturnDateLessThan(
+            List<UUID> branchIds, String status, LocalDateTime start, LocalDateTime end);
 
     boolean existsByRefundMethodAndRefundReferenceIgnoreCase(
             String refundMethod, String refundReference);

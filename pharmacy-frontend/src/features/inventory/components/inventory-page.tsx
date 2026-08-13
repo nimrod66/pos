@@ -28,9 +28,9 @@ const tabs: Array<{ id: InventoryTab; label: string }> = [
   { id: "alerts", label: "Alerts" },
 ];
 
-function expiryTone(days: number) {
+function expiryTone(days: number, nearExpiryDays: number) {
   if (days < 0) return "danger" as const;
-  if (days <= 90) return "warning" as const;
+  if (days <= nearExpiryDays) return "warning" as const;
   return "success" as const;
 }
 
@@ -217,7 +217,7 @@ export function InventoryPage() {
                         <td className="px-4 py-3.5 text-[var(--text-muted)]">{supplier?.name ?? "Unknown"}</td>
                         <td className="px-4 py-3.5">
                           <p>{formatDate(batch.expiryDate)}</p>
-                          <StatusBadge tone={expiryTone(expiryDays)}>
+                          <StatusBadge tone={expiryTone(expiryDays, settings.nearExpiryDays)}>
                             {expiryDays < 0 ? "Expired" : expiryDays === 0 ? "Expires today" : `${expiryDays} days`}
                           </StatusBadge>
                         </td>
@@ -306,7 +306,7 @@ export function InventoryPage() {
                         <p className="truncate text-sm font-semibold">{medicine?.brandName}</p>
                         <p className="text-xs text-[var(--text-muted)]">{batch.batchNumber} · {batch.quantity} units</p>
                       </div>
-                      <StatusBadge tone={expiryTone(remaining)}>{remaining < 0 ? "Expired" : `${remaining} days`}</StatusBadge>
+                      <StatusBadge tone={expiryTone(remaining, settings.nearExpiryDays)}>{remaining < 0 ? "Expired" : `${remaining} days`}</StatusBadge>
                     </div>
                   );
                 }) : <p className="py-5 text-sm text-[var(--text-muted)]">No batches are near expiry.</p>}

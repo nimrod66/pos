@@ -21,6 +21,7 @@ import {
   useWorkspaceQuery,
   workspaceGateway,
 } from "@/features/workspace/gateway/workspace-gateway";
+import { ApiClientError } from "@/lib/api-client";
 
 const receiveSchema = z.object({
   supplierId: z.string().min(1, "Choose a supplier."),
@@ -45,6 +46,7 @@ export function ReceiveStockForm() {
   const canReceiveStock = usePermission(PERMISSIONS.INVENTORY_RECEIVE);
   const actor = useAuthStore((state) => state.session?.user.displayName ?? "Pharmacy user");
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
   const {
     control,
     formState: { errors, isSubmitting },
@@ -89,9 +91,16 @@ export function ReceiveStockForm() {
       return;
     }
     try {
-      const grn = await workspaceGateway.receiveStock(values, actor);
+      const grn = await workspaceGateway.receiveStock(
+        { ...values, idempotencyKey },
+        actor,
+      );
+      setIdempotencyKey(crypto.randomUUID());
       router.push(`/inventory?received=${encodeURIComponent(grn)}`);
     } catch (error) {
+      if (!(error instanceof ApiClientError) || error.status !== 0) {
+        setIdempotencyKey(crypto.randomUUID());
+      }
       setSubmitError(
         getWorkspaceErrorMessage(error, "Stock could not be received."),
       );

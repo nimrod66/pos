@@ -2,6 +2,7 @@ package com.example.pos.common.filter;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
@@ -33,6 +34,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     @Value("${pos.rate-limit.auth-requests-per-second:5}")
     private double authRequestsPerSecond;
+
+    @Value("${server.servlet.session.cookie.name:SESSION}")
+    private String sessionCookieName;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
@@ -82,17 +86,28 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private String resolveKey(HttpServletRequest request) {
+        boolean authRequest = request.getRequestURI().startsWith("/api/v1/auth/");
+        String scope = authRequest ? "auth:" : "api:";
         String auth = request.getHeader("Authorization");
         if (auth != null && auth.startsWith("Bearer ")) {
-            return "jwt:" + auth.substring(7);
+            return scope + "jwt:" + Integer.toUnsignedString(auth.substring(7).hashCode());
         }
         String apiKey = request.getHeader("X-API-Key");
         if (apiKey != null) {
-            return "apikey:" + apiKey;
+            return scope + "apikey:" + Integer.toUnsignedString(apiKey.hashCode());
+        }
+        if (!authRequest && request.getCookies() != null) {
+            for (Cookie cookie : request.getCookies()) {
+                if ((sessionCookieName.equals(cookie.getName()) || "SESSION".equals(cookie.getName()))
+                        && !cookie.getValue().isBlank()) {
+                    return scope + "session:"
+                            + Integer.toUnsignedString(cookie.getValue().hashCode());
+                }
+            }
         }
         String forwarded = request.getHeader("X-Forwarded-For");
         String ip = forwarded != null ? forwarded.split(",")[0].trim() : request.getRemoteAddr();
-        return "ip:" + ip;
+        return scope + "ip:" + ip;
     }
 
     private double resolveRate(HttpServletRequest request) {
@@ -104,12 +119,14 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private static class TokenBucket {
         private final double rate;
+        private final long capacity;
         private final AtomicLong tokens;
         private final AtomicLong lastRefill;
 
         TokenBucket(double rate) {
             this.rate = rate;
-            this.tokens = new AtomicLong((long) rate);
+            this.capacity = Math.max(1, (long) rate);
+            this.tokens = new AtomicLong(capacity);
             this.lastRefill = new AtomicLong(System.nanoTime());
         }
 
@@ -132,7 +149,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
             long newTokens = (long) (elapsed * rate / 1_000_000_000L);
             if (newTokens > 0) {
                 if (lastRefill.compareAndSet(last, now)) {
-                    tokens.addAndGet(newTokens);
+                    tokens.updateAndGet(current -> Math.min(capacity, current + newTokens));
                 }
             }
         }

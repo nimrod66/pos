@@ -23,6 +23,9 @@ public interface MedicineRepository extends JpaRepository<Medicine, UUID> {
     @EntityGraph(attributePaths = {"pharmacy", "manufacturer", "medicineCategories", "dosageForm", "unit", "tax"})
     Page<Medicine> findByPharmacyId(UUID pharmacyId, Pageable pageable);
 
+    @EntityGraph(attributePaths = {"pharmacy"})
+    List<Medicine> findAllByPharmacyId(UUID pharmacyId);
+
     @EntityGraph(attributePaths = {"pharmacy", "manufacturer", "medicineCategories", "dosageForm", "unit", "tax"})
     Optional<Medicine> findByPharmacyIdAndBarcode(UUID pharmacyId, String barcode);
 

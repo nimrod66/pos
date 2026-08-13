@@ -12,14 +12,18 @@ import type {
   BackendBatch,
   BackendBranch,
   BackendCategory,
+  BackendDashboardReport,
   BackendGoodsReceipt,
+  BackendInventoryReport,
   BackendManufacturer,
   BackendMedicine,
   BackendPage,
   BackendPharmacy,
+  BackendPosLookupItem,
   BackendSale,
   BackendSaleReturn,
   BackendSetting,
+  BackendSalesReport,
   BackendShift,
   BackendStock,
   BackendStockMovement,
@@ -33,13 +37,17 @@ import { useWorkspaceStore, WorkspaceError } from "@/features/workspace/store/wo
 import type {
   Batch,
   CheckoutInput,
+  DashboardReport,
+  InventoryReport,
   Medicine,
   MedicineInput,
   PaymentMethod,
   PharmacySettings,
+  PosLookupItem,
   ReceiveStockInput,
   ReturnInput,
   Sale,
+  SalesReport,
   Shift,
   StaffInput,
   StaffRole,
@@ -104,7 +112,10 @@ function saleStatus(status: string): Sale["status"] {
   const normalized = status.toUpperCase();
   if (normalized.includes("PARTIAL")) return "PARTIALLY_RETURNED";
   if (normalized.includes("RETURN")) return "RETURNED";
-  return "COMPLETED";
+  if (normalized === "COMPLETED" || normalized === "DONE") return "COMPLETED";
+  if (normalized === "CANCELLED") return "CANCELLED";
+  if (normalized === "SUSPENDED") return "SUSPENDED";
+  return "UNKNOWN";
 }
 
 function paymentMethod(method: string): PaymentMethod {
@@ -124,10 +135,21 @@ function movementType(value: string) {
 }
 
 async function getPage<T>(endpoint: string) {
-  const response = await apiRequest<BackendPage<T>>(path(endpoint), {
+  const first = await apiRequest<BackendPage<T>>(path(endpoint), {
     cache: "no-store",
   });
-  return response.data.content;
+  if (first.data.totalPages <= 1) return first.data.content;
+
+  const separator = endpoint.includes("?") ? "&" : "?";
+  const content = [...first.data.content];
+  for (let page = 1; page < first.data.totalPages; page += 1) {
+    const response = await apiRequest<BackendPage<T>>(
+      path(`${endpoint}${separator}page=${page}`),
+      { cache: "no-store" },
+    );
+    content.push(...response.data.content);
+  }
+  return content;
 }
 
 function has(permission: string) {
@@ -271,6 +293,70 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
     return useWorkspaceStore.getState();
   }
 
+  async getDashboardReport(date?: string): Promise<DashboardReport> {
+    const session = this.requireSession();
+    const query = date ? `&date=${encodeURIComponent(date)}` : "";
+    const scope = session.user.roles.includes("OWNER")
+      ? "&pharmacyWide=true"
+      : "";
+    const response = await apiRequest<BackendDashboardReport>(
+      path(`/reports/dashboard?branchId=${session.user.activeBranch.id}${query}${scope}`),
+      { cache: "no-store" },
+    );
+    return {
+      ...response.data,
+      grossSales: amount(response.data.grossSales),
+      netSales: amount(response.data.netSales),
+      refunds: amount(response.data.refunds),
+    };
+  }
+
+  async getInventoryReport(asOf?: string): Promise<InventoryReport> {
+    const session = this.requireSession();
+    const query = asOf ? `&asOf=${encodeURIComponent(asOf)}` : "";
+    const scope = session.user.roles.includes("OWNER")
+      ? "&pharmacyWide=true"
+      : "";
+    const response = await apiRequest<BackendInventoryReport>(
+      path(`/reports/inventory-summary?branchId=${session.user.activeBranch.id}${query}${scope}`),
+      { cache: "no-store" },
+    );
+    return {
+      ...response.data,
+      stockValue: amount(response.data.stockValue),
+    };
+  }
+
+  async getSalesReport(from: string, to: string): Promise<SalesReport> {
+    const session = this.requireSession();
+    const scope = session.user.roles.includes("OWNER")
+      ? "&pharmacyWide=true"
+      : "";
+    const response = await apiRequest<BackendSalesReport>(
+      path(
+        `/reports/sales-summary?branchId=${session.user.activeBranch.id}` +
+          `&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}${scope}`,
+      ),
+      { cache: "no-store" },
+    );
+    return {
+      ...response.data,
+      cashPayments: amount(response.data.cashPayments),
+      cashRefunds: amount(response.data.cashRefunds),
+      grossSales: amount(response.data.grossSales),
+      mpesaPayments: amount(response.data.mpesaPayments),
+      mpesaRefunds: amount(response.data.mpesaRefunds),
+      netSales: amount(response.data.netSales),
+      otherPayments: amount(response.data.otherPayments),
+      otherRefunds: amount(response.data.otherRefunds),
+      refunds: amount(response.data.refunds),
+      topProducts: response.data.topProducts.map((product) => ({
+        ...product,
+        netRevenue: amount(product.netRevenue),
+      })),
+    };
+  }
+
   async hydrate() {
     const session = useAuthStore.getState().session;
     if (!session) {
@@ -289,6 +375,10 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
         has(PERMISSIONS.SHIFT_OPEN) ||
         has(PERMISSIONS.SHIFT_CLOSE) ||
         has(PERMISSIONS.SHIFT_VARIANCE_APPROVE);
+      const canReadOperationalSettings =
+        has(PERMISSIONS.SETTINGS_MANAGE) ||
+        has(PERMISSIONS.INVENTORY_READ) ||
+        has(PERMISSIONS.DASHBOARD_READ);
 
       const [
         categories,
@@ -328,7 +418,9 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
         !canReadInventory && canSell
           ? apiRequest<PosQuickItem[]>("/pos/quick-items", { cache: "no-store" }).then((value) => value.data)
           : [],
-        has(PERMISSIONS.USER_MANAGE) ? getPage<BackendUser>("/users?size=300&sort=firstName,asc") : [],
+        has(PERMISSIONS.USER_MANAGE)
+          ? getPage<BackendUser>(`/users?branchId=${session.user.activeBranch.id}&size=300&sort=firstName,asc`)
+          : [],
         has(PERMISSIONS.USER_MANAGE)
           ? apiRequest<BackendUserBranchRole[]>(path(`/user-branch-roles?branchId=${session.user.activeBranch.id}`), { cache: "no-store" }).then((value) => value.data)
           : [],
@@ -337,7 +429,9 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
           : [],
         has(PERMISSIONS.SETTINGS_MANAGE)
           ? apiRequest<BackendSetting[]>(path(`/system-settings?pharmacyId=${session.user.pharmacyId}`), { cache: "no-store" }).then((value) => value.data)
-          : [],
+          : canReadOperationalSettings
+            ? this.loadOperationalSettings()
+            : [],
         has(PERMISSIONS.SETTINGS_MANAGE)
           ? apiRequest<BackendBranch>(path(`/branches/${session.user.activeBranch.id}`), { cache: "no-store" }).then((value) => value.data)
           : null,
@@ -363,14 +457,9 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
         this.mapMedicine(medicine, taxCategories),
       );
       const mappedBatches = canReadInventory
-        ? this.mapBatches(backendBatches, stocks)
+        ? this.mapBatches(backendBatches, stocks, goodsReceipts)
         : this.mapQuickItemBatches(quickItems);
-      const saleReturns = canReadSales
-        ? await this.loadSaleReturns(backendSales.map((sale) => sale.id ?? sale.saleId))
-        : new Map<string, BackendSaleReturn[]>();
-      const mappedSales = backendSales.map((sale) =>
-        this.mapSale(sale, saleReturns.get(sale.id ?? sale.saleId) ?? []),
-      );
+      const mappedSales = backendSales.map((sale) => this.mapSale(sale));
       const mappedShifts = shifts.map((shift) => this.mapShift(shift));
       const activeShift = mappedShifts.find(
         (shift) =>
@@ -468,7 +557,6 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
   }
 
   async receiveStock(input: ReceiveStockInput) {
-    const key = crypto.randomUUID();
     const response = await apiRequest<BackendGoodsReceipt>("/goods-received", {
       body: {
         lines: [
@@ -487,7 +575,7 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
         supplierId: input.supplierId,
         supplierInvoiceNumber: input.supplierInvoiceNumber?.trim() || null,
       },
-      idempotencyKey: key,
+      idempotencyKey: input.idempotencyKey,
       method: "POST",
     });
     await this.hydrate();
@@ -533,11 +621,10 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
         "The requested quantity is greater than the quantity available to return.",
       );
     }
-    const key = crypto.randomUUID();
     const method = input.refundMethod ?? sale.payments[0]?.method ?? "CASH";
     await apiRequest<BackendSaleReturn>("/sale-returns", {
       body: {
-        clientReturnId: key,
+        clientReturnId: input.idempotencyKey,
         items: returnLines,
         reason: input.reason.trim(),
         refundMethod: method === "MPESA" ? "MPESA_MANUAL" : "CASH",
@@ -545,7 +632,7 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
           method === "MPESA" ? input.refundReference?.trim() || null : null,
         saleId: input.saleId,
       },
-      idempotencyKey: key,
+      idempotencyKey: input.idempotencyKey,
       method: "POST",
     });
     await this.hydrate();
@@ -600,7 +687,6 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
         firstName,
         lastName,
         phoneNumber: input.phoneNumber.trim(),
-        status: "ACTIVE",
       },
       method: "PUT",
     });
@@ -694,6 +780,49 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
     await this.hydrate();
   }
 
+  async lookupPos(query: string): Promise<PosLookupItem[]> {
+    const normalized = query.trim();
+    if (!normalized) return [];
+    const response = await apiRequest<BackendPosLookupItem[]>(
+      path(`/pos/lookup?name=${encodeURIComponent(normalized)}`),
+      { cache: "no-store" },
+    );
+    const medicines = useWorkspaceStore.getState().medicines;
+    return response.data.map((item) => {
+      const medicine = medicines.find((candidate) => candidate.id === item.id);
+      return {
+        barcode: item.barcode ?? medicine?.barcode ?? "",
+        brandName: item.brandName,
+        categoryId: item.categoryId ?? medicine?.categoryId ?? "",
+        controlledDrug: item.isControlledDrug,
+        genericName: [item.genericName, item.strength].filter(Boolean).join(" "),
+        id: item.id,
+        prescriptionRequired: item.requiresPrescription,
+        sellingPrice: amount(item.sellingPrice),
+        sku: item.sku ?? medicine?.sku ?? "",
+        stockAvailable: item.stockAvailable,
+      };
+    });
+  }
+
+  private async loadOperationalSettings() {
+    const session = this.requireSession();
+    const keys = ["inventory.low_stock_threshold", "inventory.expiry_alert_days"];
+    const settings = await Promise.all(
+      keys.map((key) =>
+        apiRequest<BackendSetting | null>(
+          path(
+            `/system-settings/resolve?key=${encodeURIComponent(key)}` +
+              `&branchId=${session.user.activeBranch.id}` +
+              `&pharmacyId=${session.user.pharmacyId}`,
+          ),
+          { cache: "no-store" },
+        ).then((response) => response.data),
+      ),
+    );
+    return settings.filter((setting): setting is BackendSetting => setting !== null);
+  }
+
   private async assignRoles(userId: string, roles: StaffRole[]) {
     const session = this.requireSession();
     if (this.roleIds.size === 0) {
@@ -736,24 +865,20 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
     }
   }
 
-  private async loadSaleReturns(saleIds: string[]) {
-    const entries = await Promise.all(
-      saleIds.map(async (saleId) => {
-        try {
-          const returns = await getPage<BackendSaleReturn>(
-            `/sale-returns?saleId=${saleId}&size=100&sort=returnDate,desc`,
-          );
-          return [saleId, returns] as const;
-        } catch {
-          return [saleId, [] as BackendSaleReturn[]] as const;
-        }
-      }),
-    );
-    return new Map(entries);
-  }
-
-  private mapBatches(batches: BackendBatch[], stocks: BackendStock[]): Batch[] {
+  private mapBatches(
+    batches: BackendBatch[],
+    stocks: BackendStock[],
+    goodsReceipts: BackendGoodsReceipt[],
+  ): Batch[] {
     const stockByBatch = new Map(stocks.map((stock) => [stock.medicineBatchesId, stock]));
+    const supplierByBatch = new Map<string, string>();
+    for (const receipt of goodsReceipts) {
+      for (const line of receipt.lines ?? []) {
+        if (line.batchId && !supplierByBatch.has(line.batchId)) {
+          supplierByBatch.set(line.batchId, receipt.supplierId);
+        }
+      }
+    }
     return batches.map((batch) => ({
       batchNumber: batch.batchNumber,
       expiryDate: batch.expirationDate,
@@ -761,7 +886,7 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
       medicineId: batch.medicineId,
       quantity: stockByBatch.get(batch.id)?.quantityAvailable ?? 0,
       receivedAt: batch.createdAt,
-      supplierId: "",
+      supplierId: supplierByBatch.get(batch.id) ?? "",
       unitCost: amount(batch.buyingPrice),
     }));
   }
@@ -817,20 +942,7 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
     }));
   }
 
-  private mapSale(sale: BackendSale, returns: BackendSaleReturn[]): Sale {
-    const returnedByItem = new Map<string, number>();
-    for (const saleReturn of returns) {
-      for (const item of saleReturn.items ?? []) {
-        returnedByItem.set(
-          item.saleItemId,
-          (returnedByItem.get(item.saleItemId) ?? 0) + item.quantity,
-        );
-      }
-    }
-    const refundTotal = returns.reduce(
-      (sum, saleReturn) => sum + Number(saleReturn.refundAmount ?? 0),
-      0,
-    );
+  private mapSale(sale: BackendSale): Sale {
     const id = sale.id ?? sale.saleId;
     const mappedItems = (sale.items ?? []).map((item) => {
       const itemId = item.id ?? item.allocations?.[0]?.saleItemId;
@@ -846,7 +958,7 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
         medicineId: item.medicineId,
         medicineName: item.medicineName,
         quantity: item.quantity,
-        returnedQuantity: returnedByItem.get(itemId) ?? 0,
+        returnedQuantity: item.returnedQuantity ?? 0,
         unitPrice: amount(item.unitPrice ?? item.price),
       };
     });
@@ -874,7 +986,7 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
       })),
       receiptNumber:
         sale.receipt?.receiptNumber ?? sale.invoiceNumber ?? sale.saleNumber ?? id.slice(0, 8),
-      refundTotal: amount(refundTotal),
+      refundTotal: amount(sale.refundTotal),
       shiftId: sale.shiftId,
       status,
       subtotal: amount(sale.subtotal),

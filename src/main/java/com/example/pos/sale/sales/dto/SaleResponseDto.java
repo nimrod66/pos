@@ -30,6 +30,7 @@ public class SaleResponseDto {
     private BigDecimal tax;
     private BigDecimal taxTotal;
     private BigDecimal total;
+    private BigDecimal refundTotal;
     private BigDecimal paidTotal;
     private BigDecimal changeDue;
     private UUID shiftId;
@@ -56,6 +57,7 @@ public class SaleResponseDto {
         private String batchNumber;
         private String medicineName;
         private Integer quantity;
+        private Integer returnedQuantity;
         private BigDecimal price;
         private BigDecimal unitPrice;
         private BigDecimal discount;

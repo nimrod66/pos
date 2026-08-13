@@ -25,6 +25,7 @@ import { addMoney, formatKes, multiplyMoney } from "@/features/workspace/lib/mon
 import type { PaymentMethod } from "@/features/workspace/types";
 import { cn } from "@/lib/cn";
 import { formatDateTime } from "@/lib/format";
+import { ApiClientError } from "@/lib/api-client";
 
 export function SaleDetailPage() {
   const params = useParams<{ id: string }>();
@@ -39,8 +40,11 @@ export function SaleDetailPage() {
   const canReprintReceipt = usePermission(PERMISSIONS.SALE_RECEIPT_REPRINT);
   const canSell = usePermission(PERMISSIONS.POS_SELL);
   const sale = sales.find((candidate) => candidate.id === params.id);
-  const returnableItems =
-    sale?.items.filter((item) => item.returnedQuantity < item.quantity) ?? [];
+  const canReturnStatus =
+    sale?.status === "COMPLETED" || sale?.status === "PARTIALLY_RETURNED";
+  const returnableItems = canReturnStatus
+    ? sale?.items.filter((item) => item.returnedQuantity < item.quantity) ?? []
+    : [];
   const [showReturn, setShowReturn] = useState(false);
   const [saleItemId, setSaleItemId] = useState("");
   const [quantity, setQuantity] = useState(1);
@@ -49,6 +53,9 @@ export function SaleDetailPage() {
   const [refundReference, setRefundReference] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [returnIdempotencyKey, setReturnIdempotencyKey] = useState(() =>
+    crypto.randomUUID(),
+  );
   const selectedSaleItemId = returnableItems.some((item) => item.id === saleItemId)
     ? saleItemId
     : returnableItems[0]?.id || "";
@@ -98,6 +105,7 @@ export function SaleDetailPage() {
     try {
       await workspaceGateway.returnSaleItem({
         actor,
+        idempotencyKey: returnIdempotencyKey,
         quantity,
         reason,
         refundMethod: selectedRefundMethod,
@@ -106,6 +114,7 @@ export function SaleDetailPage() {
         saleId: params.id,
         saleItemId: selectedSaleItemId,
       });
+      setReturnIdempotencyKey(crypto.randomUUID());
       setSuccess(
         `${quantity} item${quantity === 1 ? "" : "s"} returned. Refund due: ${formatKes(
           multiplyMoney(selectedItem?.unitPrice ?? "0.00", quantity),
@@ -115,6 +124,9 @@ export function SaleDetailPage() {
       setSaleItemId("");
       setRefundReference("");
     } catch (caught) {
+      if (!(caught instanceof ApiClientError) || caught.status !== 0) {
+        setReturnIdempotencyKey(crypto.randomUUID());
+      }
       setError(
         getWorkspaceErrorMessage(caught, "The return could not be recorded."),
       );
@@ -185,9 +197,7 @@ export function SaleDetailPage() {
           </div>
           {sale.status !== "COMPLETED" ? (
             <p className="mt-3 border-y border-dashed border-[var(--danger)] py-1.5 text-center text-xs font-bold text-[var(--danger)]">
-              {sale.status === "RETURNED"
-                ? "FULLY RETURNED"
-                : "PARTIALLY RETURNED"}
+              {sale.status.replaceAll("_", " ")}
             </p>
           ) : null}
           <div className="my-5 border-y border-dashed border-[var(--border-strong)] py-3 text-xs">

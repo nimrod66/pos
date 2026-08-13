@@ -197,19 +197,26 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/roles/**").hasAnyRole("OWNER", "PLATFORM_ADMIN")
                 .requestMatchers("/api/v1/permissions/**").hasAnyRole("OWNER", "PLATFORM_ADMIN")
                 .requestMatchers("/api/v1/role-permissions/**").hasAnyRole("OWNER", "PLATFORM_ADMIN")
-                .requestMatchers("/api/v1/system-settings/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "PLATFORM_ADMIN")
+                .requestMatchers("/api/v1/system-settings/**").authenticated()
                 .requestMatchers("/api/v1/medicines/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "PHARMACIST", "CASHIER", "STORE_KEEPER")
-                .requestMatchers("/api/v1/batches/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "PHARMACIST", "STORE_KEEPER")
-                .requestMatchers("/api/v1/stock/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "PHARMACIST", "STORE_KEEPER")
-                .requestMatchers("/api/v1/stock-movements/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "STORE_KEEPER")
+                .requestMatchers("/api/v1/batches/**").hasAnyAuthority(
+                    PermissionCodes.INVENTORY_READ, PermissionCodes.INVENTORY_ADJUST_APPROVE)
+                .requestMatchers("/api/v1/stock/**").hasAnyAuthority(
+                    PermissionCodes.INVENTORY_READ, PermissionCodes.INVENTORY_ADJUST_APPROVE)
+                .requestMatchers("/api/v1/stock-movements/**").hasAnyAuthority(
+                    PermissionCodes.INVENTORY_READ,
+                    PermissionCodes.INVENTORY_ADJUST_REQUEST,
+                    PermissionCodes.INVENTORY_ADJUST_APPROVE)
                 .requestMatchers("/api/v1/suppliers/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "STORE_KEEPER")
                 .requestMatchers("/api/v1/purchase-orders/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "STORE_KEEPER")
-                .requestMatchers("/api/v1/goods-received/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "STORE_KEEPER")
+                .requestMatchers("/api/v1/goods-received/**").hasAnyAuthority(
+                    PermissionCodes.INVENTORY_READ, PermissionCodes.INVENTORY_RECEIVE)
                 .requestMatchers("/api/v1/supplier-invoices/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "STORE_KEEPER")
                 .requestMatchers("/api/v1/supplier-payments/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "STORE_KEEPER")
                 .requestMatchers("/api/v1/sales/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "CASHIER", "PHARMACIST")
                 .requestMatchers("/api/v1/payments/**").hasAnyRole("OWNER", "CASHIER")
-                .requestMatchers("/api/v1/sale-returns/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "CASHIER")
+                .requestMatchers("/api/v1/sale-returns/**").hasAnyAuthority(
+                    PermissionCodes.SALE_READ, PermissionCodes.SALE_RETURN)
                 .requestMatchers("/api/v1/prescriptions/**").hasAnyRole("OWNER", "PHARMACIST")
                 .requestMatchers("/api/v1/dispensary/**").hasAnyRole("OWNER", "PHARMACIST")
                 .requestMatchers("/api/v1/expenses/**").hasAnyRole("OWNER", "BRANCH_MANAGER")
@@ -220,17 +227,20 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/etims/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "FINANCE")
                 .requestMatchers("/api/v1/compliance/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "FINANCE")
                 .requestMatchers("/api/v1/controlled-drugs/**").hasAnyRole("OWNER", "PHARMACIST")
-                .requestMatchers("/api/v1/categories/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "STORE_KEEPER")
-                .requestMatchers("/api/v1/dosage-forms/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "STORE_KEEPER")
-                .requestMatchers("/api/v1/units/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "STORE_KEEPER")
+                .requestMatchers("/api/v1/categories/**").hasAuthority(PermissionCodes.MEDICINE_READ)
+                .requestMatchers("/api/v1/dosage-forms/**").hasAuthority(PermissionCodes.MEDICINE_READ)
+                .requestMatchers("/api/v1/units/**").hasAuthority(PermissionCodes.MEDICINE_READ)
                 .requestMatchers("/api/v1/taxes/**").hasAnyRole("OWNER", "BRANCH_MANAGER")
-                .requestMatchers("/api/v1/tax-categories/**").hasAnyRole("OWNER", "BRANCH_MANAGER")
+                .requestMatchers("/api/v1/tax-categories/**").hasAuthority(PermissionCodes.MEDICINE_READ)
                 .requestMatchers("/api/v1/invoices/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "CASHIER", "PHARMACIST")
                 .requestMatchers("/api/v1/credit-notes/**", "/api/v1/debit-notes/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "FINANCE")
-                .requestMatchers("/api/v1/manufacturers/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "STORE_KEEPER")
+                .requestMatchers("/api/v1/manufacturers/**").hasAuthority(PermissionCodes.MEDICINE_READ)
                 .requestMatchers("/api/v1/user-branch-roles/**").hasAnyRole("OWNER", "PLATFORM_ADMIN")
                 .requestMatchers("/api/v1/audit-logs/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "PLATFORM_ADMIN")
-                .requestMatchers("/api/v1/reports/**").hasAnyRole("OWNER", "BRANCH_MANAGER")
+                .requestMatchers("/api/v1/reports/**").hasAnyAuthority(
+                    PermissionCodes.DASHBOARD_READ,
+                    PermissionCodes.REPORT_SALES_READ,
+                    PermissionCodes.REPORT_INVENTORY_READ)
                 .requestMatchers("/api/v1/customers/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "CASHIER", "PHARMACIST")
                 .requestMatchers("/api/v1/notifications/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "CASHIER", "PHARMACIST", "STORE_KEEPER")
                 .requestMatchers("/api/v1/price-history/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "STORE_KEEPER")

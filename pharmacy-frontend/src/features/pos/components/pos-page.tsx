@@ -24,6 +24,7 @@ import {
   useWorkspaceQuery,
   workspaceGateway,
 } from "@/features/workspace/gateway/workspace-gateway";
+import type { PosLookupItem } from "@/features/workspace/types";
 import { cn } from "@/lib/cn";
 
 export function PosPage() {
@@ -58,6 +59,9 @@ export function PosPage() {
   const [categoryId, setCategoryId] = useState("ALL");
   const [mobileView, setMobileView] = useState<"products" | "cart">("products");
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [lookupError, setLookupError] = useState<string | null>(null);
+  const [lookupResults, setLookupResults] = useState<PosLookupItem[]>([]);
+  const [searching, setSearching] = useState(false);
   const [scanStatus, setScanStatus] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -79,14 +83,59 @@ export function PosPage() {
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
   }, []);
 
-  const activeMedicines = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    return medicines.filter((medicine) =>
-      medicine.status === "ACTIVE" &&
-      (categoryId === "ALL" || medicine.categoryId === categoryId) &&
-      (!normalized || [medicine.brandName, medicine.genericName, medicine.sku, medicine.barcode].some((value) => value.toLowerCase().includes(normalized))),
-    );
-  }, [categoryId, medicines, query]);
+  useEffect(() => {
+    const normalized = query.trim();
+    if (!normalized) return;
+
+    let active = true;
+    const timer = window.setTimeout(() => {
+      if (active) setSearching(true);
+      void workspaceGateway
+        .lookupPos(normalized)
+        .then((results) => {
+          if (!active) return;
+          setLookupResults(results);
+          setLookupError(null);
+        })
+        .catch((error) => {
+          if (!active) return;
+          setLookupResults([]);
+          setLookupError(
+            getWorkspaceErrorMessage(error, "Product search could not be completed."),
+          );
+        })
+        .finally(() => {
+          if (active) setSearching(false);
+        });
+    }, 200);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [query]);
+
+  const products = useMemo(() => {
+    if (query.trim()) {
+      return lookupResults.flatMap((result) => {
+        const medicine = medicines.find((candidate) => candidate.id === result.id);
+        if (!medicine || (categoryId !== "ALL" && result.categoryId !== categoryId)) {
+          return [];
+        }
+        return [{ medicine, stock: result.stockAvailable }];
+      });
+    }
+    return medicines
+      .filter(
+        (medicine) =>
+          medicine.status === "ACTIVE" &&
+          (categoryId === "ALL" || medicine.categoryId === categoryId),
+      )
+      .map((medicine) => ({
+        medicine,
+        stock: stockForMedicine(batches, medicine.id),
+      }));
+  }, [batches, categoryId, lookupResults, medicines, query]);
   const detailedLines = lines.flatMap((line) => {
     const medicine = medicines.find((item) => item.id === line.medicineId);
     return medicine ? [{ ...line, medicine, stock: stockForMedicine(batches, medicine.id) }] : [];
@@ -105,10 +154,10 @@ export function PosPage() {
         )
       : "0.00";
 
-  function addMedicine(medicineId: string) {
+  function addMedicine(medicineId: string, availableStock?: number) {
     const medicine = medicines.find((item) => item.id === medicineId);
     const existing = lines.find((line) => line.medicineId === medicineId)?.quantity ?? 0;
-    const stock = stockForMedicine(batches, medicineId);
+    const stock = availableStock ?? stockForMedicine(batches, medicineId);
     if (existing < stock) {
       addItem(medicineId);
       setScanStatus(`${medicine?.brandName ?? "Product"} added to the cart.`);
@@ -122,14 +171,31 @@ export function PosPage() {
     return false;
   }
 
-  function handleSearchKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+  async function handleSearchKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
     if (event.key !== "Enter") return;
     const searchValue = query.trim();
     if (!searchValue) return;
-    const exact = medicines.find((medicine) => medicine.status === "ACTIVE" && (medicine.barcode === searchValue || medicine.sku.toLowerCase() === searchValue.toLowerCase()));
     event.preventDefault();
+    setSearching(true);
+    setLookupError(null);
+    let matches: PosLookupItem[];
+    try {
+      matches = await workspaceGateway.lookupPos(searchValue);
+    } catch (error) {
+      setLookupError(
+        getWorkspaceErrorMessage(error, "Product search could not be completed."),
+      );
+      setSearching(false);
+      return;
+    }
+    setSearching(false);
+    const exact = matches.find(
+      (item) =>
+        item.barcode === searchValue ||
+        item.sku.toLowerCase() === searchValue.toLowerCase(),
+    );
     if (exact) {
-      addMedicine(exact.id);
+      addMedicine(exact.id, exact.stockAvailable);
       setQuery("");
     } else {
       setScanStatus("No exact SKU or barcode was found.");
@@ -199,7 +265,7 @@ export function PosPage() {
           <label className="relative min-w-0 flex-1">
             <span className="sr-only">Search or scan a product</span>
             <Search aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-subtle)]" size={18} />
-            <Input ref={searchInputRef} autoFocus className="h-12 pl-10 text-base" placeholder="Search medicine, SKU, or scan barcode" value={query} onChange={(event) => { setQuery(event.target.value); setScanStatus(""); }} onKeyDown={handleSearchKeyDown} />
+            <Input ref={searchInputRef} autoFocus className="h-12 pl-10 text-base" placeholder="Search medicine, SKU, or scan barcode" value={query} onChange={(event) => { const value = event.target.value; setQuery(value); setScanStatus(""); if (!value.trim()) { setLookupResults([]); setLookupError(null); setSearching(false); } }} onKeyDown={(event) => void handleSearchKeyDown(event)} />
           </label>
           <div className="no-scrollbar flex max-w-full gap-1 overflow-x-auto" role="tablist" aria-label="Product categories">
             <button type="button" onClick={() => setCategoryId("ALL")} className={cn("h-10 shrink-0 rounded-md px-3 text-sm font-medium", categoryId === "ALL" ? "bg-[var(--brand)] text-white" : "bg-white text-[var(--text-muted)] hover:bg-[var(--surface-muted)]")}>All</button>
@@ -207,15 +273,15 @@ export function PosPage() {
           </div>
           <p className="sr-only" role="status" aria-live="polite">{scanStatus}</p>
         </div>
+        <FormError message={query.trim() ? lookupError : null} />
 
-        <div className="mt-5 flex items-center justify-between"><h1 className="text-lg font-semibold">Products</h1><span className="text-xs text-[var(--text-muted)]">{activeMedicines.length} results</span></div>
-        {activeMedicines.length ? (
+        <div className="mt-5 flex items-center justify-between"><h1 className="text-lg font-semibold">Products</h1><span className="text-xs text-[var(--text-muted)]">{query.trim() && searching ? "Searching..." : `${products.length} results`}</span></div>
+        {products.length ? (
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-            {activeMedicines.map((medicine) => {
-              const stock = stockForMedicine(batches, medicine.id);
+            {products.map(({ medicine, stock }) => {
               const inCart = lines.find((line) => line.medicineId === medicine.id)?.quantity ?? 0;
               return (
-                <button type="button" disabled={stock === 0 || inCart >= stock} onClick={() => addMedicine(medicine.id)} key={medicine.id} className="flex min-h-32 flex-col rounded-md border border-[var(--border)] bg-white p-3 text-left transition hover:border-[var(--brand)] hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-55">
+                <button type="button" disabled={stock === 0 || inCart >= stock} onClick={() => addMedicine(medicine.id, stock)} key={medicine.id} className="flex min-h-32 flex-col rounded-md border border-[var(--border)] bg-white p-3 text-left transition hover:border-[var(--brand)] hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-55">
                   <div className="flex w-full items-start justify-between gap-2"><span className="text-xs font-medium text-[var(--text-muted)]">{medicine.sku}</span>{medicine.prescriptionRequired ? <span className="rounded bg-[var(--accent-soft)] px-1.5 py-0.5 text-xs font-semibold text-[var(--accent)]">Rx</span> : null}</div>
                   <span className="mt-2 line-clamp-2 text-sm font-semibold">{medicine.brandName}</span>
                   <span className="mt-0.5 line-clamp-1 text-xs text-[var(--text-muted)]">{medicine.genericName}</span>

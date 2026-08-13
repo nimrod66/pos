@@ -28,12 +28,19 @@ public interface SalesRepository extends JpaRepository<Sales, UUID> {
 
     List<Sales> findByBranchIdAndCreatedAtBetween(UUID branchId, LocalDateTime start, LocalDateTime end);
 
+    @EntityGraph(attributePaths = {"payment", "saleItems", "saleItems.medicineBatches",
+            "saleItems.medicineBatches.medicine"})
+    List<Sales> findByBranchIdInAndSaleStatusInAndCompletedAtGreaterThanEqualAndCompletedAtLessThan(
+            List<UUID> branchIds, List<Sales.SaleStatus> statuses,
+            LocalDateTime start, LocalDateTime end);
+
     boolean existsByInvoiceNumber(String invoiceNumber);
 
     Optional<Sales> findTop1ByUserIdAndBranchIdOrderByCreatedAtDesc(UUID userId, UUID branchId);
 
     @EntityGraph(attributePaths = {"branch", "user", "customer", "prescription", "shift", "saleItems",
-            "saleItems.medicineBatches", "saleItems.medicineBatches.medicine", "payment", "receipts"})
+            "saleItems.medicineBatches", "saleItems.medicineBatches.medicine", "saleItems.saleReturnItems",
+            "saleItems.saleReturnItems.saleReturns", "payment", "receipts"})
     Optional<Sales> findDetailedByIdAndBranchId(UUID id, UUID branchId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

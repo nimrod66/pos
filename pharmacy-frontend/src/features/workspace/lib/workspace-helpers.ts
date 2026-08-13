@@ -17,7 +17,7 @@ export function availableBatches(batches: Batch[], medicineId: string) {
       (batch) =>
         batch.medicineId === medicineId &&
         batch.quantity > 0 &&
-        batch.expiryDate >= today,
+        batch.expiryDate > today,
     )
     .sort((left, right) => left.expiryDate.localeCompare(right.expiryDate));
 }
@@ -30,10 +30,19 @@ export function stockForMedicine(batches: Batch[], medicineId: string) {
 }
 
 export function stockValue(medicines: Medicine[], batches: Batch[]) {
-  return medicines.reduce((total, medicine) => {
-    const quantity = stockForMedicine(batches, medicine.id);
-    return total + moneyToCents(medicine.buyingPrice) * quantity;
-  }, 0);
+  const medicineIds = new Set(medicines.map((medicine) => medicine.id));
+  const today = todayIsoDate();
+  return batches
+    .filter(
+      (batch) =>
+        medicineIds.has(batch.medicineId) &&
+        batch.quantity > 0 &&
+        batch.expiryDate > today,
+    )
+    .reduce(
+      (total, batch) => total + moneyToCents(batch.unitCost) * batch.quantity,
+      0,
+    );
 }
 
 export function daysUntil(date: string) {
