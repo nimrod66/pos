@@ -28,6 +28,10 @@ public interface SalesRepository extends JpaRepository<Sales, UUID> {
 
     List<Sales> findByBranchIdAndCreatedAtBetween(UUID branchId, LocalDateTime start, LocalDateTime end);
 
+    List<Sales> findByBranchIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThanAndSaleStatusAndPaymentStatus(
+            UUID branchId, LocalDateTime start, LocalDateTime end,
+            Sales.SaleStatus saleStatus, Sales.PaymentStatus paymentStatus);
+
     boolean existsByInvoiceNumber(String invoiceNumber);
 
     Optional<Sales> findTop1ByUserIdAndBranchIdOrderByCreatedAtDesc(UUID userId, UUID branchId);

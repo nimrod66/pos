@@ -1,5 +1,6 @@
 package com.example.pos.reporting.graphql;
 
+import com.example.pos.reporting.dto.DashboardResponseDto;
 import com.example.pos.reporting.service.ReportingService;
 import com.example.pos.sale.sales.model.Sales;
 import com.example.pos.sale.sales.repository.SalesRepository;
@@ -9,7 +10,8 @@ import org.springframework.stereotype.Controller;
 import org.springframework.security.access.prepost.PreAuthorize;
 import com.example.pos.security.auth.AuthenticatedUserContext;
 
-import java.util.Map;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 @Controller
@@ -29,8 +31,9 @@ public class ReportingGraphQLController {
 
     @QueryMapping
     @PreAuthorize("hasAnyAuthority('report.sales.read', 'report.inventory.read')")
-    public Map<String, Object> dashboard(@Argument UUID branchId) {
-        return reportingService.getDashboard(branchId);
+    public DashboardResponseDto dashboard(@Argument UUID branchId) {
+        current.requireBranch(branchId);
+        return reportingService.getDashboard(List.of(current.branch()), LocalDate.now(), LocalDate.now());
     }
 
     @QueryMapping

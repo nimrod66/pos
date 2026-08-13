@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.EntityGraph;
 
 import java.util.List;
 import java.util.Optional;
+import java.time.LocalDateTime;
 
 public interface SaleReturnsRepository extends JpaRepository<SaleReturns, UUID> {
 
@@ -30,4 +31,7 @@ public interface SaleReturnsRepository extends JpaRepository<SaleReturns, UUID> 
 
     boolean existsByRefundMethodAndRefundReferenceIgnoreCase(
             String refundMethod, String refundReference);
+
+    List<SaleReturns> findBySalesBranchIdAndReturnDateGreaterThanEqualAndReturnDateLessThanAndStatus(
+            UUID branchId, LocalDateTime start, LocalDateTime end, String status);
 }

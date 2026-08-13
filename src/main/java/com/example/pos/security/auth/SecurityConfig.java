@@ -230,6 +230,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/manufacturers/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "STORE_KEEPER")
                 .requestMatchers("/api/v1/user-branch-roles/**").hasAnyRole("OWNER", "PLATFORM_ADMIN")
                 .requestMatchers("/api/v1/audit-logs/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "PLATFORM_ADMIN")
+                .requestMatchers("/api/v1/reports/inventory/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "STORE_KEEPER")
                 .requestMatchers("/api/v1/reports/**").hasAnyRole("OWNER", "BRANCH_MANAGER")
                 .requestMatchers("/api/v1/customers/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "CASHIER", "PHARMACIST")
                 .requestMatchers("/api/v1/notifications/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "CASHIER", "PHARMACIST", "STORE_KEEPER")

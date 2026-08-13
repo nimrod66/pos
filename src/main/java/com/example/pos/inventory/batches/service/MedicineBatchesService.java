@@ -76,9 +76,24 @@ public class MedicineBatchesService {
     }
 
     @Transactional(readOnly = true)
+    public Page<MedicineBatches> getAllBatchesByBranch(UUID branchId, Pageable pageable) {
+        return batchRepository.findByBranchId(branchId, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<MedicineBatches> getBatchesByBranchAndMedicine(UUID branchId, UUID medicineId, Pageable pageable) {
+        return batchRepository.findByBranchIdAndMedicineId(branchId, medicineId, pageable);
+    }
+
+    @Transactional(readOnly = true)
     public Page<MedicineBatches> getBatchesExpiringBefore(LocalDate date, Pageable pageable) {
         return batchRepository.findByMedicinePharmacyIdAndExpirationDateBefore(
                 current.pharmacy().getId(), date, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<MedicineBatches> getBatchesExpiringBeforeByBranch(UUID branchId, LocalDate date, Pageable pageable) {
+        return batchRepository.findByBranchIdAndExpirationDateBefore(branchId, date, pageable);
     }
 
     @Transactional(readOnly = true)

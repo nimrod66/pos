@@ -17,4 +17,7 @@ public interface ExpensesRepository extends JpaRepository<Expenses, UUID> {
     List<Expenses> findByCashDrawersId(UUID cashDrawerId);
 
     List<Expenses> findByUserIdAndCreatedAtBetween(UUID userId, LocalDateTime start, LocalDateTime end);
+
+    List<Expenses> findByCashDrawersStaffShiftsBranchIdAndExpenseDateGreaterThanEqualAndExpenseDateLessThan(
+            UUID branchId, LocalDateTime start, LocalDateTime end);
 }
