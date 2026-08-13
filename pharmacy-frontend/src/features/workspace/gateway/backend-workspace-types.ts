@@ -160,6 +160,7 @@ export interface BackendSaleItem {
   medicineId: string;
   medicineName: string;
   quantity: number;
+  returnedQuantity: number;
   unitPrice: number;
   price: number;
   total: number;
@@ -184,6 +185,7 @@ export interface BackendSale {
   tax: number;
   taxTotal: number;
   total: number;
+  refundTotal: number;
   shiftId: string;
   userName: string;
   items: BackendSaleItem[];
@@ -255,4 +257,84 @@ export interface PosQuickItem {
   available: number;
   sellingPrice: number;
   expirationDate: string;
+}
+
+export interface BackendPosLookupItem {
+  id: string;
+  sku: string | null;
+  barcode: string | null;
+  brandName: string;
+  genericName: string | null;
+  strength: string | null;
+  categoryId: string | null;
+  requiresPrescription: boolean;
+  isControlledDrug: boolean;
+  stockAvailable: number;
+  sellingPrice: number;
+  batches: Array<{
+    batchId: string;
+    batchNumber: string;
+    available: number;
+    sellingPrice: number;
+    expirationDate: string | null;
+  }>;
+}
+
+export interface BackendDashboardReport {
+  branchId: string | null;
+  pharmacyWide: boolean;
+  date: string;
+  completedSalesCount: number;
+  grossSales: number;
+  refunds: number;
+  netSales: number;
+  lowStockCount: number;
+  totalStockItems: number;
+  nearExpiryCount: number;
+  expiredCount: number;
+  nearExpiryDays: number;
+}
+
+export interface BackendSalesReport {
+  branchId: string | null;
+  pharmacyWide: boolean;
+  from: string;
+  to: string;
+  completedSalesCount: number;
+  grossSales: number;
+  refunds: number;
+  netSales: number;
+  cashPayments: number;
+  mpesaPayments: number;
+  otherPayments: number;
+  cashRefunds: number;
+  mpesaRefunds: number;
+  otherRefunds: number;
+  topProducts: Array<{
+    medicineId: string;
+    medicineName: string;
+    quantity: number;
+    netRevenue: number;
+  }>;
+}
+
+export interface BackendInventoryReport {
+  branchId: string | null;
+  pharmacyWide: boolean;
+  asOf: string;
+  stockValue: number;
+  lowStockCount: number;
+  batchCount: number;
+  nearExpiryCount: number;
+  expiredCount: number;
+  nearExpiryDays: number;
+  lowStockItems: Array<{
+    branchId: string;
+    branchName: string;
+    medicineId: string;
+    medicineName: string;
+    sku: string;
+    available: number;
+    reorderLevel: number;
+  }>;
 }

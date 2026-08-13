@@ -358,6 +358,7 @@ public class SaleService {
         dto.setCustomerName(customerName(detailed.getCustomer()));
 
         Map<UUID, SaleResponseDto.SaleItemResponse> lines = new LinkedHashMap<>();
+        BigDecimal refundTotal = BigDecimal.ZERO;
         for (SaleItems item : detailed.getSaleItems()) {
             MedicineBatches batch = item.getMedicineBatches();
             Medicine medicine = batch.getMedicine();
@@ -370,6 +371,7 @@ public class SaleService {
                             .batchNumber(batch.getBatchNumber())
                             .medicineName(medicine.getBrandName())
                             .quantity(0)
+                            .returnedQuantity(0)
                             .price(item.getPrice())
                             .unitPrice(item.getPrice())
                             .discount(money(BigDecimal.ZERO))
@@ -380,7 +382,20 @@ public class SaleService {
                             .lineTotal(money(BigDecimal.ZERO))
                             .allocations(new ArrayList<>())
                             .build());
+            int returnedQuantity = item.getSaleReturnItems().stream()
+                    .filter(returnItem -> "COMPLETED".equalsIgnoreCase(
+                            returnItem.getSaleReturns().getStatus()))
+                    .mapToInt(returnItem -> returnItem.getQuantity() == null
+                            ? 0 : returnItem.getQuantity())
+                    .sum();
+            BigDecimal itemRefundTotal = item.getSaleReturnItems().stream()
+                    .filter(returnItem -> "COMPLETED".equalsIgnoreCase(
+                            returnItem.getSaleReturns().getStatus()))
+                    .map(returnItem -> returnItem.getRefundAmount() == null
+                            ? BigDecimal.ZERO : returnItem.getRefundAmount())
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
             line.setQuantity(line.getQuantity() + item.getQuantity());
+            line.setReturnedQuantity(line.getReturnedQuantity() + returnedQuantity);
             line.setDiscount(money(line.getDiscount().add(item.getDiscount())));
             line.setTaxableAmount(money(line.getTaxableAmount().add(item.getTaxableAmount())));
             line.setTax(money(line.getTax().add(item.getTax())));
@@ -392,8 +407,10 @@ public class SaleService {
                     .batchNumber(batch.getBatchNumber())
                     .quantity(item.getQuantity())
                     .build());
+            refundTotal = refundTotal.add(itemRefundTotal);
         }
         dto.setItems(new ArrayList<>(lines.values()));
+        dto.setRefundTotal(money(refundTotal));
 
         List<SaleResponseDto.PaymentResponse> payments = detailed.getPayment().stream()
                 .map(payment -> SaleResponseDto.PaymentResponse.builder()

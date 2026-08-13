@@ -2,8 +2,10 @@ package com.example.pos.core.system;
 
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.time.Clock;
 import java.time.ZoneId;
 import java.util.TimeZone;
 
@@ -19,5 +21,10 @@ public class TimeZoneConfig {
     @PostConstruct
     void applyApplicationTimeZone() {
         TimeZone.setDefault(TimeZone.getTimeZone(zoneId));
+    }
+
+    @Bean
+    Clock applicationClock() {
+        return Clock.system(zoneId);
     }
 }

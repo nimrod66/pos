@@ -13,6 +13,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.time.Clock;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,12 +26,14 @@ public class PosController {
     private final MedicineRepository medicineRepo;
     private final StockRepository stockRepo;
     private final AuthenticatedUserContext current;
+    private final Clock clock;
 
     public PosController(MedicineRepository medicineRepo, StockRepository stockRepo,
-                         AuthenticatedUserContext current) {
+                         AuthenticatedUserContext current, Clock clock) {
         this.medicineRepo = medicineRepo;
         this.stockRepo = stockRepo;
         this.current = current;
+        this.clock = clock;
     }
 
     @GetMapping("/lookup")
@@ -49,10 +52,13 @@ public class PosController {
         List<Map<String, Object>> result = medicines.stream().map(m -> {
             Map<String, Object> map = new HashMap<>();
             map.put("id", m.getId());
+            map.put("sku", m.getSku());
             map.put("barcode", m.getBarcode());
             map.put("brandName", m.getBrandName());
             map.put("genericName", m.getGenericName());
             map.put("strength", m.getStrength());
+            map.put("categoryId", m.getMedicineCategories() == null
+                    ? null : m.getMedicineCategories().getId());
             map.put("requiresPrescription", m.isRequiresPrescription());
             map.put("isControlledDrug", m.isControlledDrug());
 
@@ -125,6 +131,6 @@ public class PosController {
             return false;
         }
         LocalDate expiry = stock.getMedicineBatches().getExpirationDate();
-        return expiry == null || expiry.isAfter(LocalDate.now());
+        return expiry == null || expiry.isAfter(LocalDate.now(clock));
     }
 }

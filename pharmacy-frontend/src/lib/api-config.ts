@@ -17,9 +17,7 @@ export const CSRF_HEADER_NAME: CsrfHeaderName =
 
 const demoAuthSetting = process.env.NEXT_PUBLIC_DEMO_AUTH;
 
-export const DEMO_AUTH_ENABLED = demoAuthSetting
-  ? demoAuthSetting === "true"
-  : process.env.NODE_ENV === "development";
+export const DEMO_AUTH_ENABLED = demoAuthSetting === "true";
 
 export const DEMO_ACCOUNTS_VISIBLE =
   process.env.NEXT_PUBLIC_SHOW_DEMO_ACCOUNTS === "true";
