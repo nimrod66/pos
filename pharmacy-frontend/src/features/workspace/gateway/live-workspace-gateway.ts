@@ -409,7 +409,11 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
         canReadSuppliers ? getPage<BackendSupplier>("/suppliers?size=500&sort=supplierName,asc") : [],
         canReadInventory ? getPage<BackendGoodsReceipt>("/goods-received?size=500&sort=receivedAt,desc") : [],
         canReadInventory ? getPage<BackendStock>("/stock?size=1000") : [],
-        canReadInventory ? getPage<BackendBatch>("/batches?size=1000&sort=expirationDate,asc") : [],
+        canReadInventory
+          ? getPage<BackendBatch>(
+              `/batches?branchId=${session.user.activeBranch.id}&size=1000&sort=expirationDate,asc`,
+            )
+          : [],
         canReadInventory ? getPage<BackendStockMovement>("/stock-movements?size=500&sort=movementDate,desc") : [],
         canReadShifts
           ? apiRequest<BackendShift[]>(path(`/shifts?userId=${session.user.id}`), { cache: "no-store" }).then((value) => value.data)

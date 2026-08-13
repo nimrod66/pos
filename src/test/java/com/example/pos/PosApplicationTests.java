@@ -72,7 +72,8 @@ class PosApplicationTests {
         assertOk(pharmacist.cookie(), "/api/v1/categories?size=10");
         assertOk(pharmacist.cookie(), "/api/v1/tax-categories?activeOnly=true&size=10");
         assertOk(pharmacist.cookie(), "/api/v1/stock?size=10");
-        assertOk(pharmacist.cookie(), "/api/v1/batches?size=10");
+        assertOk(pharmacist.cookie(),
+                "/api/v1/batches?branchId=" + pharmacist.branchId() + "&size=10");
         assertOk(pharmacist.cookie(), "/api/v1/goods-received?size=10");
         assertOk(pharmacist.cookie(), "/api/v1/stock-movements?size=10");
         mockMvc.perform(get("/api/v1/sale-returns")
