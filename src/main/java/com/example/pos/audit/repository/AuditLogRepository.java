@@ -13,6 +13,9 @@ import java.util.List;
 public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
 
     @EntityGraph(attributePaths = {"user", "branch", "pharmacy"})
+    Page<AuditLog> findByPharmacyId(UUID pharmacyId, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"user", "branch", "pharmacy"})
     Page<AuditLog> findByPharmacyIdAndTableName(UUID pharmacyId, String tableName, Pageable pageable);
 
     @EntityGraph(attributePaths = {"user", "branch", "pharmacy"})

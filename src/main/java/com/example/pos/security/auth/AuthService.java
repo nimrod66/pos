@@ -2,6 +2,13 @@ package com.example.pos.security.auth;
 
 import com.example.pos.user.loginhistory.model.LoginHistory;
 import com.example.pos.user.loginhistory.repository.LoginHistoryRepository;
+import com.example.pos.common.exception.ConflictException;
+import com.example.pos.common.exception.ForbiddenException;
+import com.example.pos.common.exception.ResourceNotFoundException;
+import com.example.pos.core.branch.model.Branch;
+import com.example.pos.core.branch.repository.BranchRepository;
+import com.example.pos.user.staffshifts.model.StaffShifts;
+import com.example.pos.user.staffshifts.repository.StaffShiftsRepository;
 import com.example.pos.user.userbranchrole.model.UserBranchRole;
 import com.example.pos.user.users.model.User;
 import com.example.pos.user.users.repository.UserRepository;
@@ -13,6 +20,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -39,6 +47,9 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
     private final LoginHistoryRepository loginHistoryRepository;
+    private final BranchRepository branchRepository;
+    private final StaffShiftsRepository staffShiftsRepository;
+    private final UserDetailsServiceImpl userDetailsService;
     private final SecurityContextRepository securityContextRepository;
     private final CsrfTokenRepository csrfTokenRepository;
     private final FindByIndexNameSessionRepository<? extends Session> sessionRepository;
@@ -48,6 +59,9 @@ public class AuthService {
     public AuthService(AuthenticationManager authenticationManager,
                        UserRepository userRepository,
                        LoginHistoryRepository loginHistoryRepository,
+                       BranchRepository branchRepository,
+                       StaffShiftsRepository staffShiftsRepository,
+                       UserDetailsServiceImpl userDetailsService,
                        SecurityContextRepository securityContextRepository,
                        CsrfTokenRepository csrfTokenRepository,
                        FindByIndexNameSessionRepository<? extends Session> sessionRepository,
@@ -56,6 +70,9 @@ public class AuthService {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.loginHistoryRepository = loginHistoryRepository;
+        this.branchRepository = branchRepository;
+        this.staffShiftsRepository = staffShiftsRepository;
+        this.userDetailsService = userDetailsService;
         this.securityContextRepository = securityContextRepository;
         this.csrfTokenRepository = csrfTokenRepository;
         this.sessionRepository = sessionRepository;
@@ -122,6 +139,55 @@ public class AuthService {
         return (CsrfToken) request.getAttribute(CsrfToken.class.getName());
     }
 
+    public MeResponse switchBranch(UUID userId, UUID branchId,
+                                   HttpServletRequest request,
+                                   HttpServletResponse response) {
+        User user = userRepository.findContextById(userId)
+                .orElseThrow(() -> new BadCredentialsException(
+                        "Authenticated user no longer exists"));
+        Branch activeBranch = user.getBranch();
+        if (activeBranch == null || activeBranch.getPharmacy() == null) {
+            throw new ForbiddenException("The account has no pharmacy context");
+        }
+        Branch target = branchRepository.findByIdAndPharmacyId(
+                        branchId, activeBranch.getPharmacy().getId())
+                .filter(branch -> branch.getStatus() == Branch.Status.ACTIVE)
+                .orElseThrow(() -> new ResourceNotFoundException("Active branch", branchId));
+        boolean pharmacyOwner = user.getUserBranchRole().stream().anyMatch(assignment ->
+                assignment.getRole() != null
+                        && "OWNER".equals(assignment.getRole().getRoleName())
+                        && assignment.getBranch() != null
+                        && assignment.getBranch().getPharmacy() != null
+                        && activeBranch.getPharmacy().getId().equals(
+                                assignment.getBranch().getPharmacy().getId()));
+        if (!pharmacyOwner) {
+            throw new ForbiddenException("Only a pharmacy owner can switch branches");
+        }
+        if (activeBranch.getId().equals(target.getId())) {
+            return buildMeResponse(user, request.getSession(false));
+        }
+        if (staffShiftsRepository.existsByUserIdAndStatus(
+                userId, StaffShifts.Status.ACTIVE)) {
+            throw new ConflictException(
+                    "Close the current shift before switching branches",
+                    "OPEN_SHIFT_BLOCKS_BRANCH_SWITCH");
+        }
+
+        user.setBranch(target);
+        userRepository.saveAndFlush(user);
+
+        UserDetails details = userDetailsService.loadUserByUsername(user.getEmail());
+        Authentication authentication = UsernamePasswordAuthenticationToken.authenticated(
+                details, null, details.getAuthorities());
+        SecurityContext context = SecurityContextHolder.createEmptyContext();
+        context.setAuthentication(authentication);
+        SecurityContextHolder.setContext(context);
+        request.changeSessionId();
+        securityContextRepository.saveContext(context, request, response);
+        csrfTokenRepository.saveToken(null, request, response);
+        return buildMeResponse(user, request.getSession(false));
+    }
+
     public void revokeUserSessions(UUID userId) {
         userRepository.findById(userId).ifPresent(user -> revokePrincipalSessions(user.getEmail()));
         log.info("Sessions revoked for user {}", userId);
@@ -149,8 +215,7 @@ public class AuthService {
 
         List<String> roles = user.getUserBranchRole() != null
                 ? user.getUserBranchRole().stream()
-                    .filter(ur -> branch != null && ur.getBranch() != null
-                            && branch.getId().equals(ur.getBranch().getId()))
+                    .filter(ur -> roleAppliesToBranch(ur, branch))
                     .map(ur -> ur.getRole().getRoleName())
                     .filter(Objects::nonNull)
                     .distinct().sorted().toList()
@@ -159,10 +224,7 @@ public class AuthService {
         Set<String> permissions = new TreeSet<>();
         if (user.getUserBranchRole() != null) {
             for (UserBranchRole ur : user.getUserBranchRole()) {
-                if (branch == null || ur.getBranch() == null
-                        || !branch.getId().equals(ur.getBranch().getId())) {
-                    continue;
-                }
+                if (!roleAppliesToBranch(ur, branch)) continue;
                 if (ur.getRole().getRolePermission() != null) {
                     ur.getRole().getRolePermission().forEach(rp -> {
                         if (rp.getPermissions() != null) {
@@ -201,6 +263,21 @@ public class AuthService {
                         .featureFlags(featureFlags)
                         .build())
                 .build();
+    }
+
+    private boolean roleAppliesToBranch(UserBranchRole assignment, Branch activeBranch) {
+        if (activeBranch == null || assignment.getBranch() == null
+                || assignment.getRole() == null) {
+            return false;
+        }
+        if (activeBranch.getId().equals(assignment.getBranch().getId())) {
+            return true;
+        }
+        return "OWNER".equals(assignment.getRole().getRoleName())
+                && activeBranch.getPharmacy() != null
+                && assignment.getBranch().getPharmacy() != null
+                && activeBranch.getPharmacy().getId().equals(
+                        assignment.getBranch().getPharmacy().getId());
     }
 
     private String buildDisplayName(User user) {

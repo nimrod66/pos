@@ -31,6 +31,8 @@ public final class PermissionCodes {
     public static final String USER_MANAGE = "user.manage";
     public static final String SETTINGS_MANAGE = "settings.manage";
     public static final String AUDIT_READ = "audit.read";
+    public static final String TERMINAL_READ = "terminal.read";
+    public static final String TERMINAL_MANAGE = "terminal.manage";
     public static final String PRESCRIPTION_APPROVE = "prescription.approve";
 
     public static final List<String> ALL = List.of(
@@ -60,6 +62,8 @@ public final class PermissionCodes {
             USER_MANAGE,
             SETTINGS_MANAGE,
             AUDIT_READ,
+            TERMINAL_READ,
+            TERMINAL_MANAGE,
             PRESCRIPTION_APPROVE);
 
     public static final Map<String, List<String>> ROLE_BUNDLES = Map.of(
@@ -68,7 +72,8 @@ public final class PermissionCodes {
                     DASHBOARD_READ, POS_DISCOUNT_APPROVE, SALE_READ, SALE_RECEIPT_REPRINT,
                     SALE_VOID, SALE_RETURN, MEDICINE_READ, INVENTORY_READ,
                     INVENTORY_ADJUST_APPROVE, SUPPLIER_READ, SHIFT_VARIANCE_APPROVE,
-                    REPORT_SALES_READ, REPORT_INVENTORY_READ),
+                    REPORT_SALES_READ, REPORT_INVENTORY_READ, TERMINAL_READ,
+                    TERMINAL_MANAGE),
             "PHARMACIST", List.of(
                     DASHBOARD_READ, POS_SELL, SALE_READ, MEDICINE_READ, INVENTORY_READ,
                     SHIFT_OPEN, SHIFT_CLOSE, PRESCRIPTION_APPROVE),

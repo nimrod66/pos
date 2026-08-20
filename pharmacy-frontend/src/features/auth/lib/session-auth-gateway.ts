@@ -103,5 +103,18 @@ export function createSessionAuthGateway(): AuthGateway {
         throw error;
       }
     },
+    async switchBranch(branchId: string) {
+      await ensureCsrfToken();
+      const response = await apiRequest<AuthSession | BackendAuthSession>(
+        "/auth/branch",
+        {
+          body: { branchId },
+          cache: "no-store",
+          method: "POST",
+        },
+      );
+      await refreshCsrfToken();
+      return normalizeSession(response.data);
+    },
   };
 }

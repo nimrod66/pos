@@ -57,7 +57,10 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: PharmacyPOS-Pilot-Setup
-          path: outputs/installer/PharmacyPOS-Pilot-Setup.exe
+          path: |
+            outputs/installer/PharmacyPOS-Pilot-Setup.exe
+            outputs/installer/PharmacyPOS-Pilot-Setup.exe.sha256
+            installer/pilot-release.json
           if-no-files-found: error
       - name: Publish prerelease
         if: startsWith(github.ref, 'refs/tags/')
@@ -67,5 +70,7 @@ jobs:
         run: >-
           gh release create "$env:GITHUB_REF_NAME"
           "outputs/installer/PharmacyPOS-Pilot-Setup.exe"
+          "outputs/installer/PharmacyPOS-Pilot-Setup.exe.sha256"
+          "installer/pilot-release.json"
           --prerelease --generate-notes
           --title "Pharmacy POS $env:GITHUB_REF_NAME"

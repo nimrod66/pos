@@ -134,3 +134,242 @@ function Wait-ForHttpEndpoint {
 
     throw "Pharmacy POS did not become ready at $Url within $TimeoutSeconds seconds."
 }
+
+function ConvertFrom-PilotSecureString {
+    param([Security.SecureString]$Value)
+
+    $pointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($Value)
+    try {
+        return [Runtime.InteropServices.Marshal]::PtrToStringBSTR($pointer)
+    } finally {
+        [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pointer)
+    }
+}
+
+function Read-PilotBackupPassphrase {
+    param([switch]$Confirm)
+
+    $first = ConvertFrom-PilotSecureString -Value (
+        Read-Host "Backup passphrase (at least 12 characters)" -AsSecureString
+    )
+    if ($first.Length -lt 12) {
+        throw "The backup passphrase must contain at least 12 characters."
+    }
+    if ($Confirm) {
+        $second = ConvertFrom-PilotSecureString -Value (
+            Read-Host "Confirm backup passphrase" -AsSecureString
+        )
+        if ($first -cne $second) {
+            throw "The backup passphrases do not match."
+        }
+    }
+    return $first
+}
+
+function New-PilotDerivedKeys {
+    param(
+        [string]$Passphrase,
+        [byte[]]$Salt
+    )
+
+    $derive = New-Object Security.Cryptography.Rfc2898DeriveBytes(
+        $Passphrase,
+        $Salt,
+        200000
+    )
+    try {
+        $material = $derive.GetBytes(64)
+        $encryptionKey = New-Object byte[] 32
+        $authenticationKey = New-Object byte[] 32
+        [Array]::Copy($material, 0, $encryptionKey, 0, 32)
+        [Array]::Copy($material, 32, $authenticationKey, 0, 32)
+        return @($encryptionKey, $authenticationKey)
+    } finally {
+        $derive.Dispose()
+    }
+}
+
+function Protect-PilotBackupFile {
+    param(
+        [string]$InputPath,
+        [string]$OutputPath,
+        [string]$Passphrase
+    )
+
+    $magic = [Text.Encoding]::ASCII.GetBytes("PPOSBK01")
+    $salt = New-Object byte[] 16
+    $iv = New-Object byte[] 16
+    $random = [Security.Cryptography.RandomNumberGenerator]::Create()
+    try {
+        $random.GetBytes($salt)
+        $random.GetBytes($iv)
+    } finally {
+        $random.Dispose()
+    }
+
+    $keys = New-PilotDerivedKeys -Passphrase $Passphrase -Salt $salt
+    $aes = [Security.Cryptography.Aes]::Create()
+    $aes.KeySize = 256
+    $aes.Mode = [Security.Cryptography.CipherMode]::CBC
+    $aes.Padding = [Security.Cryptography.PaddingMode]::PKCS7
+    $aes.Key = $keys[0]
+    $aes.IV = $iv
+
+    $output = [IO.File]::Create($OutputPath)
+    try {
+        $output.Write($magic, 0, $magic.Length)
+        $output.Write($salt, 0, $salt.Length)
+        $output.Write($iv, 0, $iv.Length)
+        $encryptor = $aes.CreateEncryptor()
+        $crypto = New-Object Security.Cryptography.CryptoStream(
+            $output,
+            $encryptor,
+            [Security.Cryptography.CryptoStreamMode]::Write,
+            $true
+        )
+        try {
+            $input = [IO.File]::OpenRead($InputPath)
+            try {
+                $input.CopyTo($crypto)
+            } finally {
+                $input.Dispose()
+            }
+            $crypto.FlushFinalBlock()
+        } finally {
+            $crypto.Dispose()
+            $encryptor.Dispose()
+        }
+    } finally {
+        $output.Dispose()
+        $aes.Dispose()
+    }
+
+    $hmac = New-Object Security.Cryptography.HMACSHA256(,$keys[1])
+    try {
+        $source = [IO.File]::OpenRead($OutputPath)
+        try {
+            $signature = $hmac.ComputeHash($source)
+        } finally {
+            $source.Dispose()
+        }
+    } finally {
+        $hmac.Dispose()
+    }
+    $append = [IO.File]::Open($OutputPath, [IO.FileMode]::Append)
+    try {
+        $append.Write($signature, 0, $signature.Length)
+    } finally {
+        $append.Dispose()
+    }
+}
+
+function Unprotect-PilotBackupFile {
+    param(
+        [string]$InputPath,
+        [string]$OutputPath,
+        [string]$Passphrase
+    )
+
+    $file = [IO.File]::OpenRead($InputPath)
+    try {
+        if ($file.Length -lt 73) {
+            throw "The selected file is not a valid Pharmacy POS backup."
+        }
+        $magic = New-Object byte[] 8
+        $salt = New-Object byte[] 16
+        $iv = New-Object byte[] 16
+        [void]$file.Read($magic, 0, $magic.Length)
+        [void]$file.Read($salt, 0, $salt.Length)
+        [void]$file.Read($iv, 0, $iv.Length)
+        if ([Text.Encoding]::ASCII.GetString($magic) -ne "PPOSBK01") {
+            throw "The selected file is not a Pharmacy POS backup."
+        }
+        $signedLength = $file.Length - 32
+        $file.Position = $signedLength
+        $actualSignature = New-Object byte[] 32
+        [void]$file.Read($actualSignature, 0, $actualSignature.Length)
+    } finally {
+        $file.Dispose()
+    }
+
+    $keys = New-PilotDerivedKeys -Passphrase $Passphrase -Salt $salt
+    $hmac = New-Object Security.Cryptography.HMACSHA256(,$keys[1])
+    $source = [IO.File]::OpenRead($InputPath)
+    try {
+        $remaining = $signedLength
+        $buffer = New-Object byte[] 81920
+        while ($remaining -gt 0) {
+            $requested = [Math]::Min($buffer.Length, $remaining)
+            $read = $source.Read($buffer, 0, $requested)
+            if ($read -le 0) {
+                throw "The backup ended unexpectedly."
+            }
+            [void]$hmac.TransformBlock($buffer, 0, $read, $null, 0)
+            $remaining -= $read
+        }
+        [void]$hmac.TransformFinalBlock((New-Object byte[] 0), 0, 0)
+        $expectedSignature = $hmac.Hash
+    } finally {
+        $source.Dispose()
+        $hmac.Dispose()
+    }
+
+    $difference = 0
+    for ($index = 0; $index -lt 32; $index++) {
+        $difference = $difference -bor ($actualSignature[$index] -bxor $expectedSignature[$index])
+    }
+    if ($difference -ne 0) {
+        throw "The passphrase is incorrect or the backup file has been changed."
+    }
+
+    $cipherPath = "$OutputPath.cipher"
+    $source = [IO.File]::OpenRead($InputPath)
+    $cipher = [IO.File]::Create($cipherPath)
+    try {
+        $source.Position = 40
+        $remaining = $signedLength - 40
+        $buffer = New-Object byte[] 81920
+        while ($remaining -gt 0) {
+            $requested = [Math]::Min($buffer.Length, $remaining)
+            $read = $source.Read($buffer, 0, $requested)
+            if ($read -le 0) {
+                throw "The encrypted backup ended unexpectedly."
+            }
+            $cipher.Write($buffer, 0, $read)
+            $remaining -= $read
+        }
+    } finally {
+        $source.Dispose()
+        $cipher.Dispose()
+    }
+
+    $aes = [Security.Cryptography.Aes]::Create()
+    $aes.KeySize = 256
+    $aes.Mode = [Security.Cryptography.CipherMode]::CBC
+    $aes.Padding = [Security.Cryptography.PaddingMode]::PKCS7
+    $aes.Key = $keys[0]
+    $aes.IV = $iv
+    try {
+        $decryptor = $aes.CreateDecryptor()
+        $encrypted = [IO.File]::OpenRead($cipherPath)
+        $crypto = New-Object Security.Cryptography.CryptoStream(
+            $encrypted,
+            $decryptor,
+            [Security.Cryptography.CryptoStreamMode]::Read
+        )
+        $output = [IO.File]::Create($OutputPath)
+        try {
+            $crypto.CopyTo($output)
+        } finally {
+            $output.Dispose()
+            $crypto.Dispose()
+            $encrypted.Dispose()
+            $decryptor.Dispose()
+        }
+    } finally {
+        $aes.Dispose()
+        if (Test-Path -LiteralPath $cipherPath) {
+            Remove-Item -LiteralPath $cipherPath -Force
+        }
+    }
+}

@@ -12,6 +12,7 @@ export interface CartLine {
 interface CartStore {
   cashTendered: string;
   checkoutKey: string | null;
+  customerId: string | null;
   lines: CartLine[];
   mpesaReference: string;
   paymentMethod: PaymentMethod;
@@ -25,6 +26,7 @@ interface CartStore {
   setPaymentMethod(method: PaymentMethod): void;
   setPharmacistApproved(approved: boolean): void;
   setCashTendered(amount: string): void;
+  setCustomerId(customerId: string | null): void;
   setPrescriptionReferenceId(reference: string): void;
   setQuantity(medicineId: string, quantity: number): void;
 }
@@ -34,6 +36,7 @@ export const useCartStore = create<CartStore>()(
     (set, get) => ({
       cashTendered: "",
       checkoutKey: null,
+      customerId: null,
       lines: [],
       mpesaReference: "",
       paymentMethod: "CASH",
@@ -59,6 +62,7 @@ export const useCartStore = create<CartStore>()(
         set({
           checkoutKey: null,
           cashTendered: "",
+          customerId: null,
           lines: [],
           mpesaReference: "",
           paymentMethod: "CASH",
@@ -93,6 +97,9 @@ export const useCartStore = create<CartStore>()(
       setCashTendered(cashTendered) {
         set({ checkoutKey: null, cashTendered });
       },
+      setCustomerId(customerId) {
+        set({ checkoutKey: null, customerId });
+      },
       setPrescriptionReferenceId(prescriptionReferenceId) {
         set({ checkoutKey: null, prescriptionReferenceId });
       },
@@ -114,20 +121,24 @@ export const useCartStore = create<CartStore>()(
     {
       name: "pharmacy-pos:cart-draft",
       storage: createJSONStorage(() => window.localStorage),
-      partialize: (state) => ({ lines: state.lines }),
+      partialize: (state) => ({
+        customerId: state.customerId,
+        lines: state.lines,
+      }),
       skipHydration: true,
       migrate(persistedState, version) {
         const state = persistedState as Partial<CartStore>;
-        if (version >= 2) return state as CartStore;
+        if (version >= 3) return state as CartStore;
         return {
           ...state,
+          customerId: state.customerId ?? null,
           lines: (state.lines ?? []).map((line) => ({
             ...line,
             lineId: line.lineId ?? crypto.randomUUID(),
           })),
         } as CartStore;
       },
-      version: 2,
+      version: 3,
     },
   ),
 );

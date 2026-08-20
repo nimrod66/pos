@@ -258,7 +258,7 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
             ? Number(input.cashTendered ?? total.toFixed(2))
             : null,
         clientSaleId: input.idempotencyKey,
-        customerId: null,
+        customerId: input.customerId || null,
         items: lines,
         note: null,
         payments: [

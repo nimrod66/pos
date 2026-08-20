@@ -35,5 +35,15 @@ export function createDemoAuthGateway(delayMs = 350): AuthGateway {
       const account = username ? findDemoAccount(username) : undefined;
       return account ? createDemoSession(account) : null;
     },
+    async switchBranch(branchId: string) {
+      const username = window.sessionStorage.getItem(SESSION_MARKER);
+      const account = username ? findDemoAccount(username) : undefined;
+      if (!account) throw new Error("The preview session has expired.");
+      const session = createDemoSession(account);
+      if (session.user.activeBranch.id !== branchId) {
+        throw new Error("The preview workspace has only one branch.");
+      }
+      return session;
+    },
   };
 }

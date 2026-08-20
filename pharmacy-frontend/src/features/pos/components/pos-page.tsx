@@ -1,15 +1,19 @@
 "use client";
 
-import { Banknote, Minus, PackageSearch, Plus, Search, ShieldCheck, Smartphone, Trash2 } from "lucide-react";
+import { Banknote, Minus, PackageSearch, Plus, Search, ShieldCheck, Smartphone, Trash2, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { PrimaryButton } from "@/components/ui/buttons";
-import { FormError, Input } from "@/components/ui/form-controls";
+import { FormError, Input, Select } from "@/components/ui/form-controls";
 import { PERMISSIONS } from "@/features/auth/access-control";
 import { usePermission } from "@/features/auth/hooks/use-permission";
 import { useAuthStore } from "@/features/auth/store/auth-store";
+import {
+  type Customer,
+  operationsGateway,
+} from "@/features/operations/operations-gateway";
 import { useCartStore } from "@/features/pos/store/cart-store";
 import {
   addMoney,
@@ -38,6 +42,7 @@ export function PosPage() {
     PERMISSIONS.PRESCRIPTION_APPROVE,
   );
   const lines = useCartStore((state) => state.lines);
+  const customerId = useCartStore((state) => state.customerId);
   const cashTendered = useCartStore((state) => state.cashTendered);
   const paymentMethod = useCartStore((state) => state.paymentMethod);
   const mpesaReference = useCartStore((state) => state.mpesaReference);
@@ -50,12 +55,14 @@ export function PosPage() {
   const setPaymentMethod = useCartStore((state) => state.setPaymentMethod);
   const setMpesaReference = useCartStore((state) => state.setMpesaReference);
   const setCashTendered = useCartStore((state) => state.setCashTendered);
+  const setCustomerId = useCartStore((state) => state.setCustomerId);
   const setPrescriptionReferenceId = useCartStore(
     (state) => state.setPrescriptionReferenceId,
   );
   const prepareCheckoutKey = useCartStore((state) => state.prepareCheckoutKey);
   const clear = useCartStore((state) => state.clear);
   const [query, setQuery] = useState("");
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [categoryId, setCategoryId] = useState("ALL");
   const [mobileView, setMobileView] = useState<"products" | "cart">("products");
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
@@ -65,6 +72,21 @@ export function PosPage() {
   const [scanStatus, setScanStatus] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let active = true;
+    void operationsGateway
+      .listCustomers()
+      .then((rows) => {
+        if (active) setCustomers(rows);
+      })
+      .catch(() => {
+        if (active) setCustomers([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     function handleGlobalKeyDown(event: KeyboardEvent) {
@@ -209,6 +231,7 @@ export function PosPage() {
       const saleId = await workspaceGateway.completeSale({
         idempotencyKey: prepareCheckoutKey(),
         cashierName,
+        customerId: customerId ?? undefined,
         items: detailedLines.map(({ lineId, medicineId, quantity }) => ({
           lineId,
           medicineId,
@@ -306,6 +329,23 @@ export function PosPage() {
 
         <div className="border-t border-[var(--border)] p-4 sm:p-5">
           {!currentShiftId ? <div className="mb-4 rounded-md border border-[var(--border)] bg-[var(--warning-soft)] p-3 text-sm text-[var(--warning)]">Checkout is locked. <Link href="/shifts/current" className="font-semibold underline">Open a shift</Link> to continue.</div> : null}
+          <label className="mb-3 block">
+            <span className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold">
+              <UserRound aria-hidden="true" size={15} /> Customer
+            </span>
+            <Select
+              value={customerId ?? ""}
+              onChange={(event) => setCustomerId(event.target.value || null)}
+            >
+              <option value="">Walk-in customer</option>
+              {customers.map((customer) => (
+                <option key={customer.id} value={customer.id}>
+                  {[customer.firstName, customer.lastName].filter(Boolean).join(" ")}
+                  {customer.phoneNumber ? ` - ${customer.phoneNumber}` : ""}
+                </option>
+              ))}
+            </Select>
+          </label>
           <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Payment method">
             <button type="button" role="radio" aria-checked={paymentMethod === "CASH"} onClick={() => setPaymentMethod("CASH")} className={cn("flex h-11 items-center justify-center gap-2 rounded-md border text-sm font-semibold", paymentMethod === "CASH" ? "border-[var(--brand)] bg-[var(--brand-soft)] text-[var(--brand-strong)]" : "border-[var(--border-strong)] text-[var(--text-muted)]")}><Banknote aria-hidden="true" size={17} /> Cash</button>
             <button type="button" role="radio" aria-checked={paymentMethod === "MPESA"} onClick={() => setPaymentMethod("MPESA")} className={cn("flex h-11 items-center justify-center gap-2 rounded-md border text-sm font-semibold", paymentMethod === "MPESA" ? "border-[var(--brand)] bg-[var(--brand-soft)] text-[var(--brand-strong)]" : "border-[var(--border-strong)] text-[var(--text-muted)]")}><Smartphone aria-hidden="true" size={17} /> M-Pesa</button>

@@ -41,12 +41,16 @@ Source: "..\API.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\pharmacy-frontend\*"; DestDir: "{app}\pharmacy-frontend"; Excludes: "node_modules\*,.next\*,coverage\*,out\*,.env.local,*.log,tsconfig.tsbuildinfo"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "scripts\*"; DestDir: "{app}\installer\scripts"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "README.md"; DestDir: "{app}\installer"; Flags: ignoreversion
+Source: "pilot-release.json"; DestDir: "{app}\installer"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\Open Pharmacy POS"; Filename: "{app}\installer\scripts\open-pos.cmd"; WorkingDir: "{app}"; IconFilename: "{app}\pharmacy-frontend\src\app\favicon.ico"
 Name: "{group}\Start Pharmacy POS"; Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\installer\scripts\start-pilot.ps1"" -InstallDir ""{app}"""; WorkingDir: "{app}"; IconFilename: "{app}\pharmacy-frontend\src\app\favicon.ico"
 Name: "{group}\Stop Pharmacy POS"; Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\installer\scripts\stop-pilot.ps1"" -InstallDir ""{app}"""; WorkingDir: "{app}"
 Name: "{group}\Check Pharmacy POS"; Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -NoExit -File ""{app}\installer\scripts\status-pilot.ps1"" -InstallDir ""{app}"""; WorkingDir: "{app}"
+Name: "{group}\Back up Pharmacy POS"; Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -NoExit -File ""{app}\installer\scripts\backup-pilot.ps1"" -InstallDir ""{app}"""; WorkingDir: "{app}"
+Name: "{group}\Restore Pharmacy POS"; Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -NoExit -File ""{app}\installer\scripts\restore-pilot.ps1"" -InstallDir ""{app}"""; WorkingDir: "{app}"
+Name: "{group}\Check for Pharmacy POS updates"; Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -NoExit -File ""{app}\installer\scripts\check-updates.ps1"" -CurrentVersion ""{#MyAppVersion}"" -Repository ""Mark-Gachau/pos"""; WorkingDir: "{app}"
 Name: "{autodesktop}\Pharmacy POS"; Filename: "{app}\installer\scripts\open-pos.cmd"; WorkingDir: "{app}"; IconFilename: "{app}\pharmacy-frontend\src\app\favicon.ico"; Tasks: desktopicon
 
 [Run]

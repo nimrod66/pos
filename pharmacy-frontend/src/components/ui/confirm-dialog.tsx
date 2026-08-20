@@ -7,6 +7,7 @@ import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
 
 interface ConfirmDialogProps {
   busy?: boolean;
+  busyLabel?: string;
   confirmLabel: string;
   description: string;
   onCancel(): void;
@@ -17,6 +18,7 @@ interface ConfirmDialogProps {
 
 export function ConfirmDialog({
   busy = false,
+  busyLabel = "Deleting...",
   confirmLabel,
   description,
   onCancel,
@@ -84,7 +86,7 @@ export function ConfirmDialog({
             onClick={onConfirm}
             className="bg-[var(--danger)] hover:bg-[#a9342b]"
           >
-            {busy ? "Deleting..." : confirmLabel}
+            {busy ? busyLabel : confirmLabel}
           </PrimaryButton>
         </div>
       </div>

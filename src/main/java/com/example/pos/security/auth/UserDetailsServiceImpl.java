@@ -34,12 +34,19 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
         if (user.getUserBranchRole() != null) {
             for (UserBranchRole branchRole : user.getUserBranchRole()) {
-                if (user.getBranch() == null || branchRole.getBranch() == null
-                        || !user.getBranch().getId().equals(branchRole.getBranch().getId())) {
-                    continue;
-                }
                 UserRoles role = branchRole.getRole();
                 if (role == null) continue;
+                boolean activeBranchRole = user.getBranch() != null
+                        && branchRole.getBranch() != null
+                        && user.getBranch().getId().equals(branchRole.getBranch().getId());
+                boolean pharmacyOwnerRole = "OWNER".equals(role.getRoleName())
+                        && user.getBranch() != null
+                        && user.getBranch().getPharmacy() != null
+                        && branchRole.getBranch() != null
+                        && branchRole.getBranch().getPharmacy() != null
+                        && user.getBranch().getPharmacy().getId().equals(
+                                branchRole.getBranch().getPharmacy().getId());
+                if (!activeBranchRole && !pharmacyOwnerRole) continue;
 
                 if (role.getRoleName() != null) {
                     authorities.add(new SimpleGrantedAuthority("ROLE_" + role.getRoleName()));

@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 
 import { AuthBootstrap } from "@/features/auth/components/auth-bootstrap";
 import { CartBootstrap } from "@/features/pos/components/cart-bootstrap";
+import { TerminalHeartbeat } from "@/features/terminals/components/terminal-heartbeat";
 import { WorkspaceBootstrap } from "@/features/workspace/components/workspace-bootstrap";
 
 import "./globals.css";
@@ -38,6 +39,7 @@ export default function RootLayout({
       <body className="min-h-full">
         <AuthBootstrap />
         <CartBootstrap />
+        <TerminalHeartbeat />
         <WorkspaceBootstrap />
         {children}
       </body>

@@ -96,7 +96,7 @@ export function SystemStatusPanel() {
     ? [
         {
           label: "Web application",
-          detail: "Next.js 16.2.10",
+          detail: "Next.js 16.3.0",
           state: "Available",
           icon: MonitorCheck,
           tone: "success",
@@ -119,7 +119,7 @@ export function SystemStatusPanel() {
     : [
         {
           label: "Web application",
-          detail: "Next.js 16.2.10",
+          detail: "Next.js 16.3.0",
           state: "Available",
           icon: MonitorCheck,
           tone: "success",
