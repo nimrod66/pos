@@ -35,4 +35,5 @@ export interface AuthGateway {
   login(credentials: LoginCredentials): Promise<AuthSession>;
   logout(): Promise<void>;
   restore(): Promise<AuthSession | null>;
+  switchBranch(branchId: string): Promise<AuthSession>;
 }

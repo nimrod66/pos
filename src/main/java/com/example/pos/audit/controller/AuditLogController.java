@@ -31,7 +31,7 @@ public class AuditLogController {
         Page<AuditLog> page;
         if (userId != null) page = service.getByUser(userId, pageable);
         else if (tableName != null) page = service.getByTable(tableName, recordId, pageable);
-        else page = Page.empty();
+        else page = service.getAll(pageable);
         return ResponseEntity.ok(ApiResponse.ok(PagedResponse.from(page, AuditLogResponseDto::from)));
     }
 }

@@ -3,6 +3,7 @@ package com.example.pos.pos.controller;
 import java.util.UUID;
 
 import com.example.pos.common.dto.ApiResponse;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -12,6 +13,7 @@ import java.util.Map;
 public class HardwareBridgeController {
 
     @GetMapping("/status")
+    @PreAuthorize("hasAnyAuthority('terminal.read', 'terminal.manage', 'pos.sell')")
     public ApiResponse<Map<String, String>> status() {
         return ApiResponse.ok(Map.of(
                 "mode", "rest",
@@ -21,6 +23,7 @@ public class HardwareBridgeController {
     }
 
     @GetMapping("/config")
+    @PreAuthorize("hasAnyAuthority('terminal.read', 'terminal.manage', 'pos.sell')")
     public ApiResponse<Map<String, Object>> config() {
         return ApiResponse.ok(Map.of(
                 "connectorUrl", "http://localhost:9100",

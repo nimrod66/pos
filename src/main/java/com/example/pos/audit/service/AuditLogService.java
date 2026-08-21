@@ -44,6 +44,11 @@ public class AuditLogService {
     }
 
     @Transactional(readOnly = true)
+    public Page<AuditLog> getAll(Pageable pageable) {
+        return repo.findByPharmacyId(current.pharmacy().getId(), pageable);
+    }
+
+    @Transactional(readOnly = true)
     public Page<AuditLog> getByTable(String tableName, String recordId, Pageable pageable) {
         UUID pharmacyId = current.pharmacy().getId();
         return recordId == null

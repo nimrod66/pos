@@ -58,8 +58,6 @@ public class TerminalHeartbeatService {
 
     @Transactional(readOnly = true)
     public boolean isTerminalOnline(String terminalId, int staleMinutes) {
-        terminalRepository.findByTerminalId(terminalId).ifPresent(terminal -> {
-        });
         return terminalRepository.findByTerminalId(terminalId)
                 .map(terminal -> {
                     if (terminal.getLastSeenAt() == null) return false;

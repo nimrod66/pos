@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,12 +20,14 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/v1/terminals")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyAuthority('terminal.read', 'terminal.manage') or hasRole('PLATFORM_ADMIN')")
 public class TerminalRegistryController {
 
     private final TerminalRegistrationService registrationService;
     private final TerminalSessionService sessionService;
 
     @PostMapping("/register")
+    @PreAuthorize("hasAuthority('terminal.manage') or hasRole('PLATFORM_ADMIN')")
     public ResponseEntity<ApiResponse<TerminalResponseDto>> register(@Valid @RequestBody TerminalRegisterRequestDto request) {
         TerminalResponseDto terminal = registrationService.registerTerminal(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.created(terminal));
@@ -51,27 +54,32 @@ public class TerminalRegistryController {
     }
 
     @PutMapping("/{terminalId}")
+    @PreAuthorize("hasAuthority('terminal.manage') or hasRole('PLATFORM_ADMIN')")
     public ResponseEntity<ApiResponse<TerminalResponseDto>> updateMetadata(
             @PathVariable String terminalId, @Valid @RequestBody TerminalRegisterRequestDto request) {
         return ResponseEntity.ok(ApiResponse.updated(registrationService.updateMetadata(terminalId, request)));
     }
 
     @PostMapping("/{terminalId}/approve")
+    @PreAuthorize("hasAuthority('terminal.manage') or hasRole('PLATFORM_ADMIN')")
     public ResponseEntity<ApiResponse<TerminalResponseDto>> approve(@PathVariable String terminalId) {
         return ResponseEntity.ok(ApiResponse.ok(registrationService.approve(terminalId), "Terminal approved"));
     }
 
     @PostMapping("/{terminalId}/deactivate")
+    @PreAuthorize("hasAuthority('terminal.manage') or hasRole('PLATFORM_ADMIN')")
     public ResponseEntity<ApiResponse<TerminalResponseDto>> deactivate(@PathVariable String terminalId) {
         return ResponseEntity.ok(ApiResponse.ok(registrationService.deactivate(terminalId), "Terminal deactivated"));
     }
 
     @PostMapping("/{terminalId}/block")
+    @PreAuthorize("hasAuthority('terminal.manage') or hasRole('PLATFORM_ADMIN')")
     public ResponseEntity<ApiResponse<TerminalResponseDto>> block(@PathVariable String terminalId) {
         return ResponseEntity.ok(ApiResponse.ok(registrationService.block(terminalId), "Terminal blocked"));
     }
 
     @PostMapping("/{terminalId}/regenerate-key")
+    @PreAuthorize("hasAuthority('terminal.manage') or hasRole('PLATFORM_ADMIN')")
     public ResponseEntity<ApiResponse<TerminalResponseDto>> regenerateKey(@PathVariable String terminalId) {
         return ResponseEntity.ok(ApiResponse.ok(registrationService.regenerateKey(terminalId), "API key regenerated"));
     }
@@ -82,18 +90,21 @@ public class TerminalRegistryController {
     }
 
     @PostMapping("/{terminalId}/peripherals")
+    @PreAuthorize("hasAuthority('terminal.manage') or hasRole('PLATFORM_ADMIN')")
     public ResponseEntity<ApiResponse<HardwarePeripheralDto>> addPeripheral(
             @PathVariable String terminalId, @Valid @RequestBody HardwarePeripheralRequestDto request) {
         return ResponseEntity.ok(ApiResponse.created(registrationService.addPeripheral(terminalId, request)));
     }
 
     @PutMapping("/{terminalId}/peripherals")
+    @PreAuthorize("hasAuthority('terminal.manage') or hasRole('PLATFORM_ADMIN')")
     public ResponseEntity<ApiResponse<List<HardwarePeripheralDto>>> replacePeripherals(
             @PathVariable String terminalId, @Valid @RequestBody List<HardwarePeripheralRequestDto> requests) {
         return ResponseEntity.ok(ApiResponse.ok(registrationService.replacePeripherals(terminalId, requests)));
     }
 
     @DeleteMapping("/peripherals/{peripheralId}")
+    @PreAuthorize("hasAuthority('terminal.manage') or hasRole('PLATFORM_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> removePeripheral(@PathVariable UUID peripheralId) {
         registrationService.removePeripheral(peripheralId);
         return ResponseEntity.ok(ApiResponse.deleted());
@@ -106,6 +117,7 @@ public class TerminalRegistryController {
     }
 
     @PostMapping("/{terminalId}/sessions")
+    @PreAuthorize("hasAuthority('terminal.manage') or hasRole('PLATFORM_ADMIN')")
     public ResponseEntity<ApiResponse<TerminalSessionResponseDto>> createSession(
             @PathVariable String terminalId,
             @RequestHeader("Authorization") String authorization,
@@ -120,6 +132,7 @@ public class TerminalRegistryController {
     }
 
     @PostMapping("/{terminalId}/logout")
+    @PreAuthorize("hasAuthority('terminal.manage') or hasRole('PLATFORM_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> logout(@PathVariable String terminalId) {
         sessionService.expireAllSessions(registrationService.getTerminalEntity(terminalId).getId());
         return ResponseEntity.ok(ApiResponse.ok(null, "All sessions expired"));

@@ -25,6 +25,8 @@ export const PERMISSIONS = {
   USER_MANAGE: "user.manage",
   SETTINGS_MANAGE: "settings.manage",
   AUDIT_READ: "audit.read",
+  TERMINAL_READ: "terminal.read",
+  TERMINAL_MANAGE: "terminal.manage",
   PRESCRIPTION_APPROVE: "prescription.approve",
 } as const;
 
@@ -84,6 +86,8 @@ export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
       PERMISSIONS.SHIFT_VARIANCE_APPROVE,
       PERMISSIONS.REPORT_SALES_READ,
       PERMISSIONS.REPORT_INVENTORY_READ,
+      PERMISSIONS.TERMINAL_READ,
+      PERMISSIONS.TERMINAL_MANAGE,
     ],
   },
   {
@@ -224,6 +228,14 @@ const routeAccessRules: Array<{
     rule: { allOf: [PERMISSIONS.SUPPLIER_READ] },
   },
   {
+    path: "/procurement/purchase-orders",
+    rule: { allOf: [PERMISSIONS.SUPPLIER_READ] },
+  },
+  {
+    path: "/customers",
+    rule: { anyOf: [PERMISSIONS.POS_SELL, PERMISSIONS.SALE_READ] },
+  },
+  {
     path: "/sales",
     rule: { allOf: [PERMISSIONS.SALE_READ] },
   },
@@ -238,8 +250,16 @@ const routeAccessRules: Array<{
     rule: { allOf: [PERMISSIONS.USER_MANAGE] },
   },
   {
+    path: "/admin/terminals",
+    rule: { allOf: [PERMISSIONS.TERMINAL_READ] },
+  },
+  {
     path: "/admin/settings",
     rule: { allOf: [PERMISSIONS.SETTINGS_MANAGE] },
+  },
+  {
+    path: "/admin/audit",
+    rule: { allOf: [PERMISSIONS.AUDIT_READ] },
   },
 ];
 

@@ -21,6 +21,25 @@ if (-not $compiler) {
 }
 
 $definition = Join-Path $PSScriptRoot "PharmacyPOS-Pilot.iss"
+$manifestPath = Join-Path $PSScriptRoot "pilot-release.json"
+$definitionText = [IO.File]::ReadAllText($definition)
+$versionMatch = [regex]::Match(
+    $definitionText,
+    '(?m)^#define MyAppVersion "(?<version>\d+\.\d+\.\d+)"\r?$'
+)
+if (-not $versionMatch.Success) {
+    throw "The installer version could not be read from PharmacyPOS-Pilot.iss."
+}
+$manifest = [IO.File]::ReadAllText($manifestPath) | ConvertFrom-Json
+if ($manifest.version -cne $versionMatch.Groups["version"].Value -or
+    $manifest.tag -cne "v$($manifest.version)-pilot") {
+    throw "pilot-release.json must match the installer version and v<version>-pilot tag."
+}
+if ($env:GITHUB_REF_TYPE -eq "tag" -and
+    $env:GITHUB_REF_NAME -cne $manifest.tag) {
+    throw "Git tag '$env:GITHUB_REF_NAME' does not match manifest tag '$($manifest.tag)'."
+}
+
 & $compiler $definition
 if ($LASTEXITCODE -ne 0) {
     throw "Inno Setup failed with exit code $LASTEXITCODE."
@@ -31,4 +50,10 @@ if (-not (Test-Path -LiteralPath $installer)) {
     throw "Installer output was not created at $installer."
 }
 
-Get-Item -LiteralPath $installer | Select-Object FullName, Length, LastWriteTime
+$checksumPath = "$installer.sha256"
+$checksum = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash.ToLowerInvariant()
+"$checksum  PharmacyPOS-Pilot-Setup.exe" |
+    Set-Content -LiteralPath $checksumPath -Encoding ASCII
+
+Get-Item -LiteralPath $installer, $checksumPath |
+    Select-Object FullName, Length, LastWriteTime

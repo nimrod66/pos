@@ -82,6 +82,10 @@ summary::-webkit-details-marker {
   display: none;
 }
 
+.device-test-print {
+  display: none;
+}
+
 ::selection {
   background: #b9ebe2;
   color: #0b3d38;
@@ -122,5 +126,25 @@ summary::-webkit-details-marker {
   .receipt-print th:first-child,
   .receipt-print td:first-child {
     width: 42%;
+  }
+
+  body:has(.device-test-print) * {
+    visibility: hidden !important;
+  }
+
+  .device-test-print,
+  .device-test-print * {
+    visibility: visible !important;
+  }
+
+  .device-test-print {
+    position: fixed;
+    inset: 0 auto auto 0;
+    display: block;
+    width: 58mm;
+    padding: 4mm;
+    color: #000000;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 10px;
   }
 }

@@ -42,6 +42,7 @@ public class GoodsReceivedResponseDto {
         private UUID medicineId;
         private String medicineName;
         private UUID batchId;
+        private UUID purchaseOrderLineId;
         private String batchNumber;
         private LocalDate expiryDate;
         private Integer quantity;
@@ -72,6 +73,7 @@ public class GoodsReceivedResponseDto {
                                 .medicineId(line.getMedicine() != null ? line.getMedicine().getId() : null)
                                 .medicineName(line.getMedicine() != null ? line.getMedicine().getBrandName() : null)
                                 .batchId(line.getBatch() != null ? line.getBatch().getId() : null)
+                                .purchaseOrderLineId(line.getPurchaseOrderLineId())
                                 .batchNumber(line.getBatchNumber())
                                 .expiryDate(line.getExpiryDate())
                                 .quantity(line.getQuantity())

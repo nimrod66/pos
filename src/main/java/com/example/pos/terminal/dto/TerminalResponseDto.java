@@ -29,6 +29,7 @@ public class TerminalResponseDto {
     private String firmwareVersion;
     private TerminalStatus status;
     private UUID branchId;
+    private String branchName;
     private String registeredBy;
     private LocalDateTime registeredAt;
     private LocalDateTime lastSeenAt;

@@ -17,7 +17,7 @@ import java.util.UUID;
 @Builder
 @Table(name = "terminal_registry", uniqueConstraints = {
         @UniqueConstraint(name = "uk_terminal_id", columnNames = "terminal_id"),
-        @UniqueConstraint(name = "uk_terminal_name", columnNames = "name"),
+        @UniqueConstraint(name = "uk_terminal_branch_name", columnNames = {"branch_id", "name"}),
         @UniqueConstraint(name = "uk_terminal_api_key", columnNames = "api_key")
 })
 public class Terminal extends BaseEntity {

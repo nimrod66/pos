@@ -6,11 +6,14 @@ import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.masterdata.medicine.dto.MedicineResponseDto;
 import com.example.pos.masterdata.medicine.model.Medicine;
 import com.example.pos.masterdata.medicine.repository.MedicineRepository;
+import com.example.pos.security.auth.AuthenticatedUserContext;
 import com.example.pos.terminal.barcode.BarcodeService;
 import com.example.pos.terminal.barcode.BarcodeType;
 import com.example.pos.terminal.scanner.ScanResult;
 import com.example.pos.terminal.scanner.ScannerService;
+import com.example.pos.terminal.service.TerminalRegistrationService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -22,18 +25,26 @@ public class ScanController {
     private final ScannerService scannerService;
     private final BarcodeService barcodeService;
     private final MedicineRepository medicineRepository;
+    private final AuthenticatedUserContext current;
+    private final TerminalRegistrationService registrationService;
 
     public ScanController(ScannerService scannerService, BarcodeService barcodeService,
-                          MedicineRepository medicineRepository) {
+                          MedicineRepository medicineRepository,
+                          AuthenticatedUserContext current,
+                          TerminalRegistrationService registrationService) {
         this.scannerService = scannerService;
         this.barcodeService = barcodeService;
         this.medicineRepository = medicineRepository;
+        this.current = current;
+        this.registrationService = registrationService;
     }
 
     @PostMapping("/{terminalId}/scan")
+    @PreAuthorize("hasAnyAuthority('terminal.read', 'terminal.manage', 'pos.sell')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> scan(
             @PathVariable String terminalId,
             @RequestBody Map<String, String> body) {
+        registrationService.getByTerminalId(terminalId);
         String rawBarcode = body.get("barcode");
         String scannerType = body.getOrDefault("scannerType", "KEYBOARD_WEDGE");
 
@@ -43,8 +54,10 @@ public class ScanController {
             return ResponseEntity.ok(ApiResponse.error(scanResult.error()));
         }
 
-        var medicine = medicineRepository.findByBarcode(scanResult.barcode())
-                .or(() -> medicineRepository.findByBarcode(scanResult.barcode().replaceAll("^0+", "")))
+        var medicine = medicineRepository.findByPharmacyIdAndBarcode(
+                        current.pharmacyId(), scanResult.barcode())
+                .or(() -> medicineRepository.findByPharmacyIdAndBarcode(
+                        current.pharmacyId(), scanResult.barcode().replaceAll("^0+", "")))
                 .orElse(null);
 
         BarcodeType type = scanResult.symbology();
@@ -63,7 +76,9 @@ public class ScanController {
     }
 
     @GetMapping("/{terminalId}/scanner-types")
+    @PreAuthorize("hasAnyAuthority('terminal.read', 'terminal.manage', 'pos.sell')")
     public ResponseEntity<ApiResponse<Object>> scannerTypes(@PathVariable String terminalId) {
+        registrationService.getByTerminalId(terminalId);
         return ResponseEntity.ok(ApiResponse.ok(scannerService.availableScannerTypes()));
     }
 }

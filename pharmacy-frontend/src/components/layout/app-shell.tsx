@@ -8,10 +8,14 @@ import {
   Building2,
   ChevronDown,
   ClipboardCheck,
+  ClipboardList,
   Boxes,
+  ContactRound,
+  FileClock,
   LayoutDashboard,
   LogOut,
   Menu,
+  Monitor,
   Pill,
   ReceiptText,
   RefreshCw,
@@ -36,6 +40,11 @@ import {
   type Permission,
 } from "@/features/auth/access-control";
 import { useAuthStore } from "@/features/auth/store/auth-store";
+import { useCartStore } from "@/features/pos/store/cart-store";
+import {
+  type BranchSummary,
+  terminalGateway,
+} from "@/features/terminals/terminal-gateway";
 import {
   useWorkspaceQuery,
   workspaceGateway,
@@ -95,6 +104,20 @@ export const appNavigation: NavigationItem[] = [
     section: "Operations",
   },
   {
+    href: "/procurement/purchase-orders",
+    icon: ClipboardList,
+    label: "Purchase orders",
+    access: { allOf: [PERMISSIONS.SUPPLIER_READ] },
+    section: "Operations",
+  },
+  {
+    href: "/customers",
+    icon: ContactRound,
+    label: "Customers",
+    access: { anyOf: [PERMISSIONS.POS_SELL, PERMISSIONS.SALE_READ] },
+    section: "Operations",
+  },
+  {
     href: "/sales",
     icon: ReceiptText,
     label: "Sales & receipts",
@@ -122,6 +145,20 @@ export const appNavigation: NavigationItem[] = [
     icon: Settings2,
     label: "Settings",
     access: { allOf: [PERMISSIONS.SETTINGS_MANAGE] },
+    section: "Management",
+  },
+  {
+    href: "/admin/terminals",
+    icon: Monitor,
+    label: "Terminals",
+    access: { allOf: [PERMISSIONS.TERMINAL_READ] },
+    section: "Management",
+  },
+  {
+    href: "/admin/audit",
+    icon: FileClock,
+    label: "Audit log",
+    access: { allOf: [PERMISSIONS.AUDIT_READ] },
     section: "Management",
   },
   {
@@ -158,18 +195,40 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [navigationOpen, setNavigationOpen] = useState(false);
   const [retrying, setRetrying] = useState(false);
+  const [branches, setBranches] = useState<BranchSummary[]>([]);
+  const [switchingBranch, setSwitchingBranch] = useState(false);
+  const [branchError, setBranchError] = useState<string | null>(null);
   const session = useAuthStore((state) => state.session);
   const signOut = useAuthStore((state) => state.signOut);
+  const switchBranch = useAuthStore((state) => state.switchBranch);
   const status = useAuthStore((state) => state.status);
   const currentShiftId = useWorkspaceQuery((state) => state.currentShiftId);
   const shifts = useWorkspaceQuery((state) => state.shifts);
   const loadError = useWorkspaceQuery((state) => state.loadError);
+  const cartLines = useCartStore((state) => state.lines);
+  const clearCart = useCartStore((state) => state.clear);
 
   useEffect(() => {
     if (status === "anonymous") {
       router.replace("/login");
     }
   }, [router, status]);
+
+  useEffect(() => {
+    if (!session?.user.roles.includes("OWNER")) return;
+    let active = true;
+    void terminalGateway
+      .listBranches(session.user.pharmacyId)
+      .then((rows) => {
+        if (active) setBranches(rows.filter((branch) => branch.status === "ACTIVE"));
+      })
+      .catch(() => {
+        if (active) setBranches([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [session]);
 
   if (status !== "authenticated" || !session) {
     return <LoadingWorkspace />;
@@ -194,6 +253,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   async function handleSignOut() {
     await signOut();
     router.replace("/login");
+  }
+
+  async function handleBranchChange(branchId: string) {
+    if (!session || branchId === session.user.activeBranch.id) return;
+    setSwitchingBranch(true);
+    setBranchError(null);
+    try {
+      await switchBranch(branchId);
+      clearCart();
+      await workspaceGateway.hydrate();
+      router.refresh();
+    } catch (error) {
+      setBranchError(
+        error instanceof Error
+          ? error.message
+          : "The active branch could not be changed.",
+      );
+    } finally {
+      setSwitchingBranch(false);
+    }
   }
 
   return (
@@ -301,12 +380,39 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               className="text-[var(--text-muted)]"
               size={17}
             />
-            <span className="truncate font-medium">
-              {session.user.activeBranch.name}
-            </span>
-            <span className="text-[var(--text-subtle)]">
-              {session.user.activeBranch.code}
-            </span>
+            {session.user.roles.includes("OWNER") && branches.length > 1 ? (
+              <select
+                aria-label="Active branch"
+                title={
+                  currentShift
+                    ? "Close the current shift before switching branches"
+                    : cartLines.length
+                      ? "Clear the current cart before switching branches"
+                      : "Active branch"
+                }
+                className="max-w-64 rounded-md border-0 bg-transparent py-1 pr-2 font-medium outline-none focus:ring-2 focus:ring-[var(--brand-ring)] disabled:opacity-60"
+                value={session.user.activeBranch.id}
+                disabled={
+                  switchingBranch || Boolean(currentShift) || cartLines.length > 0
+                }
+                onChange={(event) => void handleBranchChange(event.target.value)}
+              >
+                {branches.map((branch) => (
+                  <option key={branch.id} value={branch.id}>
+                    {branch.branchName} ({branch.branchCode})
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <>
+                <span className="truncate font-medium">
+                  {session.user.activeBranch.name}
+                </span>
+                <span className="text-[var(--text-subtle)]">
+                  {session.user.activeBranch.code}
+                </span>
+              </>
+            )}
           </div>
 
           <div className="ml-auto flex items-center gap-3">
@@ -366,6 +472,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </header>
 
         <main className="mx-auto w-full max-w-[1500px] px-4 py-6 print:max-w-none print:p-0 sm:px-6 sm:py-8">
+          {branchError ? (
+            <div
+              role="alert"
+              className="mb-5 flex items-center gap-3 rounded-md border border-[var(--danger-border)] bg-[var(--danger-soft)] px-3 py-2.5 text-sm text-[var(--danger)] print:hidden"
+            >
+              <AlertTriangle aria-hidden="true" size={17} />
+              <span>{branchError}</span>
+            </div>
+          ) : null}
           {loadError ? (
             <div
               role="alert"

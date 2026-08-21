@@ -221,6 +221,7 @@ export interface ReceiveStockInput {
 export interface CheckoutInput {
   idempotencyKey: string;
   cashierName: string;
+  customerId?: string;
   items: Array<{ lineId?: string; medicineId: string; quantity: number }>;
   paymentMethod: PaymentMethod;
   mpesaReference: string;

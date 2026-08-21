@@ -19,5 +19,14 @@ describe("application navigation permissions", () => {
 
     expect(navigation.map((item) => item.href)).toContain("/pos");
     expect(navigation.map((item) => item.href)).not.toContain("/admin/users");
+    expect(navigation.map((item) => item.href)).not.toContain("/admin/terminals");
+  });
+
+  it("shows terminal administration only to terminal readers", () => {
+    const navigation = visibleNavigation(appNavigation, [
+      PERMISSIONS.TERMINAL_READ,
+    ]);
+
+    expect(navigation.map((item) => item.href)).toContain("/admin/terminals");
   });
 });

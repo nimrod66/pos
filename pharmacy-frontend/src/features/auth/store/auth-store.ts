@@ -17,6 +17,7 @@ interface AuthStore {
   restoreSession(): Promise<void>;
   signIn(credentials: LoginCredentials): Promise<AuthSession>;
   signOut(): Promise<void>;
+  switchBranch(branchId: string): Promise<AuthSession>;
 }
 
 export const useAuthStore = create<AuthStore>((set, get) => ({
@@ -68,6 +69,22 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       await authGateway.logout();
     } finally {
       set({ error: null, session: null, status: "anonymous" });
+    }
+  },
+  async switchBranch(branchId: string) {
+    set({ error: null });
+    try {
+      const session = await authGateway.switchBranch(branchId);
+      set({ error: null, session, status: "authenticated" });
+      return session;
+    } catch (error) {
+      set({
+        error:
+          error instanceof Error
+            ? error.message
+            : "The active branch could not be changed.",
+      });
+      throw error;
     }
   },
 }));
