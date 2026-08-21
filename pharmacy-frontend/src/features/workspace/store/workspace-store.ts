@@ -50,8 +50,8 @@ interface WorkspaceActions {
   receiveStock(input: ReceiveStockInput, actor: string): string;
   openShift(openingFloat: string, actor: string): string;
   closeShift(actualCash: string): void;
-  completeSale(input: CheckoutInput): string;
-  returnSaleItem(input: ReturnInput): void;
+  completeSale(input: CheckoutInput & { cashierName: string }): string;
+  returnSaleItem(input: ReturnInput & { actor: string }): void;
   addStaff(input: StaffInput): string;
   updateStaff(id: string, input: StaffInput, actorUsername: string): void;
   setStaffStatus(

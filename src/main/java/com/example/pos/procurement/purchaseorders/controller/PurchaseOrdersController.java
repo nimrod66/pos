@@ -25,13 +25,13 @@ public class PurchaseOrdersController {
     public PurchaseOrdersController(PurchaseOrdersService service) { this.service = service; }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('supplier.write')")
+    @PreAuthorize("hasAuthority('purchase_order.write')")
     public ResponseEntity<ApiResponse<PurchaseOrderResponseDto>> create(@RequestBody @Valid PurchaseOrderRequestDto dto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.created(service.toDto(service.create(dto))));
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('supplier.read')")
+    @PreAuthorize("hasAuthority('purchase_order.read')")
     public ResponseEntity<ApiResponse<PagedResponse<PurchaseOrderResponseDto>>> getAll(
             @PageableDefault(size = 20) Pageable pageable,
             @RequestParam(required = false) UUID branchId, @RequestParam(required = false) UUID supplierId) {
@@ -42,7 +42,7 @@ public class PurchaseOrdersController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('supplier.read')")
+    @PreAuthorize("hasAuthority('purchase_order.read')")
     public ResponseEntity<ApiResponse<PurchaseOrderResponseDto>> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(service.toDto(service.getById(id))));
     }

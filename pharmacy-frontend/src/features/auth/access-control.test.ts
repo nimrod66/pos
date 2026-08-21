@@ -39,4 +39,24 @@ describe("access control", () => {
       "/inventory",
     );
   });
+
+  it("uses dedicated customer permissions instead of sales permissions", () => {
+    const cashier = permissionsForRoles(["CASHIER"]);
+    const storeKeeper = permissionsForRoles(["STORE_KEEPER"]);
+
+    expect(cashier).toContain(PERMISSIONS.CUSTOMER_READ);
+    expect(cashier).toContain(PERMISSIONS.CUSTOMER_WRITE);
+    expect(canAccessPath("/customers", cashier)).toBe(true);
+    expect(canAccessPath("/customers", storeKeeper)).toBe(false);
+  });
+
+  it("separates purchase-order access from supplier access", () => {
+    const manager = permissionsForRoles(["BRANCH_MANAGER"]);
+    const storeKeeper = permissionsForRoles(["STORE_KEEPER"]);
+
+    expect(manager).toContain(PERMISSIONS.PURCHASE_ORDER_READ);
+    expect(manager).not.toContain(PERMISSIONS.PURCHASE_ORDER_WRITE);
+    expect(storeKeeper).toContain(PERMISSIONS.PURCHASE_ORDER_WRITE);
+    expect(canAccessPath("/procurement/purchase-orders", manager)).toBe(true);
+  });
 });

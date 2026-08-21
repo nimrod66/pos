@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 
+import { useAuthStore } from "@/features/auth/store/auth-store";
 import type { WorkspaceSeed } from "@/features/workspace/data/seed-workspace";
 import {
   useWorkspaceStore,
@@ -91,6 +92,17 @@ export function getWorkspaceErrorMessage(error: unknown, fallback: string) {
     : fallback;
 }
 
+function previewActor() {
+  const user = useAuthStore.getState().session?.user;
+  if (!user) {
+    throw new WorkspaceError(
+      "AUTH_REQUIRED",
+      "Sign in again before changing pharmacy data.",
+    );
+  }
+  return user;
+}
+
 export interface WorkspaceGateway {
   addMedicine(input: MedicineInput): Promise<string>;
   addStaff(input: StaffInput): Promise<string>;
@@ -105,8 +117,8 @@ export interface WorkspaceGateway {
   getSalesReport(from: string, to: string): Promise<SalesReport>;
   hydrate(): Promise<void>;
   lookupPos(query: string): Promise<PosLookupItem[]>;
-  openShift(openingFloat: string, actor: string): Promise<string>;
-  receiveStock(input: ReceiveStockInput, actor: string): Promise<string>;
+  openShift(openingFloat: string): Promise<string>;
+  receiveStock(input: ReceiveStockInput): Promise<string>;
   resetWorkspace(): Promise<void>;
   returnSaleItem(input: ReturnInput): Promise<void>;
   setMedicineStatus(
@@ -116,7 +128,6 @@ export interface WorkspaceGateway {
   setStaffStatus(
     id: string,
     status: StaffUser["status"],
-    actorUsername: string,
   ): Promise<void>;
   setSupplierStatus(id: string, status: Supplier["status"]): Promise<void>;
   subscribe(listener: () => void): () => void;
@@ -124,7 +135,6 @@ export interface WorkspaceGateway {
   updateStaff(
     id: string,
     input: StaffInput,
-    actorUsername: string,
   ): Promise<void>;
   updateSettings(settings: PharmacySettings): Promise<void>;
   updateSupplier(id: string, input: SupplierInput): Promise<void>;
@@ -148,7 +158,10 @@ class PreviewWorkspaceGateway implements WorkspaceGateway {
   }
 
   async completeSale(input: CheckoutInput) {
-    return useWorkspaceStore.getState().completeSale(input);
+    return useWorkspaceStore.getState().completeSale({
+      ...input,
+      cashierName: previewActor().displayName,
+    });
   }
 
   async deleteMedicine(id: string) {
@@ -293,12 +306,16 @@ class PreviewWorkspaceGateway implements WorkspaceGateway {
       }));
   }
 
-  async openShift(openingFloat: string, actor: string) {
-    return useWorkspaceStore.getState().openShift(openingFloat, actor);
+  async openShift(openingFloat: string) {
+    return useWorkspaceStore
+      .getState()
+      .openShift(openingFloat, previewActor().displayName);
   }
 
-  async receiveStock(input: ReceiveStockInput, actor: string) {
-    return useWorkspaceStore.getState().receiveStock(input, actor);
+  async receiveStock(input: ReceiveStockInput) {
+    return useWorkspaceStore
+      .getState()
+      .receiveStock(input, previewActor().displayName);
   }
 
   async resetWorkspace() {
@@ -306,7 +323,10 @@ class PreviewWorkspaceGateway implements WorkspaceGateway {
   }
 
   async returnSaleItem(input: ReturnInput) {
-    useWorkspaceStore.getState().returnSaleItem(input);
+    useWorkspaceStore.getState().returnSaleItem({
+      ...input,
+      actor: previewActor().displayName,
+    });
   }
 
   async setMedicineStatus(id: string, status: MedicineInput["status"]) {
@@ -316,9 +336,10 @@ class PreviewWorkspaceGateway implements WorkspaceGateway {
   async setStaffStatus(
     id: string,
     status: StaffUser["status"],
-    actorUsername: string,
   ) {
-    useWorkspaceStore.getState().setStaffStatus(id, status, actorUsername);
+    useWorkspaceStore
+      .getState()
+      .setStaffStatus(id, status, previewActor().username);
   }
 
   async setSupplierStatus(id: string, status: Supplier["status"]) {
@@ -333,8 +354,10 @@ class PreviewWorkspaceGateway implements WorkspaceGateway {
     useWorkspaceStore.getState().updateMedicine(id, input);
   }
 
-  async updateStaff(id: string, input: StaffInput, actorUsername: string) {
-    useWorkspaceStore.getState().updateStaff(id, input, actorUsername);
+  async updateStaff(id: string, input: StaffInput) {
+    useWorkspaceStore
+      .getState()
+      .updateStaff(id, input, previewActor().username);
   }
 
   async updateSettings(settings: PharmacySettings) {

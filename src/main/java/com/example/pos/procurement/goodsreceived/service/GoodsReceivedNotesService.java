@@ -1,5 +1,6 @@
 package com.example.pos.procurement.goodsreceived.service;
 
+import com.example.pos.common.annotation.Auditable;
 import com.example.pos.common.exception.BadRequestException;
 import com.example.pos.common.exception.ConflictException;
 import com.example.pos.common.exception.ForbiddenException;
@@ -89,6 +90,7 @@ public class GoodsReceivedNotesService {
         this.objectMapper = objectMapper;
     }
 
+    @Auditable(action = "RECEIVE_STOCK", entity = "GoodsReceivedNote")
     public GoodsReceivedNotes receive(GoodsReceivedRequestDto dto, String idempotencyKey) {
         validateIdempotencyKey(idempotencyKey);
 

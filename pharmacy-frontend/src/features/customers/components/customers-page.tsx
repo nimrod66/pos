@@ -6,6 +6,7 @@ import {
   Phone,
   Plus,
   Search,
+  Trash2,
   UserRound,
   UserRoundPlus,
   X,
@@ -13,6 +14,7 @@ import {
 import { useCallback, useEffect, useState } from "react";
 
 import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
   Field,
@@ -52,9 +54,8 @@ function fullName(customer: Customer) {
 }
 
 export function CustomersPage() {
-  const canSell = usePermission(PERMISSIONS.POS_SELL);
-  const canReadSales = usePermission(PERMISSIONS.SALE_READ);
-  const allowed = canSell || canReadSales;
+  const canRead = usePermission(PERMISSIONS.CUSTOMER_READ);
+  const canWrite = usePermission(PERMISSIONS.CUSTOMER_WRITE);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -62,6 +63,8 @@ export function CustomersPage() {
   const [error, setError] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Customer | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [draft, setDraft] = useState<CustomerInput>(emptyInput);
 
   const loadCustomers = useCallback(async (search = "") => {
@@ -77,12 +80,12 @@ export function CustomersPage() {
   }, []);
 
   useEffect(() => {
-    if (!allowed) return;
+    if (!canRead) return;
     const timer = window.setTimeout(() => {
       void loadCustomers(query);
     }, 250);
     return () => window.clearTimeout(timer);
-  }, [allowed, loadCustomers, query]);
+  }, [canRead, loadCustomers, query]);
 
   function openCreate() {
     setEditing(null);
@@ -121,6 +124,7 @@ export function CustomersPage() {
 
   async function saveCustomer(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!canWrite) return;
     const firstName = draft.firstName.trim();
     if (!firstName) {
       setError("Enter the customer's first name.");
@@ -151,7 +155,23 @@ export function CustomersPage() {
     }
   }
 
-  if (!allowed) {
+  async function deleteCustomer() {
+    if (!deleteTarget || deleting || !canWrite) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      await operationsGateway.deleteCustomer(deleteTarget.id);
+      setDeleteTarget(null);
+      await loadCustomers(query);
+    } catch (caught) {
+      setDeleteTarget(null);
+      setError(errorMessage(caught, "The customer could not be deleted."));
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  if (!canRead) {
     return <AccessRestricted />;
   }
 
@@ -160,7 +180,7 @@ export function CustomersPage() {
       <PageHeader
         title="Customers"
         description="Maintain customer contact details and loyalty balances for assisted sales."
-        actions={
+        actions={canWrite ? (
           <SecondaryButton
             type="button"
             onClick={formOpen ? closeForm : openCreate}
@@ -172,7 +192,7 @@ export function CustomersPage() {
             )}
             {formOpen ? "Close" : "Add customer"}
           </SecondaryButton>
-        }
+        ) : undefined}
       />
 
       {formOpen ? (
@@ -287,7 +307,7 @@ export function CustomersPage() {
                   <th className="px-4 py-3 font-semibold">Address</th>
                   <th className="px-4 py-3 text-right font-semibold">Points</th>
                   <th className="px-4 py-3 font-semibold">Added</th>
-                  <th className="w-14 px-3 py-3">
+                  <th className="w-24 px-3 py-3">
                     <span className="sr-only">Actions</span>
                   </th>
                 </tr>
@@ -330,15 +350,28 @@ export function CustomersPage() {
                       {formatDate(customer.createdAt.slice(0, 10))}
                     </td>
                     <td className="px-3 py-3">
-                      <button
-                        type="button"
-                        title={`Edit ${fullName(customer)}`}
-                        aria-label={`Edit ${fullName(customer)}`}
-                        className="flex size-9 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-white hover:text-[var(--text)]"
-                        onClick={() => openEdit(customer)}
-                      >
-                        <Pencil aria-hidden="true" size={16} />
-                      </button>
+                      {canWrite ? (
+                        <div className="flex justify-end gap-1">
+                          <button
+                            type="button"
+                            title={`Edit ${fullName(customer)}`}
+                            aria-label={`Edit ${fullName(customer)}`}
+                            className="flex size-9 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-white hover:text-[var(--text)]"
+                            onClick={() => openEdit(customer)}
+                          >
+                            <Pencil aria-hidden="true" size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            title={`Delete ${fullName(customer)}`}
+                            aria-label={`Delete ${fullName(customer)}`}
+                            className="flex size-9 items-center justify-center rounded-md text-[var(--danger)] hover:bg-[var(--danger-soft)]"
+                            onClick={() => setDeleteTarget(customer)}
+                          >
+                            <Trash2 aria-hidden="true" size={16} />
+                          </button>
+                        </div>
+                      ) : null}
                     </td>
                   </tr>
                 ))}
@@ -361,6 +394,17 @@ export function CustomersPage() {
           />
         )}
       </section>
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        busy={deleting}
+        busyLabel="Deleting..."
+        title="Delete customer?"
+        description={`${deleteTarget ? fullName(deleteTarget) : "This customer"} will be permanently removed. Customers linked to completed sales are retained to protect receipt history.`}
+        confirmLabel="Delete customer"
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => void deleteCustomer()}
+      />
     </div>
   );
 }

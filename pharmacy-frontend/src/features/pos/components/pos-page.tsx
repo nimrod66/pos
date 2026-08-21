@@ -9,7 +9,6 @@ import { PrimaryButton } from "@/components/ui/buttons";
 import { FormError, Input, Select } from "@/components/ui/form-controls";
 import { PERMISSIONS } from "@/features/auth/access-control";
 import { usePermission } from "@/features/auth/hooks/use-permission";
-import { useAuthStore } from "@/features/auth/store/auth-store";
 import {
   type Customer,
   operationsGateway,
@@ -37,7 +36,6 @@ export function PosPage() {
   const batches = useWorkspaceQuery((state) => state.batches);
   const categories = useWorkspaceQuery((state) => state.categories);
   const currentShiftId = useWorkspaceQuery((state) => state.currentShiftId);
-  const cashierName = useAuthStore((state) => state.session?.user.displayName ?? "Cashier");
   const canApprovePrescription = usePermission(
     PERMISSIONS.PRESCRIPTION_APPROVE,
   );
@@ -230,7 +228,6 @@ export function PosPage() {
     try {
       const saleId = await workspaceGateway.completeSale({
         idempotencyKey: prepareCheckoutKey(),
-        cashierName,
         customerId: customerId ?? undefined,
         items: detailedLines.map(({ lineId, medicineId, quantity }) => ({
           lineId,

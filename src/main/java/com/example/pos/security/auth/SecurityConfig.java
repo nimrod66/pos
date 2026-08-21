@@ -208,7 +208,11 @@ public class SecurityConfig {
                     PermissionCodes.INVENTORY_ADJUST_REQUEST,
                     PermissionCodes.INVENTORY_ADJUST_APPROVE)
                 .requestMatchers("/api/v1/suppliers/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "STORE_KEEPER")
-                .requestMatchers("/api/v1/purchase-orders/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "STORE_KEEPER")
+                .requestMatchers("/api/v1/purchase-orders/**").hasAnyAuthority(
+                    PermissionCodes.PURCHASE_ORDER_READ,
+                    PermissionCodes.PURCHASE_ORDER_WRITE,
+                    PermissionCodes.INVENTORY_ADJUST_APPROVE,
+                    PermissionCodes.INVENTORY_RECEIVE)
                 .requestMatchers("/api/v1/goods-received/**").hasAnyAuthority(
                     PermissionCodes.INVENTORY_READ, PermissionCodes.INVENTORY_RECEIVE)
                 .requestMatchers("/api/v1/supplier-invoices/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "STORE_KEEPER")
@@ -241,7 +245,10 @@ public class SecurityConfig {
                     PermissionCodes.DASHBOARD_READ,
                     PermissionCodes.REPORT_SALES_READ,
                     PermissionCodes.REPORT_INVENTORY_READ)
-                .requestMatchers("/api/v1/customers/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "CASHIER", "PHARMACIST")
+                .requestMatchers("/api/v1/customers/**").hasAnyAuthority(
+                    PermissionCodes.CUSTOMER_READ,
+                    PermissionCodes.CUSTOMER_WRITE,
+                    PermissionCodes.SETTINGS_MANAGE)
                 .requestMatchers("/api/v1/notifications/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "CASHIER", "PHARMACIST", "STORE_KEEPER")
                 .requestMatchers("/api/v1/price-history/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "STORE_KEEPER")
                 .requestMatchers("/api/v1/cash-transactions/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "CASHIER")

@@ -220,7 +220,6 @@ export interface ReceiveStockInput {
 
 export interface CheckoutInput {
   idempotencyKey: string;
-  cashierName: string;
   customerId?: string;
   items: Array<{ lineId?: string; medicineId: string; quantity: number }>;
   paymentMethod: PaymentMethod;
@@ -237,7 +236,6 @@ export interface ReturnInput {
   quantity: number;
   reason: string;
   resalable: boolean;
-  actor: string;
   refundMethod?: PaymentMethod;
   refundReference?: string;
 }

@@ -16,7 +16,7 @@ vi.mock("@/lib/api-config", () => ({
 import { SystemStatusPanel } from "./system-status-panel";
 
 describe("SystemStatusPanel", () => {
-  it("treats disconnected backend services as expected in preview mode", () => {
+  it("loads preview status through the shared terminal gateway", async () => {
     render(<SystemStatusPanel />);
 
     expect(screen.getByText("Backend API")).toBeVisible();
@@ -24,13 +24,13 @@ describe("SystemStatusPanel", () => {
     expect(screen.getByText("Local preview data")).toBeVisible();
     expect(screen.getByText("Ready")).toBeVisible();
     expect(
-      screen.getByText(
+      await screen.findByText(
         "Preview mode runs without Docker, Spring Boot, or PostgreSQL.",
       ),
     ).toBeVisible();
     expect(
-      screen.queryByRole("button", { name: "Refresh system status" }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("button", { name: "Refresh system status" }),
+    ).toBeVisible();
     expect(apiRequestMock).not.toHaveBeenCalled();
   });
 });

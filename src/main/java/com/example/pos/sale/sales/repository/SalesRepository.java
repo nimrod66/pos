@@ -36,6 +36,8 @@ public interface SalesRepository extends JpaRepository<Sales, UUID> {
 
     boolean existsByInvoiceNumber(String invoiceNumber);
 
+    boolean existsByCustomerId(UUID customerId);
+
     Optional<Sales> findTop1ByUserIdAndBranchIdOrderByCreatedAtDesc(UUID userId, UUID branchId);
 
     @EntityGraph(attributePaths = {"branch", "user", "customer", "prescription", "shift", "saleItems",

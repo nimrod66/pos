@@ -29,4 +29,17 @@ describe("application navigation permissions", () => {
 
     expect(navigation.map((item) => item.href)).toContain("/admin/terminals");
   });
+
+  it("uses dedicated customer and purchase-order navigation permissions", () => {
+    const navigation = visibleNavigation(appNavigation, [
+      PERMISSIONS.CUSTOMER_READ,
+      PERMISSIONS.PURCHASE_ORDER_READ,
+    ]);
+
+    expect(navigation.map((item) => item.href)).toContain("/customers");
+    expect(navigation.map((item) => item.href)).toContain(
+      "/procurement/purchase-orders",
+    );
+    expect(navigation.map((item) => item.href)).not.toContain("/suppliers");
+  });
 });

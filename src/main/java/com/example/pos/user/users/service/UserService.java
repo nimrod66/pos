@@ -1,5 +1,6 @@
 package com.example.pos.user.users.service;
 
+import com.example.pos.common.annotation.Auditable;
 import com.example.pos.common.exception.BadRequestException;
 import com.example.pos.common.exception.ConflictException;
 import com.example.pos.common.exception.ForbiddenException;
@@ -48,6 +49,7 @@ public class UserService {
         this.authService = authService;
     }
 
+    @Auditable(action = "CREATE_USER", entity = "User")
     public User createUser(UserRequestDto dto) {
         String email = normalizeEmail(dto.getEmail());
         if (userRepository.existsByEmail(email)) {
@@ -99,6 +101,7 @@ public class UserService {
         return user;
     }
 
+    @Auditable(action = "UPDATE_USER", entity = "User")
     public User updateUser(UUID id, UserRequestDto dto) {
         User user = getUserById(id);
         String email = normalizeEmail(dto.getEmail());
@@ -116,6 +119,7 @@ public class UserService {
         return userRepository.save(user);
     }
 
+    @Auditable(action = "UPDATE_USER_STATUS", entity = "User")
     public User updateStatus(UUID id, UpdateStatusRequestDto dto) {
         User actor = current.user();
         User user = getUserById(id);
@@ -135,6 +139,7 @@ public class UserService {
         return saved;
     }
 
+    @Auditable(action = "CHANGE_PASSWORD", entity = "User")
     public void changePassword(UUID id, ChangePasswordRequestDto dto) {
         if (!current.userId().equals(id)) {
             throw new ForbiddenException("You can only change your own password");
@@ -151,6 +156,7 @@ public class UserService {
         authService.revokeUserSessions(user.getId());
     }
 
+    @Auditable(action = "DEACTIVATE_USER", entity = "User")
     public void deleteUser(UUID id) {
         User actor = current.user();
         User user = getUserById(id);

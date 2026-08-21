@@ -107,14 +107,14 @@ export const appNavigation: NavigationItem[] = [
     href: "/procurement/purchase-orders",
     icon: ClipboardList,
     label: "Purchase orders",
-    access: { allOf: [PERMISSIONS.SUPPLIER_READ] },
+    access: { allOf: [PERMISSIONS.PURCHASE_ORDER_READ] },
     section: "Operations",
   },
   {
     href: "/customers",
     icon: ContactRound,
     label: "Customers",
-    access: { anyOf: [PERMISSIONS.POS_SELL, PERMISSIONS.SALE_READ] },
+    access: { allOf: [PERMISSIONS.CUSTOMER_READ] },
     section: "Operations",
   },
   {

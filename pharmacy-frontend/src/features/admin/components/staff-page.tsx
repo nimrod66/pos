@@ -136,7 +136,7 @@ export function StaffPage() {
         roles,
       };
       if (editingId) {
-        await workspaceGateway.updateStaff(editingId, input, currentUsername);
+        await workspaceGateway.updateStaff(editingId, input);
       } else {
         await workspaceGateway.addStaff(input);
       }
@@ -161,7 +161,6 @@ export function StaffPage() {
       await workspaceGateway.setStaffStatus(
         user.id,
         user.status === "ACTIVE" ? "DISABLED" : "ACTIVE",
-        currentUsername,
       );
     } catch (caught) {
       setError(
