@@ -104,7 +104,7 @@ public class PurchaseOrdersService {
     public Page<PurchaseOrders> getByBranch(UUID branchId, Pageable pageable) {
         Branch branch = current.branch();
         if (branchId != null) current.requireBranch(branchId);
-        return poRepo.findByBranchId(branch.getId(), pageable);
+        return poRepo.findByBranchIdWithItems(branch.getId(), pageable);
     }
 
     @Transactional(readOnly = true)
@@ -112,7 +112,7 @@ public class PurchaseOrdersService {
         Branch branch = current.branch();
         supplierRepo.findByIdAndPharmacyId(supplierId, branch.getPharmacy().getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Supplier", supplierId));
-        return poRepo.findBySupplierIdAndBranchId(supplierId, branch.getId(), pageable);
+        return poRepo.findBySupplierIdAndBranchIdWithItems(supplierId, branch.getId(), pageable);
     }
 
     @Transactional(readOnly = true)
@@ -144,9 +144,8 @@ public class PurchaseOrdersService {
 
     @Transactional(readOnly = true)
     public PurchaseOrderResponseDto toDto(PurchaseOrders purchaseOrder) {
-        PurchaseOrders detailed = getById(purchaseOrder.getId());
-        PurchaseOrderResponseDto dto = PurchaseOrderResponseDto.from(detailed);
-        List<PurchaseOrderResponseDto.OrderItemResponse> items = detailed.getPurchaseOrderItems().stream()
+        PurchaseOrderResponseDto dto = PurchaseOrderResponseDto.from(purchaseOrder);
+        List<PurchaseOrderResponseDto.OrderItemResponse> items = purchaseOrder.getPurchaseOrderItems().stream()
                 .map(item -> PurchaseOrderResponseDto.OrderItemResponse.builder()
                         .id(item.getId())
                         .medicineId(item.getMedicine().getId())
