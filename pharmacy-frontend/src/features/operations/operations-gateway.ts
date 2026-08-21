@@ -124,6 +124,7 @@ interface OperationsGateway {
   approvePurchaseOrder(id: string, userId: string): Promise<PurchaseOrder>;
   createCustomer(input: CustomerInput): Promise<Customer>;
   createPurchaseOrder(input: PurchaseOrderInput): Promise<PurchaseOrder>;
+  deleteCustomer(id: string): Promise<void>;
   getPurchaseOrder(id: string): Promise<PurchaseOrder>;
   listAuditLogs(filters?: AuditLogFilters): Promise<AuditLogEntry[]>;
   listCustomers(query?: string): Promise<Customer[]>;
@@ -180,6 +181,10 @@ class LiveOperationsGateway implements OperationsGateway {
       method: "POST",
     });
     return response.data;
+  }
+
+  async deleteCustomer(id: string) {
+    await apiRequest(path(`/customers/${id}`), { method: "DELETE" });
   }
 
   async getPurchaseOrder(id: string) {
@@ -379,6 +384,15 @@ class PreviewOperationsGateway implements OperationsGateway {
     appendPreviewAudit(state, "PurchaseOrder", order.id, "CREATE_PURCHASE_ORDER");
     savePreviewState(state);
     return order;
+  }
+
+  async deleteCustomer(id: string) {
+    const state = loadPreviewState();
+    const index = state.customers.findIndex((customer) => customer.id === id);
+    if (index < 0) throw new Error("Customer not found.");
+    state.customers.splice(index, 1);
+    appendPreviewAudit(state, "Customer", id, "DELETE_CUSTOMER");
+    savePreviewState(state);
   }
 
   async getPurchaseOrder(id: string) {

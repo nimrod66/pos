@@ -8,11 +8,13 @@ import {
   Computer,
   Cpu,
   HardDrive,
+  KeyRound,
   Laptop,
   Pencil,
   Plus,
   RefreshCw,
   Settings2,
+  ShieldBan,
   Wifi,
   WifiOff,
   X,
@@ -109,6 +111,9 @@ export function TerminalsPage() {
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [deactivateTarget, setDeactivateTarget] = useState<Terminal | null>(null);
+  const [blockTarget, setBlockTarget] = useState<Terminal | null>(null);
+  const [regenerateTarget, setRegenerateTarget] = useState<Terminal | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [localTerminalId, setLocalTerminal] = useState<string | null>(null);
 
   const fallbackBranch = useMemo<BranchSummary | null>(
@@ -299,6 +304,50 @@ export function TerminalsPage() {
     }
   }
 
+  async function block() {
+    if (!blockTarget || busyId) return;
+    setBusyId(blockTarget.id);
+    setError(null);
+    setNotice(null);
+    try {
+      await terminalGateway.blockTerminal(blockTarget.terminalId);
+      if (localTerminalId === blockTarget.terminalId) {
+        setLocalTerminalId(null);
+        setLocalTerminal(null);
+      }
+      setNotice(`${blockTarget.name} has been blocked.`);
+      setBlockTarget(null);
+      await loadTerminals();
+    } catch (caught) {
+      setBlockTarget(null);
+      setError(errorMessage(caught, "The terminal could not be blocked."));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function regenerateApiKey() {
+    if (!regenerateTarget || busyId) return;
+    setBusyId(regenerateTarget.id);
+    setError(null);
+    setNotice(null);
+    try {
+      await terminalGateway.regenerateApiKey(regenerateTarget.terminalId);
+      setNotice(
+        `API credentials were regenerated for ${regenerateTarget.name}.`,
+      );
+      setRegenerateTarget(null);
+      await loadTerminals();
+    } catch (caught) {
+      setRegenerateTarget(null);
+      setError(
+        errorMessage(caught, "The terminal API credentials could not be regenerated."),
+      );
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   function assignThisComputer(terminal: Terminal) {
     const next = localTerminalId === terminal.terminalId ? null : terminal.terminalId;
     setLocalTerminalId(next);
@@ -389,6 +438,14 @@ export function TerminalsPage() {
       {error ? (
         <div className="mb-4">
           <FormError message={error} />
+        </div>
+      ) : null}
+      {notice ? (
+        <div
+          role="status"
+          className="mb-4 rounded-md border border-[var(--success)]/30 bg-[var(--success-soft)] px-4 py-3 text-sm text-[var(--success)]"
+        >
+          {notice}
         </div>
       ) : null}
 
@@ -498,6 +555,32 @@ export function TerminalsPage() {
                               className="flex size-9 items-center justify-center rounded-md text-[var(--success)] hover:bg-[var(--success-soft)]"
                             >
                               <Check aria-hidden="true" size={17} />
+                            </button>
+                          ) : null}
+                          {canManage && terminal.status === "ACTIVE" ? (
+                            <button
+                              type="button"
+                              title={`Regenerate API credentials for ${terminal.name}`}
+                              aria-label={`Regenerate API credentials for ${terminal.name}`}
+                              disabled={busyId === terminal.id}
+                              onClick={() => setRegenerateTarget(terminal)}
+                              className="flex size-9 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-white hover:text-[var(--text)] disabled:opacity-40"
+                            >
+                              <KeyRound aria-hidden="true" size={16} />
+                            </button>
+                          ) : null}
+                          {canManage &&
+                          (terminal.status === "ACTIVE" ||
+                            terminal.status === "PENDING") ? (
+                            <button
+                              type="button"
+                              title={`Block ${terminal.name}`}
+                              aria-label={`Block ${terminal.name}`}
+                              disabled={busyId === terminal.id}
+                              onClick={() => setBlockTarget(terminal)}
+                              className="flex size-9 items-center justify-center rounded-md text-[var(--danger)] hover:bg-[var(--danger-soft)] disabled:opacity-40"
+                            >
+                              <ShieldBan aria-hidden="true" size={16} />
                             </button>
                           ) : null}
                           {canManage && terminal.status === "ACTIVE" ? (
@@ -740,6 +823,26 @@ export function TerminalsPage() {
         confirmLabel="Deactivate terminal"
         onCancel={() => setDeactivateTarget(null)}
         onConfirm={() => void deactivate()}
+      />
+      <ConfirmDialog
+        open={Boolean(blockTarget)}
+        busy={Boolean(blockTarget && busyId === blockTarget.id)}
+        busyLabel="Blocking..."
+        title="Block terminal?"
+        description={`${blockTarget?.name ?? "This terminal"} will immediately lose terminal access and stop reporting heartbeats. Its history and hardware records are retained.`}
+        confirmLabel="Block terminal"
+        onCancel={() => setBlockTarget(null)}
+        onConfirm={() => void block()}
+      />
+      <ConfirmDialog
+        open={Boolean(regenerateTarget)}
+        busy={Boolean(regenerateTarget && busyId === regenerateTarget.id)}
+        busyLabel="Regenerating..."
+        title="Regenerate API credentials?"
+        description={`Existing API credentials for ${regenerateTarget?.name ?? "this terminal"} will stop working immediately. The terminal must authenticate again before it can reconnect.`}
+        confirmLabel="Regenerate credentials"
+        onCancel={() => setRegenerateTarget(null)}
+        onConfirm={() => void regenerateApiKey()}
       />
     </div>
   );

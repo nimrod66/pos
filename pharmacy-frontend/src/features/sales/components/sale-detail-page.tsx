@@ -15,7 +15,6 @@ import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { PERMISSIONS } from "@/features/auth/access-control";
 import { usePermission } from "@/features/auth/hooks/use-permission";
-import { useAuthStore } from "@/features/auth/store/auth-store";
 import {
   getWorkspaceErrorMessage,
   useWorkspaceQuery,
@@ -33,9 +32,6 @@ export function SaleDetailPage() {
   const sales = useWorkspaceQuery((state) => state.sales);
   const settings = useWorkspaceQuery((state) => state.settings);
   const loadStatus = useWorkspaceQuery((state) => state.loadStatus);
-  const actor = useAuthStore(
-    (state) => state.session?.user.displayName ?? "Pharmacy user",
-  );
   const canReturnSale = usePermission(PERMISSIONS.SALE_RETURN);
   const canReprintReceipt = usePermission(PERMISSIONS.SALE_RECEIPT_REPRINT);
   const canSell = usePermission(PERMISSIONS.POS_SELL);
@@ -104,7 +100,6 @@ export function SaleDetailPage() {
     }
     try {
       await workspaceGateway.returnSaleItem({
-        actor,
         idempotencyKey: returnIdempotencyKey,
         quantity,
         reason,

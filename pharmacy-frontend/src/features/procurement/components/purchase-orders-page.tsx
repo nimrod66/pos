@@ -76,8 +76,8 @@ export function PurchaseOrdersPage() {
   const session = useAuthStore((state) => state.session);
   const suppliers = useWorkspaceQuery((state) => state.suppliers);
   const medicines = useWorkspaceQuery((state) => state.medicines);
-  const canRead = usePermission(PERMISSIONS.SUPPLIER_READ);
-  const canCreate = usePermission(PERMISSIONS.SUPPLIER_WRITE);
+  const canRead = usePermission(PERMISSIONS.PURCHASE_ORDER_READ);
+  const canCreate = usePermission(PERMISSIONS.PURCHASE_ORDER_WRITE);
   const canApprove = usePermission(PERMISSIONS.INVENTORY_ADJUST_APPROVE);
   const canReceive = usePermission(PERMISSIONS.INVENTORY_RECEIVE);
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
@@ -104,7 +104,6 @@ export function PurchaseOrdersPage() {
 
   const loadOrders = useCallback(async () => {
     if (!session) return;
-    await Promise.resolve();
     setLoading(true);
     try {
       setOrders(
@@ -123,24 +122,13 @@ export function PurchaseOrdersPage() {
   useEffect(() => {
     if (!canRead || !session) return;
     let active = true;
-    void operationsGateway
-      .listPurchaseOrders(session.user.activeBranch.id)
-      .then((rows) => {
-        if (!active) return;
-        setOrders(rows);
-        setError(null);
-      })
-      .catch((caught) => {
-        if (!active) return;
-        setError(errorMessage(caught, "Purchase orders could not be loaded."));
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
+    window.queueMicrotask(() => {
+      if (active) void loadOrders();
+    });
     return () => {
       active = false;
     };
-  }, [canRead, session]);
+  }, [canRead, loadOrders, session]);
 
   function resetForm() {
     const medicine = activeMedicines[0];

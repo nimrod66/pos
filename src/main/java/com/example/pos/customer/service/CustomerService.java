@@ -7,6 +7,7 @@ import com.example.pos.common.exception.BadRequestException;
 import com.example.pos.customer.dto.CustomerRequestDto;
 import com.example.pos.customer.model.Customer;
 import com.example.pos.customer.repository.CustomerRepository;
+import com.example.pos.sale.sales.repository.SalesRepository;
 import com.example.pos.security.auth.AuthenticatedUserContext;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -21,10 +22,14 @@ import java.util.Locale;
 public class CustomerService {
 
     private final CustomerRepository repo;
+    private final SalesRepository salesRepository;
     private final AuthenticatedUserContext current;
 
-    public CustomerService(CustomerRepository repo, AuthenticatedUserContext current) {
+    public CustomerService(CustomerRepository repo,
+                           SalesRepository salesRepository,
+                           AuthenticatedUserContext current) {
         this.repo = repo;
+        this.salesRepository = salesRepository;
         this.current = current;
     }
 
@@ -69,6 +74,17 @@ public class CustomerService {
         c.setPhoneNumber(trimToNull(dto.getPhoneNumber())); c.setEmail(normalizeEmail(dto.getEmail()));
         c.setAddress(dto.getAddress()); c.setNotes(dto.getNotes());
         return repo.save(c);
+    }
+
+    @Auditable(action = "DELETE_CUSTOMER", entity = "Customer")
+    public void delete(UUID id) {
+        Customer customer = getById(id);
+        if (salesRepository.existsByCustomerId(id)) {
+            throw new ConflictException(
+                    "Customers linked to sales cannot be deleted because receipt history must be retained",
+                    "CUSTOMER_HAS_SALES");
+        }
+        repo.delete(customer);
     }
 
     public Customer addLoyaltyPoints(UUID id, int points) {

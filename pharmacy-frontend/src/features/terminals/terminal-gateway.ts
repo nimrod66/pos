@@ -106,18 +106,24 @@ export interface HardwareBridgeConfig {
   scannerMode: string;
 }
 
+export interface SystemStatusSnapshot {
+  requestId: string | null;
+  status: SystemStatus;
+}
+
 interface TerminalGateway {
   addPeripheral(terminalId: string, input: PeripheralInput): Promise<HardwarePeripheral>;
   approveTerminal(terminalId: string): Promise<Terminal>;
   blockTerminal(terminalId: string): Promise<Terminal>;
   deactivateTerminal(terminalId: string): Promise<Terminal>;
   getHardwareConfig(): Promise<HardwareBridgeConfig>;
-  getSystemStatus(): Promise<SystemStatus>;
+  getSystemStatus(signal?: AbortSignal): Promise<SystemStatusSnapshot>;
   getTerminal(terminalId: string): Promise<Terminal>;
   heartbeat(terminalId: string): Promise<void>;
   listBranches(pharmacyId: string): Promise<BranchSummary[]>;
   listTerminals(): Promise<Terminal[]>;
   registerTerminal(input: TerminalInput): Promise<Terminal>;
+  regenerateApiKey(terminalId: string): Promise<Terminal>;
   removePeripheral(peripheralId: string): Promise<void>;
   updateTerminal(terminalId: string, input: TerminalInput): Promise<Terminal>;
 }
@@ -163,9 +169,12 @@ class LiveTerminalGateway implements TerminalGateway {
     return (await apiRequest<HardwareBridgeConfig>("/hardware/config")).data;
   }
 
-  async getSystemStatus(): Promise<SystemStatus> {
-    return (await apiRequest<SystemStatus>("/system/status", { cache: "no-store" }))
-      .data;
+  async getSystemStatus(signal?: AbortSignal): Promise<SystemStatusSnapshot> {
+    const response = await apiRequest<SystemStatus>("/system/status", {
+      cache: "no-store",
+      signal,
+    });
+    return { requestId: response.meta.requestId, status: response.data };
   }
 
   async getTerminal(terminalId: string) {
@@ -214,6 +223,15 @@ class LiveTerminalGateway implements TerminalGateway {
         body: input,
         method: "POST",
       })
+    ).data;
+  }
+
+  async regenerateApiKey(terminalId: string) {
+    return (
+      await apiRequest<Terminal>(
+        path(`/terminals/${terminalId}/regenerate-key`),
+        { method: "POST" },
+      )
     ).data;
   }
 
@@ -337,14 +355,17 @@ class PreviewTerminalGateway implements TerminalGateway {
     };
   }
 
-  async getSystemStatus(): Promise<SystemStatus> {
+  async getSystemStatus(): Promise<SystemStatusSnapshot> {
     return {
-      api: "UP",
-      application: "Pharmacy POS preview",
-      checkedAt: new Date().toISOString(),
-      database: "UP",
-      databaseName: "preview",
-      version: "0.0.1",
+      requestId: null,
+      status: {
+        api: "UP",
+        application: "Pharmacy POS preview",
+        checkedAt: new Date().toISOString(),
+        database: "UP",
+        databaseName: "preview",
+        version: "0.0.1",
+      },
     };
   }
 
@@ -396,6 +417,17 @@ class PreviewTerminalGateway implements TerminalGateway {
       terminalId: `T-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
     };
     state.terminals.push(terminal);
+    savePreview(state);
+    return terminal;
+  }
+
+  async regenerateApiKey(terminalId: string) {
+    const state = previewState();
+    const terminal = state.terminals.find(
+      (candidate) => candidate.terminalId === terminalId,
+    );
+    if (!terminal) throw new Error("Terminal not found.");
+    terminal.lastUpdate = new Date().toISOString();
     savePreview(state);
     return terminal;
   }

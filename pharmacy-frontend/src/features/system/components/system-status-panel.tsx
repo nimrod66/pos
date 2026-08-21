@@ -12,15 +12,16 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import {
+  terminalGateway,
+  type SystemStatusSnapshot,
+} from "@/features/terminals/terminal-gateway";
 import { cn } from "@/lib/cn";
-import { apiRequest } from "@/lib/api-client";
 import { DEMO_AUTH_ENABLED } from "@/lib/api-config";
-import type { ApiResponse, SystemStatus } from "@/types/api";
 
 type LoadState =
-  | { kind: "preview" }
   | { kind: "loading" }
-  | { kind: "ready"; response: ApiResponse<SystemStatus> }
+  | { kind: "ready"; snapshot: SystemStatusSnapshot }
   | { kind: "error" };
 
 type StatusTone = "danger" | "loading" | "neutral" | "success";
@@ -43,37 +44,26 @@ const statusPresentation: Record<
   success: { color: "var(--success)", icon: CheckCircle2 },
 };
 
-async function requestSystemStatus(signal?: AbortSignal) {
-  return apiRequest<SystemStatus>("/system/status", {
-    cache: "no-store",
-    signal,
-  });
-}
-
 export function SystemStatusPanel() {
-  const [state, setState] = useState<LoadState>(
-    DEMO_AUTH_ENABLED ? { kind: "preview" } : { kind: "loading" },
-  );
+  const [state, setState] = useState<LoadState>({ kind: "loading" });
 
   async function refreshStatus() {
-    if (DEMO_AUTH_ENABLED) return;
     setState({ kind: "loading" });
 
     try {
-      const response = await requestSystemStatus();
-      setState({ kind: "ready", response });
+      const snapshot = await terminalGateway.getSystemStatus();
+      setState({ kind: "ready", snapshot });
     } catch {
       setState({ kind: "error" });
     }
   }
 
   useEffect(() => {
-    if (DEMO_AUTH_ENABLED) return;
-
     const controller = new AbortController();
 
-    void requestSystemStatus(controller.signal)
-      .then((response) => setState({ kind: "ready", response }))
+    void terminalGateway
+      .getSystemStatus(controller.signal)
+      .then((snapshot) => setState({ kind: "ready", snapshot }))
       .catch((error: unknown) => {
         if (!(error instanceof DOMException && error.name === "AbortError")) {
           setState({ kind: "error" });
@@ -85,7 +75,7 @@ export function SystemStatusPanel() {
 
   const ready = state.kind === "ready";
   const failed = state.kind === "error";
-  const status = ready ? state.response.data : null;
+  const status = ready ? state.snapshot.status : null;
   const serviceState = ready
     ? { state: "Available", tone: "success" as const }
     : failed
@@ -154,22 +144,20 @@ export function SystemStatusPanel() {
               : "Frontend, API, and database"}
           </p>
         </div>
-        {!DEMO_AUTH_ENABLED ? (
-          <button
-            type="button"
-            className="flex size-9 items-center justify-center rounded-md border border-[var(--border)] text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-muted)] hover:text-[var(--text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)] disabled:cursor-wait disabled:opacity-60"
-            aria-label="Refresh system status"
-            title="Refresh system status"
-            disabled={state.kind === "loading"}
-            onClick={() => void refreshStatus()}
-          >
-            <RefreshCw
-              aria-hidden="true"
-              className={state.kind === "loading" ? "animate-spin" : ""}
-              size={16}
-            />
-          </button>
-        ) : null}
+        <button
+          type="button"
+          className="flex size-9 items-center justify-center rounded-md border border-[var(--border)] text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-muted)] hover:text-[var(--text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)] disabled:cursor-wait disabled:opacity-60"
+          aria-label="Refresh system status"
+          title="Refresh system status"
+          disabled={state.kind === "loading"}
+          onClick={() => void refreshStatus()}
+        >
+          <RefreshCw
+            aria-hidden="true"
+            className={state.kind === "loading" ? "animate-spin" : ""}
+            size={16}
+          />
+        </button>
       </div>
 
       <div>
@@ -211,10 +199,10 @@ export function SystemStatusPanel() {
       </div>
 
       <div className="min-h-10 border-t border-[var(--border)] bg-[var(--surface-muted)] px-5 py-2 text-xs text-[var(--text-muted)]">
-        {state.kind === "preview"
-          ? "Preview mode runs without Docker, Spring Boot, or PostgreSQL."
-          : ready
-            ? "Request " + state.response.meta.requestId
+        {ready
+          ? state.snapshot.requestId
+            ? "Request " + state.snapshot.requestId
+            : "Preview mode runs without Docker, Spring Boot, or PostgreSQL."
             : failed
               ? "The API or database is not responding."
               : "Checking the local services..."}

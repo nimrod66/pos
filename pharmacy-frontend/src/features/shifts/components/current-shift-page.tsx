@@ -9,7 +9,6 @@ import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { PERMISSIONS } from "@/features/auth/access-control";
 import { usePermission } from "@/features/auth/hooks/use-permission";
-import { useAuthStore } from "@/features/auth/store/auth-store";
 import { addMoney, centsToMoney, formatKes, moneyToCents } from "@/features/workspace/lib/money";
 import {
   getWorkspaceErrorMessage,
@@ -24,7 +23,6 @@ export function CurrentShiftPage() {
   const shifts = useWorkspaceQuery((state) => state.shifts);
   const canOpenShift = usePermission(PERMISSIONS.SHIFT_OPEN);
   const canCloseShift = usePermission(PERMISSIONS.SHIFT_CLOSE);
-  const userName = useAuthStore((state) => state.session?.user.displayName ?? "Pharmacy user");
   const currentShift = shifts.find((shift) => shift.id === currentShiftId);
   const [openingFloat, setOpeningFloat] = useState("2000.00");
   const [actualCash, setActualCash] = useState(currentShift?.expectedCash ?? "");
@@ -38,7 +36,7 @@ export function CurrentShiftPage() {
       return;
     }
     try {
-      await workspaceGateway.openShift(openingFloat, userName);
+      await workspaceGateway.openShift(openingFloat);
     } catch (caught) {
       setError(
         getWorkspaceErrorMessage(caught, "The shift could not be opened."),

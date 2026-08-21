@@ -25,13 +25,13 @@ public class CustomerController {
     public CustomerController(CustomerService service) { this.service = service; }
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('pos.sell', 'sale.read')")
+    @PreAuthorize("hasAuthority('customer.write')")
     public ResponseEntity<ApiResponse<CustomerResponseDto>> create(@RequestBody @Valid CustomerRequestDto dto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.created(CustomerResponseDto.from(service.create(dto))));
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('pos.sell', 'sale.read')")
+    @PreAuthorize("hasAuthority('customer.read')")
     public ResponseEntity<ApiResponse<PagedResponse<CustomerResponseDto>>> getAll(
             @PageableDefault(size = 20) Pageable pageable) {
         Page<Customer> page = service.getAll(pageable);
@@ -39,19 +39,19 @@ public class CustomerController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('pos.sell', 'sale.read')")
+    @PreAuthorize("hasAuthority('customer.read')")
     public ResponseEntity<ApiResponse<CustomerResponseDto>> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(CustomerResponseDto.from(service.getById(id))));
     }
 
     @GetMapping("/phone/{phone}")
-    @PreAuthorize("hasAnyAuthority('pos.sell', 'sale.read')")
+    @PreAuthorize("hasAuthority('customer.read')")
     public ResponseEntity<ApiResponse<CustomerResponseDto>> getByPhone(@PathVariable String phone) {
         return ResponseEntity.ok(ApiResponse.ok(CustomerResponseDto.from(service.findByPhone(phone))));
     }
 
     @GetMapping("/search")
-    @PreAuthorize("hasAnyAuthority('pos.sell', 'sale.read')")
+    @PreAuthorize("hasAuthority('customer.read')")
     public ResponseEntity<ApiResponse<PagedResponse<CustomerResponseDto>>> search(
             @RequestParam String q,
             @PageableDefault(size = 20) Pageable pageable) {
@@ -60,9 +60,16 @@ public class CustomerController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('pos.sell', 'sale.read')")
+    @PreAuthorize("hasAuthority('customer.write')")
     public ResponseEntity<ApiResponse<CustomerResponseDto>> update(@PathVariable UUID id, @RequestBody @Valid CustomerRequestDto dto) {
         return ResponseEntity.ok(ApiResponse.updated(CustomerResponseDto.from(service.update(id, dto))));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('customer.write')")
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
+        service.delete(id);
+        return ResponseEntity.ok(ApiResponse.deleted());
     }
 
     @PatchMapping("/{id}/loyalty")

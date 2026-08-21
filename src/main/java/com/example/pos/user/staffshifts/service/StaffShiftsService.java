@@ -1,5 +1,6 @@
 package com.example.pos.user.staffshifts.service;
 
+import com.example.pos.common.annotation.Auditable;
 import com.example.pos.common.exception.BadRequestException;
 import com.example.pos.common.exception.ConflictException;
 import com.example.pos.common.exception.ForbiddenException;
@@ -49,6 +50,7 @@ public class StaffShiftsService {
         this.current = current;
     }
 
+    @Auditable(action = "OPEN_SHIFT", entity = "StaffShift")
     public StaffShifts openShift(StaffShiftRequestDto dto) {
         User user = current.user();
         Branch branch = current.branch();
@@ -90,6 +92,7 @@ public class StaffShiftsService {
         }
     }
 
+    @Auditable(action = "CLOSE_SHIFT", entity = "StaffShift")
     public StaffShifts closeShift(UUID id, UpdateShiftStatusDto dto) {
         StaffShifts shift = getScopedShiftForUpdate(id);
         if (shift.getStatus() != StaffShifts.Status.ACTIVE) {
@@ -121,6 +124,7 @@ public class StaffShiftsService {
         return shiftRepository.save(shift);
     }
 
+    @Auditable(action = "CANCEL_SHIFT", entity = "StaffShift")
     public StaffShifts cancelShift(UUID id, UpdateShiftStatusDto dto) {
         if (!current.hasAuthority(PermissionCodes.SHIFT_VARIANCE_APPROVE)) {
             throw new ForbiddenException("Cancelling a shift requires variance approval permission");

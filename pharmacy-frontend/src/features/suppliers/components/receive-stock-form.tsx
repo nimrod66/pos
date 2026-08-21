@@ -13,7 +13,6 @@ import { PageHeader } from "@/components/ui/page-header";
 import { AccessRestricted } from "@/features/auth/components/access-restricted";
 import { PERMISSIONS } from "@/features/auth/access-control";
 import { usePermission } from "@/features/auth/hooks/use-permission";
-import { useAuthStore } from "@/features/auth/store/auth-store";
 import { multiplyMoney, formatKes } from "@/features/workspace/lib/money";
 import { todayIsoDate } from "@/features/workspace/lib/workspace-helpers";
 import {
@@ -44,7 +43,6 @@ export function ReceiveStockForm() {
   const medicines = useWorkspaceQuery((state) => state.medicines);
   const suppliers = useWorkspaceQuery((state) => state.suppliers);
   const canReceiveStock = usePermission(PERMISSIONS.INVENTORY_RECEIVE);
-  const actor = useAuthStore((state) => state.session?.user.displayName ?? "Pharmacy user");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
   const {
@@ -91,10 +89,10 @@ export function ReceiveStockForm() {
       return;
     }
     try {
-      const grn = await workspaceGateway.receiveStock(
-        { ...values, idempotencyKey },
-        actor,
-      );
+      const grn = await workspaceGateway.receiveStock({
+        ...values,
+        idempotencyKey,
+      });
       setIdempotencyKey(crypto.randomUUID());
       router.push(`/inventory?received=${encodeURIComponent(grn)}`);
     } catch (error) {
