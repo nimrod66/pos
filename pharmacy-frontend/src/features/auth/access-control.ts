@@ -274,6 +274,10 @@ const routeAccessRules: Array<{
     path: "/admin/audit",
     rule: { allOf: [PERMISSIONS.AUDIT_READ] },
   },
+  {
+    path: "/system",
+    rule: { anyOf: [PERMISSIONS.TERMINAL_MANAGE, PERMISSIONS.SETTINGS_MANAGE] },
+  },
 ];
 
 export function accessRuleForPath(pathname: string) {

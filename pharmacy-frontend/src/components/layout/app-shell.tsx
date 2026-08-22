@@ -111,6 +111,13 @@ export const appNavigation: NavigationItem[] = [
     section: "Operations",
   },
   {
+    href: "/procurement/grn/new",
+    icon: RefreshCw,
+    label: "Receive stock (GRN)",
+    access: { allOf: [PERMISSIONS.INVENTORY_RECEIVE] },
+    section: "Operations",
+  },
+  {
     href: "/customers",
     icon: ContactRound,
     label: "Customers",
@@ -165,6 +172,7 @@ export const appNavigation: NavigationItem[] = [
     href: "/system",
     icon: Activity,
     label: "System health",
+    access: { anyOf: [PERMISSIONS.TERMINAL_MANAGE, PERMISSIONS.SETTINGS_MANAGE] },
     section: "Management",
   },
 ];
