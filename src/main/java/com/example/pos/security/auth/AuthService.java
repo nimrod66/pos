@@ -56,6 +56,18 @@ public class AuthService {
     private final Duration inactivityTimeout;
     private final Duration absoluteSessionTimeout;
 
+    @Value("${mpesa.consumer-key:}")
+    private String mpesaConsumerKey;
+
+    @Value("${mpesa.consumer-secret:}")
+    private String mpesaConsumerSecret;
+
+    @Value("${mpesa.passkey:}")
+    private String mpesaPasskey;
+
+    @Value("${mpesa.callback-url:}")
+    private String mpesaCallbackUrl;
+
     public AuthService(AuthenticationManager authenticationManager,
                        UserRepository userRepository,
                        LoginHistoryRepository loginHistoryRepository,
@@ -237,7 +249,9 @@ public class AuthService {
 
         Map<String, Boolean> featureFlags = new LinkedHashMap<>();
         featureFlags.put("hybridSync", false);
-        featureFlags.put("mpesaStk", false);
+        featureFlags.put("mpesaStk", notBlank(mpesaConsumerKey)
+                && notBlank(mpesaConsumerSecret) && notBlank(mpesaPasskey)
+                && notBlank(mpesaCallbackUrl));
         featureFlags.put("etimsDirect", false);
 
         String expiresAt = null;
@@ -302,5 +316,9 @@ public class AuthService {
         sessionRepository.findByPrincipalName(principalName)
                 .keySet()
                 .forEach(sessionRepository::deleteById);
+    }
+
+    private boolean notBlank(String value) {
+        return value != null && !value.isBlank();
     }
 }

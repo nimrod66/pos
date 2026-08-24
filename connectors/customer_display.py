@@ -23,8 +23,16 @@ class CustomerDisplay:
             "enabled": self.enabled,
             "com_port": self.com_port,
             "lines": self.lines,
-            "columns": self.columns
+            "columns": self.columns,
+            "connected": self._test_connection() if self.enabled else False,
         }
+
+    def _test_connection(self):
+        try:
+            with serial.Serial(self.com_port, self.baud_rate, timeout=1):
+                return True
+        except Exception:
+            return False
 
     def show(self, line1, line2=""):
         if not self.enabled:
@@ -45,6 +53,7 @@ class CustomerDisplay:
             logger.info(f"Display: '{line1}' / '{line2}'")
         except Exception as e:
             logger.error(f"Display error: {e}")
+            raise
 
     def clear(self):
         if not self.enabled:
@@ -55,6 +64,7 @@ class CustomerDisplay:
             logger.info("Display cleared")
         except Exception as e:
             logger.error(f"Display clear error: {e}")
+            raise
 
     def _pad(self, text):
         text = text or ""

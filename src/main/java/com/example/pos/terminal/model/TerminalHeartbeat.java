@@ -3,6 +3,8 @@ package com.example.pos.terminal.model;
 import com.example.pos.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 
@@ -36,9 +38,11 @@ public class TerminalHeartbeat extends BaseEntity {
     @Column(name = "uptime_minutes")
     private Long uptimeMinutes;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "JSON", length = 2000)
     private String peripheralStatus;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "JSON", length = 3000)
     private String additionalMetrics;
 

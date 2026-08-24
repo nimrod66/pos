@@ -4,6 +4,7 @@ import java.util.UUID;
 
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.terminal.dto.HeartbeatRequestDto;
+import com.example.pos.terminal.dto.TerminalHealthDto;
 import com.example.pos.terminal.service.TerminalHeartbeatService;
 import com.example.pos.terminal.service.TerminalRegistrationService;
 import jakarta.validation.Valid;
@@ -23,7 +24,7 @@ public class HeartbeatController {
     private final TerminalRegistrationService registrationService;
 
     @PostMapping("/{terminalId}/heartbeat")
-    @PreAuthorize("hasAnyAuthority('terminal.read', 'terminal.manage', 'pos.sell')")
+    @PreAuthorize("hasAnyAuthority('terminal.read', 'terminal.manage', 'pos.sell', 'inventory.read')")
     public ResponseEntity<ApiResponse<Map<String, String>>> heartbeat(
             @PathVariable String terminalId, @Valid @RequestBody HeartbeatRequestDto request) {
         if (!terminalId.equals(request.getTerminalId())) {
@@ -35,14 +36,15 @@ public class HeartbeatController {
     }
 
     @GetMapping("/{terminalId}/health")
-    @PreAuthorize("hasAnyAuthority('terminal.read', 'terminal.manage', 'pos.sell')")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> health(@PathVariable String terminalId) {
+    @PreAuthorize("hasAnyAuthority('terminal.read', 'terminal.manage', 'pos.sell', 'inventory.read')")
+    public ResponseEntity<ApiResponse<TerminalHealthDto>> health(@PathVariable String terminalId) {
         boolean online = heartbeatService.isTerminalOnline(terminalId, 10);
         var terminal = registrationService.getByTerminalId(terminalId);
-        Map<String, Object> health = new java.util.LinkedHashMap<>();
-        health.put("terminalId", terminalId);
-        health.put("online", online);
-        health.put("lastSeenAt", terminal.getLastSeenAt());
-        return ResponseEntity.ok(ApiResponse.ok(health));
+        return ResponseEntity.ok(ApiResponse.ok(TerminalHealthDto.builder()
+                .terminalId(terminalId)
+                .online(online)
+                .lastSeenAt(terminal.getLastSeenAt())
+                .peripherals(terminal.getPeripherals())
+                .build()));
     }
 }

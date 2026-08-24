@@ -30,6 +30,12 @@ public class PaymentController {
         this.paymentService = paymentService;
     }
 
+    @GetMapping("/capabilities")
+    @PreAuthorize("hasAuthority('pos.sell')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> capabilities() {
+        return ResponseEntity.ok(ApiResponse.ok(paymentService.capabilities()));
+    }
+
     @PostMapping
     @PreAuthorize("hasAuthority('pos.sell')")
     public ResponseEntity<ApiResponse<PaymentGatewayResponse>> addPayment(@RequestBody @Valid PaymentRequestDto dto) {
@@ -72,6 +78,8 @@ public class PaymentController {
                         .amount(p.getAmount())
                         .currency(p.getCurrency())
                         .transactionReference(p.getTransactionReference())
+                        .merchantRequestId(p.getMerchantRequestId())
+                        .checkoutRequestId(p.getCheckoutRequestId())
                         .paymentStatus(p.getPaymentStatus())
                         .paymentDate(p.getPaymentDate())
                         .build());

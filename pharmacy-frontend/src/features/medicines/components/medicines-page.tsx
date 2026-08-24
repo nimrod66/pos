@@ -10,6 +10,7 @@ import {
   Trash2,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { useMemo, useState } from "react";
 
 import { PrimaryLink } from "@/components/ui/buttons";
@@ -20,6 +21,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { PERMISSIONS } from "@/features/auth/access-control";
 import { usePermission } from "@/features/auth/hooks/use-permission";
+import { medicineImage } from "@/features/medicines/lib/medicine-image";
 import { formatKes } from "@/features/workspace/lib/money";
 import { stockForMedicine } from "@/features/workspace/lib/workspace-helpers";
 import {
@@ -196,19 +198,24 @@ export function MedicinesPage() {
                   return (
                     <tr key={medicine.id} className="hover:bg-[var(--surface-muted)]/60">
                       <td className="px-4 py-3.5">
-                        {canWrite ? (
-                          <Link
-                            href={`/medicines/${medicine.id}`}
-                            className="font-semibold text-[var(--brand-strong)] hover:underline"
-                          >
-                            {medicine.brandName}
-                          </Link>
-                        ) : (
-                          <p className="font-semibold">{medicine.brandName}</p>
-                        )}
-                        <p className="mt-0.5 text-xs text-[var(--text-muted)]">
-                          {medicine.genericName} · {medicine.manufacturer}
-                        </p>
+                        <div className="flex items-center gap-3">
+                          <Image src={medicineImage(medicine)} alt="" width={48} height={48} className="size-12 shrink-0 rounded object-cover" />
+                          <div className="min-w-0">
+                            {canWrite ? (
+                              <Link
+                                href={`/medicines/${medicine.id}`}
+                                className="font-semibold text-[var(--brand-strong)] hover:underline"
+                              >
+                                {medicine.brandName}
+                              </Link>
+                            ) : (
+                              <p className="font-semibold">{medicine.brandName}</p>
+                            )}
+                            <p className="mt-0.5 max-w-72 truncate text-xs text-[var(--text-muted)]">
+                              {medicine.genericName} · {medicine.manufacturer}
+                            </p>
+                          </div>
+                        </div>
                       </td>
                       <td className="px-4 py-3.5">
                         <span className="font-medium">{medicine.sku}</span>

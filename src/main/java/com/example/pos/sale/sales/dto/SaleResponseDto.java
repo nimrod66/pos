@@ -84,6 +84,8 @@ public class SaleResponseDto {
         private BigDecimal amount;
         private String currency;
         private String transactionReference;
+        private String merchantRequestId;
+        private String checkoutRequestId;
         private String paymentStatus;
         private LocalDateTime paymentDate;
     }

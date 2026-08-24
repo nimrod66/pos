@@ -90,7 +90,8 @@ class DataInitializerTest {
         setId(branch, "branch");
 
         Map<String, UserRoles> roles = Set.of(
-                        "OWNER", "BRANCH_MANAGER", "PHARMACIST", "CASHIER", "STORE_KEEPER")
+                        "OWNER", "BRANCH_MANAGER", "PHARMACIST", "CASHIER", "STORE_KEEPER",
+                        "PHARMACY_TECHNICIAN")
                 .stream()
                 .collect(Collectors.toMap(roleName -> roleName, roleName -> {
                     UserRoles role = UserRoles.builder().roleName(roleName).build();
@@ -139,7 +140,7 @@ class DataInitializerTest {
                         "technician@demo.com");
 
         ArgumentCaptor<UserBranchRole> assignments = ArgumentCaptor.forClass(UserBranchRole.class);
-        verify(userBranchRoleRepository, times(7)).save(assignments.capture());
+        verify(userBranchRoleRepository, times(6)).save(assignments.capture());
         Map<String, Set<String>> assignedRoles = assignments.getAllValues().stream()
                 .collect(Collectors.groupingBy(
                         assignment -> assignment.getUser().getEmail(),
@@ -152,7 +153,7 @@ class DataInitializerTest {
         assertThat(assignedRoles.get("cashier@demo.com")).containsExactly("CASHIER");
         assertThat(assignedRoles.get("storekeeper@demo.com")).containsExactly("STORE_KEEPER");
         assertThat(assignedRoles.get("technician@demo.com"))
-                .containsExactlyInAnyOrder("CASHIER", "STORE_KEEPER");
+                .containsExactly("PHARMACY_TECHNICIAN");
     }
 
     private static void setId(Object entity, String source) {

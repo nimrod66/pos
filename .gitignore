@@ -39,3 +39,9 @@ pos-data/
 /outputs/
 /installer/output/
 /.env.pilot
+
+# Python connector build/runtime
+__pycache__/
+*.py[cod]
+.venv*/
+/connectors/dist/

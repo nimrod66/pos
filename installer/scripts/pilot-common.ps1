@@ -78,6 +78,12 @@ function Ensure-PilotEnvironment {
         "SHOW_DEMO_ACCOUNTS=true"
         "FRONTEND_PORT=3000"
         "API_PORT=9090"
+        "MPESA_CONSUMER_KEY="
+        "MPESA_CONSUMER_SECRET="
+        "MPESA_PASSKEY="
+        "MPESA_SHORTCODE=174379"
+        "MPESA_ENVIRONMENT=sandbox"
+        "MPESA_CALLBACK_URL="
     ) | Set-Content -LiteralPath $environmentPath -Encoding ASCII
 
     return $environmentPath
@@ -133,6 +139,112 @@ function Wait-ForHttpEndpoint {
     }
 
     throw "Pharmacy POS did not become ready at $Url within $TimeoutSeconds seconds."
+}
+
+function Get-PilotHardwareConnectorPath {
+    param([string]$Root)
+
+    return [System.IO.Path]::GetFullPath(
+        (Join-Path $Root "connectors\PharmacyPOS-Hardware-Connector.exe")
+    )
+}
+
+function Get-PilotHardwareConnectorProcess {
+    param([string]$Root)
+
+    $statePath = Join-Path $Root "hardware-connector-process.json"
+    if (-not (Test-Path -LiteralPath $statePath)) {
+        return $null
+    }
+
+    try {
+        $state = [IO.File]::ReadAllText($statePath) | ConvertFrom-Json
+        $process = Get-Process -Id ([int]$state.processId) -ErrorAction Stop
+        $expectedPath = Get-PilotHardwareConnectorPath -Root $Root
+        $actualPath = [System.IO.Path]::GetFullPath($process.Path)
+        if ($actualPath -cne $expectedPath) {
+            return $null
+        }
+        return $process
+    } catch {
+        return $null
+    }
+}
+
+function Start-PilotHardwareConnector {
+    param(
+        [string]$Root,
+        [string]$EnvironmentPath
+    )
+
+    $existing = Get-PilotHardwareConnectorProcess -Root $Root
+    if ($existing) {
+        return $existing
+    }
+
+    $executable = Get-PilotHardwareConnectorPath -Root $Root
+    if (-not (Test-Path -LiteralPath $executable)) {
+        Write-Warning "The hardware connector is not bundled. The POS will run, but local peripherals will remain offline."
+        return $null
+    }
+
+    $connectorRoot = Join-Path $Root "connectors"
+    $configPath = Join-Path $connectorRoot "hardware_config.json"
+    $logPath = Join-Path $Root "hardware-connector.log"
+    $errorLogPath = Join-Path $Root "hardware-connector-error.log"
+    $previousConfig = $env:POS_HARDWARE_CONFIG
+    $previousOrigins = $env:POS_CONNECTOR_ALLOWED_ORIGINS
+    try {
+        $env:POS_HARDWARE_CONFIG = $configPath
+        $frontendPort = "3000"
+        if ($EnvironmentPath -and (Test-Path -LiteralPath $EnvironmentPath)) {
+            $portLine = Get-Content -LiteralPath $EnvironmentPath |
+                Where-Object { $_ -match '^FRONTEND_PORT=' } |
+                Select-Object -Last 1
+            if ($portLine) {
+                $candidatePort = ($portLine -split '=', 2)[1].Trim()
+                if ($candidatePort -match '^\d{1,5}$') {
+                    $frontendPort = $candidatePort
+                }
+            }
+        }
+        $env:POS_CONNECTOR_ALLOWED_ORIGINS =
+            "http://localhost:$frontendPort,http://127.0.0.1:$frontendPort"
+        $process = Start-Process `
+            -FilePath $executable `
+            -WorkingDirectory $connectorRoot `
+            -WindowStyle Hidden `
+            -RedirectStandardOutput $logPath `
+            -RedirectStandardError $errorLogPath `
+            -PassThru
+    } finally {
+        $env:POS_HARDWARE_CONFIG = $previousConfig
+        $env:POS_CONNECTOR_ALLOWED_ORIGINS = $previousOrigins
+    }
+
+    @{
+        processId = $process.Id
+        executable = $executable
+        startedAt = (Get-Date).ToUniversalTime().ToString("o")
+    } | ConvertTo-Json | Set-Content -LiteralPath (
+        Join-Path $Root "hardware-connector-process.json"
+    ) -Encoding ASCII
+
+    return $process
+}
+
+function Stop-PilotHardwareConnector {
+    param([string]$Root)
+
+    $statePath = Join-Path $Root "hardware-connector-process.json"
+    $process = Get-PilotHardwareConnectorProcess -Root $Root
+    if ($process) {
+        Stop-Process -Id $process.Id -Force
+        $process.WaitForExit(10000)
+    }
+    if (Test-Path -LiteralPath $statePath) {
+        Remove-Item -LiteralPath $statePath -Force
+    }
 }
 
 function ConvertFrom-PilotSecureString {

@@ -99,7 +99,7 @@ public class Sales extends BaseEntity {
     private String currency;
     @Column(length = 500)
     private String note;
-    @Column(nullable = false)
+    @Column
     private LocalDateTime completedAt;
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

@@ -6,6 +6,11 @@ $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 $outputDirectory = Join-Path $repositoryRoot "outputs\installer"
 New-Item -ItemType Directory -Force -Path $outputDirectory | Out-Null
 
+$hardwareConnector = Join-Path $repositoryRoot "connectors\dist\PharmacyPOS-Hardware-Connector.exe"
+if (-not (Test-Path -LiteralPath $hardwareConnector)) {
+    throw "Build the hardware connector first with installer/build-hardware-connector.ps1."
+}
+
 $candidates = @(
     $IsccPath,
     $env:ISCC_PATH,

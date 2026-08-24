@@ -11,6 +11,7 @@ import {
   ClipboardList,
   Boxes,
   ContactRound,
+  FileText,
   FileClock,
   LayoutDashboard,
   LogOut,
@@ -41,6 +42,8 @@ import {
 } from "@/features/auth/access-control";
 import { useAuthStore } from "@/features/auth/store/auth-store";
 import { useCartStore } from "@/features/pos/store/cart-store";
+import { NotificationMenu } from "@/features/notifications/components/notification-menu";
+import { PeripheralHealthBar } from "@/features/terminals/components/peripheral-health-bar";
 import {
   type BranchSummary,
   terminalGateway,
@@ -87,6 +90,13 @@ export const appNavigation: NavigationItem[] = [
     icon: Pill,
     label: "Medicines",
     access: { allOf: [PERMISSIONS.MEDICINE_READ] },
+    section: "Operations",
+  },
+  {
+    href: "/prescriptions",
+    icon: FileText,
+    label: "Prescriptions",
+    access: { allOf: [PERMISSIONS.PRESCRIPTION_READ] },
     section: "Operations",
   },
   {
@@ -249,6 +259,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const routeAllowed = canAccessPath(pathname, session.user.permissions);
   const shiftAccess = canAccess(session.user.permissions, {
     anyOf: [PERMISSIONS.SHIFT_OPEN, PERMISSIONS.SHIFT_CLOSE],
+  });
+  const peripheralHealthAccess = canAccess(session.user.permissions, {
+    anyOf: [
+      PERMISSIONS.POS_SELL,
+      PERMISSIONS.INVENTORY_READ,
+      PERMISSIONS.TERMINAL_READ,
+      PERMISSIONS.TERMINAL_MANAGE,
+    ],
   });
   const initials = session.user.displayName
     .split(" ")
@@ -424,6 +442,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="ml-auto flex items-center gap-3">
+            <NotificationMenu branchId={session.user.activeBranch.id} />
             {shiftAccess ? (
               <Link
                 href="/shifts/current"
@@ -478,6 +497,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </details>
           </div>
         </header>
+
+        {peripheralHealthAccess ? (
+          <PeripheralHealthBar
+            canConfigure={session.user.permissions.includes(PERMISSIONS.TERMINAL_READ)}
+          />
+        ) : null}
 
         <main className="mx-auto w-full max-w-[1500px] px-4 py-6 print:max-w-none print:p-0 sm:px-6 sm:py-8">
           {branchError ? (

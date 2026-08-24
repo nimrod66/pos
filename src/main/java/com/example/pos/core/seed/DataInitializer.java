@@ -48,7 +48,7 @@ public class DataInitializer implements CommandLineRunner {
             new DemoAccount("Store", "Keeper", "storekeeper@demo.com", "stock1234",
                     "0700000004", List.of("STORE_KEEPER")),
             new DemoAccount("Pharmacy", "Technician", "technician@demo.com", "tech12345",
-                    "0700000005", List.of("CASHIER", "STORE_KEEPER")));
+                    "0700000005", List.of("PHARMACY_TECHNICIAN")));
 
     private final PharmacyRepository pharmacyRepo;
     private final BranchRepository branchRepo;
@@ -82,7 +82,8 @@ public class DataInitializer implements CommandLineRunner {
                 "BRANCH_MANAGER", "Manage branch operations",
                 "PHARMACIST", "Dispense prescriptions, manage medicines",
                 "CASHIER", "Process sales and payments",
-                "STORE_KEEPER", "Manage inventory and stock"
+                "STORE_KEEPER", "Manage inventory and stock",
+                "PHARMACY_TECHNICIAN", "Assist dispensing, sales, and stock under supervision"
         );
 
         for (String code : PermissionCodes.ALL) {

@@ -36,6 +36,6 @@ public class HardwarePeripheral extends BaseEntity {
     @Builder.Default
     private PeripheralStatus status = PeripheralStatus.UNKNOWN;
 
-    @Column(columnDefinition = "JSON", length = 2000)
+    @Column(columnDefinition = "text")
     private String configuration;
 }

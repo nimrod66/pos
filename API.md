@@ -79,7 +79,7 @@ The following local-development accounts exist only when
 | `pharmacist@demo.com` | `pharmacist123` | `PHARMACIST` |
 | `cashier@demo.com` | `cashier123` | `CASHIER` |
 | `storekeeper@demo.com` | `stock1234` | `STORE_KEEPER` |
-| `technician@demo.com` | `tech12345` | `CASHIER`, `STORE_KEEPER` |
+| `technician@demo.com` | `tech12345` | `PHARMACY_TECHNICIAN` |
 
 ### Session endpoints
 
@@ -115,9 +115,15 @@ medicine.read
 inventory.read
 inventory.adjust.approve
 supplier.read
+customer.read
+customer.write
+purchase_order.read
 shift.variance.approve
 report.sales.read
 report.inventory.read
+terminal.read
+terminal.manage
+prescription.read
 ```
 
 `PHARMACIST`
@@ -128,8 +134,11 @@ pos.sell
 sale.read
 medicine.read
 inventory.read
+customer.read
+customer.write
 shift.open
 shift.close
+prescription.read
 prescription.approve
 ```
 
@@ -142,6 +151,8 @@ sale.read
 sale.receipt.reprint
 sale.return
 medicine.read
+customer.read
+customer.write
 shift.open
 shift.close
 ```
@@ -156,7 +167,27 @@ inventory.receive
 inventory.adjust.request
 supplier.read
 supplier.write
+purchase_order.read
+purchase_order.write
 report.inventory.read
+```
+
+`PHARMACY_TECHNICIAN`
+
+```text
+pos.sell
+sale.read
+sale.receipt.reprint
+medicine.read
+inventory.read
+inventory.receive
+supplier.read
+customer.read
+customer.write
+purchase_order.read
+shift.open
+shift.close
+prescription.read
 ```
 
 `PLATFORM_ADMIN` appears in a few legacy route guards but is not a pharmacy staff role or part of the current tenant-facing UI.
@@ -308,9 +339,10 @@ X-CSRF-TOKEN: <token>
 Supported payment methods:
 
 - `CASH`: requires `cashTendered`; cash payment reference must be null
-- `MPESA_MANUAL` (aliases `MPESA` and `M_PESA`): requires a unique manually verified reference
+- `MPESA_MANUAL` (alias `MPESA`): requires a unique manually verified reference
+- `M_PESA`: creates a pending Safaricom Daraja STK payment; reference must be null
 
-Payment amounts must exactly equal the server-computed total. Split cash/M-Pesa payment is allowed. `cashTendered` must cover the cash portion and the server returns `changeDue`.
+Payment amounts must exactly equal the server-computed total. Split cash/manual-M-Pesa payment is allowed. STK Push must be the only payment on its sale. `cashTendered` must cover the cash portion and the server returns `changeDue`.
 
 Checkout is one database transaction. The server:
 
@@ -325,6 +357,30 @@ Checkout is one database transaction. The server:
 The response includes `items[].allocations[]` with `saleItemId`, `batchId`, `batchNumber`, and quantity. Retain `saleItemId` for return selection.
 
 Do not call `/payments` after checkout. Direct payment creation is disabled with `DIRECT_PAYMENT_DISABLED`.
+
+### M-Pesa STK lifecycle
+
+Check `GET /api/v1/payments/capabilities` before showing STK Push. When `mpesaStkConfigured` is false, continue to offer cash and `MPESA_MANUAL`.
+
+For `M_PESA`, checkout initially returns a `SUSPENDED` sale and a payment with an `id`, `paymentStatus`, `merchantRequestId`, and `checkoutRequestId`. Stock is reserved, but no receipt or completed sale is recorded yet.
+
+```http
+POST /api/v1/payments/{paymentId}/process?phoneNumber=0712345678
+X-CSRF-TOKEN: <token>
+```
+
+Poll without a CSRF token because this is a read:
+
+```http
+GET /api/v1/payments/{paymentId}/status
+```
+
+- `COMPLETED`: the server completes the sale, converts reservations to sale movements, and creates the receipt.
+- `FAILED` or `CANCELLED`: the server cancels the sale and releases the reserved stock.
+- `PROCESSING`: keep polling using the same sale/payment IDs.
+- `PENDING` with no checkout request ID: the initiation result is uncertain. Keep the same idempotency key and verify M-Pesa before any retry.
+
+A transient query/network error remains `PROCESSING`; it never releases stock. Preserve the cart, `clientSaleId`, and `Idempotency-Key` across refreshes so retrying status cannot submit a second sale.
 
 ## 8. Authoritative Returns
 
@@ -456,4 +512,4 @@ The following are not part of the MVP contract:
 /supplier-payments/**
 ```
 
-Payment gateway callbacks currently return a disabled response. The supported M-Pesa MVP path is a manually verified reference inside authoritative checkout or return.
+Unsigned payment gateway callbacks remain disabled. The M-Pesa MVP supports either a manually verified reference or Daraja STK Push with authenticated status polling; returns continue to use a manually verified refund reference.

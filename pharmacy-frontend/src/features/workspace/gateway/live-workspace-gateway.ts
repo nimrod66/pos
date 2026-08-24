@@ -18,6 +18,7 @@ import type {
   BackendManufacturer,
   BackendMedicine,
   BackendPage,
+  BackendPaymentGatewayResponse,
   BackendPharmacy,
   BackendPosLookupItem,
   BackendSale,
@@ -42,6 +43,7 @@ import type {
   Medicine,
   MedicineInput,
   PaymentMethod,
+  PaymentCapabilities,
   PharmacySettings,
   PosLookupItem,
   ReceiveStockInput,
@@ -250,7 +252,9 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
       (sum, line) => sum + line.expectedUnitPrice * line.quantity,
       0,
     );
-    const method = input.paymentMethod === "MPESA" ? "MPESA_MANUAL" : "CASH";
+    const method = input.paymentMethod === "MPESA"
+      ? input.mpesaMode === "STK" ? "M_PESA" : "MPESA_MANUAL"
+      : "CASH";
     const response = await apiRequest<BackendSale>("/sales", {
       body: {
         cashTendered:
@@ -266,7 +270,9 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
             amount: total,
             method,
             reference:
-              input.paymentMethod === "MPESA" ? input.mpesaReference.trim() : null,
+              input.paymentMethod === "MPESA" && input.mpesaMode === "MANUAL"
+                ? input.mpesaReference.trim()
+                : null,
           },
         ],
         prescriptionReferenceId: input.prescriptionReferenceId || null,
@@ -275,8 +281,73 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
       idempotencyKey: input.idempotencyKey,
       method: "POST",
     });
+    const saleId = response.data.id ?? response.data.saleId;
+    if (input.paymentMethod === "MPESA" && input.mpesaMode === "STK") {
+      const payment = response.data.payments.find(
+        (candidate) => candidate.paymentMethod === "M_PESA",
+      );
+      if (!payment?.id) {
+        throw new WorkspaceError(
+          "MPESA_PAYMENT_MISSING",
+          "The sale was reserved but its M-Pesa payment could not be loaded.",
+        );
+      }
+      if (["FAILED", "CANCELLED"].includes(payment.paymentStatus)) {
+        throw new WorkspaceError(
+          `MPESA_${payment.paymentStatus}`,
+          "The previous M-Pesa request did not complete. Start checkout again.",
+        );
+      }
+
+      const initiated = await apiRequest<BackendPaymentGatewayResponse>(
+        path(`/payments/${payment.id}/process?phoneNumber=${encodeURIComponent(input.mpesaPhone)}`),
+        { method: "POST" },
+      );
+      if (initiated.data.status === "PENDING") {
+        await this.hydrate();
+        throw new WorkspaceError(
+          "MPESA_PENDING",
+          initiated.data.responseDescription ??
+            "M-Pesa did not return a definitive response. Verify the payment before retrying.",
+        );
+      }
+      if (!initiated.data.success && initiated.data.status !== "PROCESSING") {
+        await this.hydrate();
+        throw new WorkspaceError(
+          `MPESA_FINAL_${initiated.data.responseCode ?? "STK_FAILED"}`,
+          initiated.data.responseDescription ?? "M-Pesa could not start the payment request.",
+        );
+      }
+
+      for (let attempt = 0; attempt < 30; attempt += 1) {
+        await new Promise((resolve) => window.setTimeout(resolve, 2_500));
+        const status = await apiRequest<BackendPaymentGatewayResponse>(
+          path(`/payments/${payment.id}/status`),
+          { cache: "no-store" },
+        );
+        if (status.data.status === "COMPLETED") {
+          await this.hydrate();
+          return saleId;
+        }
+        if (status.data.status === "FAILED" || status.data.status === "CANCELLED") {
+          await this.hydrate();
+          throw new WorkspaceError(
+            `MPESA_${status.data.status}`,
+            status.data.responseDescription ??
+              (status.data.status === "CANCELLED"
+                ? "The M-Pesa request was cancelled."
+                : "M-Pesa did not complete the payment."),
+          );
+        }
+      }
+      await this.hydrate();
+      throw new WorkspaceError(
+        "MPESA_PENDING",
+        "M-Pesa is still confirming this payment. Retry checkout to continue checking without sending another prompt.",
+      );
+    }
     await this.hydrate();
-    return response.data.id ?? response.data.saleId;
+    return saleId;
   }
 
   async deleteMedicine(id: string) {
@@ -325,6 +396,12 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
       ...response.data,
       stockValue: amount(response.data.stockValue),
     };
+  }
+
+  async getPaymentCapabilities(): Promise<PaymentCapabilities> {
+    return (await apiRequest<PaymentCapabilities>("/payments/capabilities", {
+      cache: "no-store",
+    })).data;
   }
 
   async getSalesReport(from: string, to: string): Promise<SalesReport> {

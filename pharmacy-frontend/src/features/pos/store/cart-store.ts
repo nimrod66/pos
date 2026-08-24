@@ -14,6 +14,8 @@ interface CartStore {
   checkoutKey: string | null;
   customerId: string | null;
   lines: CartLine[];
+  mpesaMode: "STK" | "MANUAL";
+  mpesaPhone: string;
   mpesaReference: string;
   paymentMethod: PaymentMethod;
   pharmacistApproved: boolean;
@@ -22,6 +24,9 @@ interface CartStore {
   clear(): void;
   prepareCheckoutKey(): string;
   removeItem(medicineId: string): void;
+  resetCheckoutKey(): void;
+  setMpesaMode(mode: "STK" | "MANUAL"): void;
+  setMpesaPhone(phone: string): void;
   setMpesaReference(reference: string): void;
   setPaymentMethod(method: PaymentMethod): void;
   setPharmacistApproved(approved: boolean): void;
@@ -38,6 +43,8 @@ export const useCartStore = create<CartStore>()(
       checkoutKey: null,
       customerId: null,
       lines: [],
+      mpesaMode: "STK",
+      mpesaPhone: "",
       mpesaReference: "",
       paymentMethod: "CASH",
       pharmacistApproved: false,
@@ -64,6 +71,8 @@ export const useCartStore = create<CartStore>()(
           cashTendered: "",
           customerId: null,
           lines: [],
+          mpesaMode: "STK",
+          mpesaPhone: "",
           mpesaReference: "",
           paymentMethod: "CASH",
           pharmacistApproved: false,
@@ -97,6 +106,15 @@ export const useCartStore = create<CartStore>()(
       setCashTendered(cashTendered) {
         set({ checkoutKey: null, cashTendered });
       },
+      resetCheckoutKey() {
+        set({ checkoutKey: null });
+      },
+      setMpesaMode(mpesaMode) {
+        set({ checkoutKey: null, mpesaMode });
+      },
+      setMpesaPhone(mpesaPhone) {
+        set({ checkoutKey: null, mpesaPhone });
+      },
       setCustomerId(customerId) {
         set({ checkoutKey: null, customerId });
       },
@@ -122,13 +140,20 @@ export const useCartStore = create<CartStore>()(
       name: "pharmacy-pos:cart-draft",
       storage: createJSONStorage(() => window.localStorage),
       partialize: (state) => ({
+        cashTendered: state.cashTendered,
+        checkoutKey: state.checkoutKey,
         customerId: state.customerId,
         lines: state.lines,
+        mpesaMode: state.mpesaMode,
+        mpesaPhone: state.mpesaPhone,
+        mpesaReference: state.mpesaReference,
+        paymentMethod: state.paymentMethod,
+        prescriptionReferenceId: state.prescriptionReferenceId,
       }),
       skipHydration: true,
       migrate(persistedState, version) {
         const state = persistedState as Partial<CartStore>;
-        if (version >= 3) return state as CartStore;
+        if (version >= 4) return state as CartStore;
         return {
           ...state,
           customerId: state.customerId ?? null,
@@ -138,7 +163,7 @@ export const useCartStore = create<CartStore>()(
           })),
         } as CartStore;
       },
-      version: 3,
+      version: 4,
     },
   ),
 );

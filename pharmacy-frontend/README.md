@@ -33,7 +33,7 @@ With the example environment, the backend provides these development accounts:
 | Pharmacist | `pharmacist@demo.com` | `pharmacist123` | `PHARMACIST` |
 | Cashier | `cashier@demo.com` | `cashier123` | `CASHIER` |
 | Store keeper | `storekeeper@demo.com` | `stock1234` | `STORE_KEEPER` |
-| Pharmacy technician | `technician@demo.com` | `tech12345` | `CASHIER`, `STORE_KEEPER` |
+| Pharmacy technician | `technician@demo.com` | `tech12345` | `PHARMACY_TECHNICIAN` |
 
 `NEXT_PUBLIC_SHOW_DEMO_ACCOUNTS=true` displays these options on the local login
 screen. Set it to `false` together with `POS_SEED_DEMO_ENABLED=false` for every

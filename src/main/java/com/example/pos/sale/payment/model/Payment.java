@@ -32,6 +32,10 @@ public class Payment extends BaseEntity {
     private String currency;
     private String description;
     private String transactionReference;
+    @Column(length = 100)
+    private String merchantRequestId;
+    @Column(length = 100)
+    private String checkoutRequestId;
     @Column(nullable = false)
     private String paymentStatus;
     private LocalDateTime paymentDate;

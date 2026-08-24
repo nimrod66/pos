@@ -1,5 +1,5 @@
 #define MyAppName "Pharmacy POS Pilot"
-#define MyAppVersion "0.1.0"
+#define MyAppVersion "0.2.0"
 #define MyAppPublisher "Pharmacy POS"
 #define MyAppExeName "PharmacyPOS-Pilot-Setup.exe"
 
@@ -35,7 +35,8 @@ Source: "..\mvnw"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\mvnw.cmd"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\.mvn\*"; DestDir: "{app}\.mvn"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\src\*"; DestDir: "{app}\src"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "..\connectors\*"; DestDir: "{app}\connectors"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\connectors\*"; DestDir: "{app}\connectors"; Excludes: "__pycache__\*,dist\*,*.pyc"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\connectors\dist\PharmacyPOS-Hardware-Connector.exe"; DestDir: "{app}\connectors"; Flags: ignoreversion
 Source: "..\README.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\API.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\pharmacy-frontend\*"; DestDir: "{app}\pharmacy-frontend"; Excludes: "node_modules\*,.next\*,coverage\*,out\*,.env.local,*.log,tsconfig.tsbuildinfo"; Flags: ignoreversion recursesubdirs createallsubdirs

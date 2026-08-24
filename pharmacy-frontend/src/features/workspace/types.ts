@@ -223,10 +223,18 @@ export interface CheckoutInput {
   customerId?: string;
   items: Array<{ lineId?: string; medicineId: string; quantity: number }>;
   paymentMethod: PaymentMethod;
+  mpesaMode: "STK" | "MANUAL";
+  mpesaPhone: string;
   mpesaReference: string;
   pharmacistApproved: boolean;
   cashTendered?: string;
   prescriptionReferenceId?: string;
+}
+
+export interface PaymentCapabilities {
+  mpesaStkConfigured: boolean;
+  mpesaEnvironment: string;
+  pollingSupported: boolean;
 }
 
 export interface ReturnInput {

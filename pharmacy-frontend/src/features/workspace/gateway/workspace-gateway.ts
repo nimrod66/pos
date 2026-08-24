@@ -13,6 +13,7 @@ import type {
   DashboardReport,
   InventoryReport,
   MedicineInput,
+  PaymentCapabilities,
   PharmacySettings,
   PosLookupItem,
   ReceiveStockInput,
@@ -114,6 +115,7 @@ export interface WorkspaceGateway {
   getSnapshot(): WorkspaceSeed;
   getDashboardReport(date?: string): Promise<DashboardReport>;
   getInventoryReport(asOf?: string): Promise<InventoryReport>;
+  getPaymentCapabilities(): Promise<PaymentCapabilities>;
   getSalesReport(from: string, to: string): Promise<SalesReport>;
   hydrate(): Promise<void>;
   lookupPos(query: string): Promise<PosLookupItem[]>;
@@ -207,6 +209,14 @@ class PreviewWorkspaceGateway implements WorkspaceGateway {
 
   async getInventoryReport(asOf?: string) {
     return previewInventoryReport(useWorkspaceStore.getState(), asOf);
+  }
+
+  async getPaymentCapabilities() {
+    return {
+      mpesaEnvironment: "preview",
+      mpesaStkConfigured: true,
+      pollingSupported: true,
+    };
   }
 
   async getSalesReport(from: string, to: string) {

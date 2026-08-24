@@ -59,8 +59,8 @@ export const DEMO_ACCOUNTS: readonly DemoAccount[] = [
     username: "technician@demo.com",
     password: "tech12345",
     displayName: "Pharmacy Technician",
-    label: "Technician (cashier + store keeper)",
-    roles: ["CASHIER", "STORE_KEEPER"],
+    label: "Pharmacy technician",
+    roles: ["PHARMACY_TECHNICIAN"],
   },
 ];
 

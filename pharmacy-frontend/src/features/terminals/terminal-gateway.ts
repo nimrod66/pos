@@ -12,6 +12,7 @@ export type TerminalType =
   | "IOS"
   | "API";
 export type TerminalStatus = "PENDING" | "ACTIVE" | "DEACTIVATED" | "BLOCKED";
+export type PeripheralStatus = "ONLINE" | "OFFLINE" | "UNKNOWN" | "ERROR";
 export type PeripheralType =
   | "PRINTER"
   | "SCANNER"
@@ -45,7 +46,7 @@ export interface HardwarePeripheral {
   manufacturer: string | null;
   model: string | null;
   connectionType: ConnectionType;
-  status: "ONLINE" | "OFFLINE" | "UNKNOWN" | "ERROR";
+  status: PeripheralStatus;
   configuration: string | null;
 }
 
@@ -71,6 +72,7 @@ export interface Terminal {
   lastUpdate: string | null;
   minimumBackendVersion: string | null;
   peripherals: HardwarePeripheral[];
+  registerConfig?: CashRegisterConfig;
 }
 
 export interface TerminalInput {
@@ -106,6 +108,26 @@ export interface HardwareBridgeConfig {
   scannerMode: string;
 }
 
+export interface CashRegisterConfig {
+  defaultOpeningFloat: number;
+  cashEnabled: boolean;
+  mpesaEnabled: boolean;
+  requireOpenShift: boolean;
+  autoPrintReceipt: boolean;
+  openDrawerOnCashSale: boolean;
+  receiptCopies: number;
+  receiptPaperWidth: number;
+  scannerMode: "KEYBOARD_WEDGE" | "CAMERA" | "LOCAL_CONNECTOR";
+  barcodeSubmitKey: "ENTER" | "TAB";
+}
+
+export interface TerminalHealth {
+  terminalId: string;
+  online: boolean;
+  lastSeenAt: string | null;
+  peripherals: HardwarePeripheral[];
+}
+
 export interface SystemStatusSnapshot {
   requestId: string | null;
   status: SystemStatus;
@@ -117,14 +139,18 @@ interface TerminalGateway {
   blockTerminal(terminalId: string): Promise<Terminal>;
   deactivateTerminal(terminalId: string): Promise<Terminal>;
   getHardwareConfig(): Promise<HardwareBridgeConfig>;
+  getCashRegisterConfig(terminalId: string): Promise<CashRegisterConfig>;
   getSystemStatus(signal?: AbortSignal): Promise<SystemStatusSnapshot>;
   getTerminal(terminalId: string): Promise<Terminal>;
+  getTerminalHealth(terminalId: string): Promise<TerminalHealth>;
   heartbeat(terminalId: string): Promise<void>;
   listBranches(pharmacyId: string): Promise<BranchSummary[]>;
   listTerminals(): Promise<Terminal[]>;
   registerTerminal(input: TerminalInput): Promise<Terminal>;
   regenerateApiKey(terminalId: string): Promise<Terminal>;
   removePeripheral(peripheralId: string): Promise<void>;
+  updateCashRegisterConfig(terminalId: string, input: CashRegisterConfig): Promise<CashRegisterConfig>;
+  updatePeripheralStatus(peripheralId: string, status: PeripheralStatus): Promise<HardwarePeripheral>;
   updateTerminal(terminalId: string, input: TerminalInput): Promise<Terminal>;
 }
 
@@ -169,6 +195,13 @@ class LiveTerminalGateway implements TerminalGateway {
     return (await apiRequest<HardwareBridgeConfig>("/hardware/config")).data;
   }
 
+  async getCashRegisterConfig(terminalId: string) {
+    return (await apiRequest<CashRegisterConfig>(
+      path(`/terminals/${terminalId}/register-config`),
+      { cache: "no-store" },
+    )).data;
+  }
+
   async getSystemStatus(signal?: AbortSignal): Promise<SystemStatusSnapshot> {
     const response = await apiRequest<SystemStatus>("/system/status", {
       cache: "no-store",
@@ -183,6 +216,13 @@ class LiveTerminalGateway implements TerminalGateway {
         cache: "no-store",
       })
     ).data;
+  }
+
+  async getTerminalHealth(terminalId: string) {
+    return (await apiRequest<TerminalHealth>(
+      path(`/terminals/${terminalId}/health`),
+      { cache: "no-store" },
+    )).data;
   }
 
   async heartbeat(terminalId: string) {
@@ -241,6 +281,20 @@ class LiveTerminalGateway implements TerminalGateway {
     });
   }
 
+  async updateCashRegisterConfig(terminalId: string, input: CashRegisterConfig) {
+    return (await apiRequest<CashRegisterConfig>(
+      path(`/terminals/${terminalId}/register-config`),
+      { body: input, method: "PUT" },
+    )).data;
+  }
+
+  async updatePeripheralStatus(peripheralId: string, status: PeripheralStatus) {
+    return (await apiRequest<HardwarePeripheral>(
+      path(`/terminals/peripherals/${peripheralId}/status`),
+      { body: { status }, method: "PATCH" },
+    )).data;
+  }
+
   async updateTerminal(terminalId: string, input: TerminalInput) {
     return (
       await apiRequest<Terminal>(path(`/terminals/${terminalId}`), {
@@ -273,7 +327,7 @@ function previewState(): PreviewTerminalState {
   return {
     terminals: [
       {
-        appVersion: "0.1.0",
+        appVersion: "0.2.0",
         branchId: "preview-main",
         branchName: "Main branch",
         firmwareVersion: null,
@@ -355,6 +409,10 @@ class PreviewTerminalGateway implements TerminalGateway {
     };
   }
 
+  async getCashRegisterConfig(terminalId: string) {
+    return previewTerminal(terminalId).registerConfig ?? defaultRegisterConfig();
+  }
+
   async getSystemStatus(): Promise<SystemStatusSnapshot> {
     return {
       requestId: null,
@@ -371,6 +429,16 @@ class PreviewTerminalGateway implements TerminalGateway {
 
   async getTerminal(terminalId: string) {
     return previewTerminal(terminalId);
+  }
+
+  async getTerminalHealth(terminalId: string) {
+    const terminal = previewTerminal(terminalId);
+    return {
+      lastSeenAt: terminal.lastSeenAt,
+      online: isTerminalOnline(terminal),
+      peripherals: terminal.peripherals,
+      terminalId,
+    };
   }
 
   async heartbeat(terminalId: string) {
@@ -442,6 +510,29 @@ class PreviewTerminalGateway implements TerminalGateway {
     savePreview(state);
   }
 
+  async updateCashRegisterConfig(terminalId: string, input: CashRegisterConfig) {
+    const state = previewState();
+    const terminal = state.terminals.find(
+      (candidate) => candidate.terminalId === terminalId,
+    );
+    if (!terminal) throw new Error("Terminal not found.");
+    terminal.registerConfig = input;
+    savePreview(state);
+    return input;
+  }
+
+  async updatePeripheralStatus(peripheralId: string, status: PeripheralStatus) {
+    const state = previewState();
+    for (const terminal of state.terminals) {
+      const peripheral = terminal.peripherals.find((item) => item.id === peripheralId);
+      if (!peripheral) continue;
+      peripheral.status = status;
+      savePreview(state);
+      return peripheral;
+    }
+    throw new Error("Peripheral not found.");
+  }
+
   async updateTerminal(terminalId: string, input: TerminalInput) {
     const state = previewState();
     const terminal = state.terminals.find(
@@ -464,6 +555,21 @@ class PreviewTerminalGateway implements TerminalGateway {
     savePreview(state);
     return terminal;
   }
+}
+
+function defaultRegisterConfig(): CashRegisterConfig {
+  return {
+    autoPrintReceipt: true,
+    barcodeSubmitKey: "ENTER",
+    cashEnabled: true,
+    defaultOpeningFloat: 0,
+    mpesaEnabled: true,
+    openDrawerOnCashSale: true,
+    receiptCopies: 1,
+    receiptPaperWidth: 80,
+    requireOpenShift: true,
+    scannerMode: "KEYBOARD_WEDGE",
+  };
 }
 
 export function getLocalTerminalId() {

@@ -3,7 +3,7 @@
 import { ArrowLeft, CheckCircle2, Printer, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   PrimaryButton,
@@ -63,6 +63,16 @@ export function SaleDetailPage() {
     : 0;
   const canPrintReceipt =
     canReprintReceipt || (canSell && searchParams.get("completed") === "1");
+  const autoPrintStarted = useRef(false);
+
+  useEffect(() => {
+    if (!sale || searchParams.get("autoprint") !== "1" || autoPrintStarted.current) {
+      return;
+    }
+    autoPrintStarted.current = true;
+    const timer = window.setTimeout(() => window.print(), 350);
+    return () => window.clearTimeout(timer);
+  }, [sale, searchParams]);
 
   if (!sale && (loadStatus === "idle" || loadStatus === "loading")) {
     return (

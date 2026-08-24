@@ -145,11 +145,11 @@ public class SaleService {
         Prescriptions prescription = resolvePrescription(dto.getPrescriptionReferenceId());
         Map<UUID, Integer> prescriptionAllowance = prescriptionAllowance(prescription);
         boolean prescriptionUsed = false;
-        LocalDateTime completedAt = LocalDateTime.now();
+        LocalDateTime checkoutAt = LocalDateTime.now();
 
         Sales sale = Sales.builder()
                 .clientSaleId(dto.getClientSaleId())
-                .invoiceNumber(generateInvoiceNumber(dto.getClientSaleId(), completedAt))
+                .invoiceNumber(generateInvoiceNumber(dto.getClientSaleId(), checkoutAt))
                 .branch(branch)
                 .user(cashier)
                 .shift(shift)
@@ -160,7 +160,7 @@ public class SaleService {
                 .paymentStatus(Sales.PaymentStatus.PAID)
                 .currency(CURRENCY)
                 .note(trimToNull(dto.getNote()))
-                .completedAt(completedAt)
+                .completedAt(checkoutAt)
                 .terminalId(getEffectiveTerminalId())
                 .synced(!syncProperties.isEnabled())
                 .build();
@@ -182,7 +182,7 @@ public class SaleService {
 
             int requestedQuantity = exactQuantity(line.getQuantity());
             List<Stock> stocks = stockRepository.findSellableFefoForUpdate(
-                    branch.getId(), line.getMedicineId(), completedAt.toLocalDate());
+                    branch.getId(), line.getMedicineId(), checkoutAt.toLocalDate());
             if (stocks.isEmpty()) {
                 throw new ConflictException("No sellable stock is available for this medicine",
                         "INSUFFICIENT_STOCK");
@@ -222,7 +222,7 @@ public class SaleService {
                 sale.getSaleItems().add(saleItem);
 
                 stock.setQuantityAvailable(available - allocatedQuantity);
-                stock.setLastStockDate(completedAt.toLocalDate());
+                stock.setLastStockDate(checkoutAt.toLocalDate());
                 allocations.add(new StockAllocation(batch, allocatedQuantity));
                 remaining -= allocatedQuantity;
                 subtotal = subtotal.add(amounts.taxableAmount());
@@ -240,7 +240,8 @@ public class SaleService {
         subtotal = money(subtotal);
         taxTotal = money(taxTotal);
         grandTotal = money(grandTotal);
-        PaymentTotals paymentTotals = buildPayments(sale, dto, grandTotal, completedAt);
+        PaymentTotals paymentTotals = buildPayments(sale, dto, grandTotal, checkoutAt);
+        boolean pendingOnlinePayment = paymentTotals.pendingOnlinePayment();
 
         sale.setSubtotal(subtotal);
         sale.setDiscountTotal(money(BigDecimal.ZERO));
@@ -249,12 +250,19 @@ public class SaleService {
         sale.setPaidTotal(paymentTotals.paidTotal());
         sale.setCashTendered(paymentTotals.cashTendered());
         sale.setChangeDue(paymentTotals.changeDue());
+        sale.setSaleStatus(pendingOnlinePayment
+                ? Sales.SaleStatus.SUSPENDED : Sales.SaleStatus.COMPLETED);
+        sale.setPaymentStatus(pendingOnlinePayment
+                ? Sales.PaymentStatus.IN_PROGRESS : Sales.PaymentStatus.PAID);
+        sale.setCompletedAt(pendingOnlinePayment ? null : checkoutAt);
 
-        sale.getReceipts().add(Receipts.builder()
-                .sales(sale)
-                .receiptNumber(generateReceiptNumber(dto.getClientSaleId(), completedAt))
-                .printedDate(completedAt)
-                .build());
+        if (!pendingOnlinePayment) {
+            sale.getReceipts().add(Receipts.builder()
+                    .sales(sale)
+                    .receiptNumber(generateReceiptNumber(dto.getClientSaleId(), checkoutAt))
+                    .printedDate(checkoutAt)
+                    .build());
+        }
 
         Sales saved = salesRepository.saveAndFlush(sale);
         for (StockAllocation allocation : allocations) {
@@ -262,25 +270,104 @@ public class SaleService {
                     .medicineBatches(allocation.batch())
                     .branch(branch)
                     .user(cashier)
-                    .movementType(StockMovements.MovementType.SALE)
+                    .movementType(pendingOnlinePayment
+                            ? StockMovements.MovementType.RESERVATION
+                            : StockMovements.MovementType.SALE)
                     .referenceType("SALE")
                     .referenceId(saved.getId())
-                    .movementDate(completedAt.toLocalDate())
+                    .movementDate(checkoutAt.toLocalDate())
                     .quantity(allocation.quantity())
                     .build());
-            writeStockEvent(saved, branch, allocation);
+            if (!pendingOnlinePayment) writeStockEvent(saved, branch, allocation);
         }
 
-        if (prescriptionUsed) {
+        if (prescriptionUsed && !pendingOnlinePayment) {
             prescription.setStatus("DISPENSED");
-            prescription.setDispensedAt(completedAt);
+            prescription.setDispensedAt(checkoutAt);
         }
 
         key.setResourceId(saved.getId().toString());
         key.setStatus(IdempotencyKey.Status.COMPLETED);
         idempotencyRepository.save(key);
+        if (!pendingOnlinePayment) writeSaleEvent(saved);
+        return saved;
+    }
+
+    public Sales finalizeOnlinePayment(UUID saleId) {
+        Sales sale = salesRepository.findForUpdateByIdAndBranchId(saleId, current.branchId())
+                .orElseThrow(() -> new ResourceNotFoundException("Sale", saleId));
+        if (sale.getSaleStatus() == Sales.SaleStatus.COMPLETED) return sale;
+        if (sale.getSaleStatus() == Sales.SaleStatus.CANCELLED) {
+            throw new ConflictException("The pending sale has already been cancelled",
+                    "SALE_ALREADY_CANCELLED");
+        }
+
+        LocalDateTime completedAt = LocalDateTime.now();
+        sale.setPaymentStatus(Sales.PaymentStatus.PAID);
+        sale.setSaleStatus(Sales.SaleStatus.COMPLETED);
+        sale.setPaidTotal(sale.getTotal());
+        sale.setCompletedAt(completedAt);
+        if (sale.getReceipts().isEmpty()) {
+            sale.getReceipts().add(Receipts.builder()
+                    .sales(sale)
+                    .receiptNumber(generateReceiptNumber(sale.getClientSaleId(), completedAt))
+                    .printedDate(completedAt)
+                    .build());
+        }
+
+        Map<UUID, StockMovements> reservations = new HashMap<>();
+        movementsRepository.findByReferenceTypeAndReferenceId("SALE", sale.getId()).stream()
+                .filter(movement -> movement.getMovementType()
+                        == StockMovements.MovementType.RESERVATION)
+                .forEach(movement -> reservations.put(
+                        movement.getMedicineBatches().getId(), movement));
+        for (SaleItems item : sale.getSaleItems()) {
+            MedicineBatches batch = item.getMedicineBatches();
+            StockMovements reservation = reservations.get(batch.getId());
+            if (reservation != null) {
+                reservation.setMovementType(StockMovements.MovementType.SALE);
+                reservation.setMovementDate(completedAt.toLocalDate());
+            }
+            StockAllocation allocation = new StockAllocation(batch, item.getQuantity());
+            writeStockEvent(sale, sale.getBranch(), allocation);
+        }
+
+        if (sale.getPrescription() != null) {
+            sale.getPrescription().setStatus("DISPENSED");
+            sale.getPrescription().setDispensedAt(completedAt);
+        }
+        Sales saved = salesRepository.saveAndFlush(sale);
         writeSaleEvent(saved);
         return saved;
+    }
+
+    public Sales failOnlinePayment(UUID saleId) {
+        Sales sale = salesRepository.findForUpdateByIdAndBranchId(saleId, current.branchId())
+                .orElseThrow(() -> new ResourceNotFoundException("Sale", saleId));
+        if (sale.getSaleStatus() == Sales.SaleStatus.CANCELLED) return sale;
+        if (sale.getSaleStatus() == Sales.SaleStatus.COMPLETED) {
+            throw new ConflictException("A completed sale cannot be released",
+                    "SALE_ALREADY_COMPLETED");
+        }
+
+        for (SaleItems item : sale.getSaleItems()) {
+            Stock stock = stockRepository.findForUpdate(
+                            sale.getBranch().getId(), item.getMedicineBatches().getId())
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Stock for batch", item.getMedicineBatches().getId()));
+            stock.setQuantityAvailable(stock.getQuantityAvailable() + item.getQuantity());
+        }
+        movementsRepository.findByReferenceTypeAndReferenceId("SALE", sale.getId()).stream()
+                .filter(movement -> movement.getMovementType()
+                        == StockMovements.MovementType.RESERVATION)
+                .forEach(movement -> movement.setMovementType(
+                        StockMovements.MovementType.RESERVATION_RELEASE));
+
+        sale.setPaymentStatus(Sales.PaymentStatus.NOT_PAID);
+        sale.setSaleStatus(Sales.SaleStatus.CANCELLED);
+        sale.setPaidTotal(money(BigDecimal.ZERO));
+        sale.setCompletedAt(null);
+        return salesRepository.save(sale);
     }
 
     @Transactional(readOnly = true)
@@ -419,6 +506,8 @@ public class SaleService {
                         .amount(payment.getAmount())
                         .currency(payment.getCurrency())
                         .transactionReference(payment.getTransactionReference())
+                        .merchantRequestId(payment.getMerchantRequestId())
+                        .checkoutRequestId(payment.getCheckoutRequestId())
                         .paymentStatus(payment.getPaymentStatus())
                         .paymentDate(payment.getPaymentDate())
                         .build())
@@ -548,9 +637,11 @@ public class SaleService {
                                         SaleRequestDto dto,
                                         BigDecimal total,
                                         LocalDateTime completedAt) {
+        BigDecimal submitted = money(BigDecimal.ZERO);
         BigDecimal paid = money(BigDecimal.ZERO);
         BigDecimal cashApplied = money(BigDecimal.ZERO);
         Set<String> manualReferences = new HashSet<>();
+        boolean pendingOnlinePayment = false;
 
         for (SaleRequestDto.PaymentItemDto input : dto.getPayments()) {
             Payment.PaymentMethod method = requestPaymentMethod(input.getMethod());
@@ -575,6 +666,12 @@ public class SaleService {
                     throw new ConflictException("M-Pesa reference has already been used",
                             "PAYMENT_REFERENCE_REUSED");
                 }
+            } else if (method == Payment.PaymentMethod.M_PESA) {
+                if (reference != null) {
+                    throw new BadRequestException("STK Push payments cannot include a manual reference",
+                            "INVALID_PAYMENT_REFERENCE");
+                }
+                pendingOnlinePayment = true;
             } else if (reference != null) {
                 throw new BadRequestException("Cash payments cannot include a transaction reference",
                         "INVALID_PAYMENT_REFERENCE");
@@ -586,17 +683,25 @@ public class SaleService {
                     .amount(amount)
                     .currency(CURRENCY)
                     .transactionReference(reference)
-                    .paymentStatus("COMPLETED")
-                    .paymentDate(completedAt)
+                    .paymentStatus(method == Payment.PaymentMethod.M_PESA
+                            ? "PENDING" : "COMPLETED")
+                    .paymentDate(method == Payment.PaymentMethod.M_PESA
+                            ? null : completedAt)
                     .build();
             sale.getPayment().add(payment);
-            paid = paid.add(amount);
+            submitted = submitted.add(amount);
+            if (method != Payment.PaymentMethod.M_PESA) paid = paid.add(amount);
             if (method == Payment.PaymentMethod.CASH) cashApplied = cashApplied.add(amount);
         }
 
+        if (pendingOnlinePayment && dto.getPayments().size() != 1) {
+            throw new BadRequestException("STK Push cannot be combined with another payment method",
+                    "UNSUPPORTED_SPLIT_PAYMENT");
+        }
+        submitted = money(submitted);
         paid = money(paid);
         cashApplied = money(cashApplied);
-        if (paid.compareTo(total) != 0) {
+        if (submitted.compareTo(total) != 0) {
             throw new BadRequestException("Payments must equal the sale total of " + total,
                     "PAYMENT_TOTAL_MISMATCH");
         }
@@ -615,15 +720,17 @@ public class SaleService {
             throw new BadRequestException("Cash tendered is less than the cash amount due",
                     "INSUFFICIENT_CASH_TENDERED");
         }
-        return new PaymentTotals(paid, tendered, money(tendered.subtract(cashApplied)));
+        return new PaymentTotals(
+                paid, tendered, money(tendered.subtract(cashApplied)), pendingOnlinePayment);
     }
 
     private Payment.PaymentMethod requestPaymentMethod(String value) {
         String method = value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
         return switch (method) {
             case "CASH" -> Payment.PaymentMethod.CASH;
-            case "MPESA", "M_PESA", "MPESA_MANUAL" -> Payment.PaymentMethod.MPESA_MANUAL;
-            default -> throw new BadRequestException("Only CASH and MPESA_MANUAL are supported",
+            case "MPESA", "MPESA_MANUAL" -> Payment.PaymentMethod.MPESA_MANUAL;
+            case "M_PESA", "MPESA_STK" -> Payment.PaymentMethod.M_PESA;
+            default -> throw new BadRequestException("Only CASH, MPESA_MANUAL, and M_PESA are supported",
                     "UNSUPPORTED_PAYMENT_METHOD");
         };
     }
@@ -774,6 +881,7 @@ public class SaleService {
 
     private record PaymentTotals(BigDecimal paidTotal,
                                  BigDecimal cashTendered,
-                                 BigDecimal changeDue) {
+                                 BigDecimal changeDue,
+                                 boolean pendingOnlinePayment) {
     }
 }

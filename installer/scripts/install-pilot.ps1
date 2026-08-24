@@ -33,6 +33,18 @@ try {
     Wait-ForHttpEndpoint -Url "http://localhost:9090/actuator/health"
     Wait-ForHttpEndpoint -Url "http://localhost:3000/login"
 
+    $connector = Start-PilotHardwareConnector `
+        -Root $root `
+        -EnvironmentPath $environmentPath
+    if ($connector) {
+        try {
+            Wait-ForHttpEndpoint -Url "http://localhost:9100/health" -TimeoutSeconds 30
+            Write-Host "Hardware connector is ready at http://localhost:9100"
+        } catch {
+            Write-Warning "The POS is ready, but the hardware connector did not become healthy. Check hardware-connector-error.log."
+        }
+    }
+
     Write-Host "Pharmacy POS Pilot is ready at http://localhost:3000"
     if (-not $NoOpen) {
         Start-Process "http://localhost:3000"

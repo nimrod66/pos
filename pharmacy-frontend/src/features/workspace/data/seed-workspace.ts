@@ -466,7 +466,7 @@ export function createSeedWorkspace(): WorkspaceSeed {
         username: "technician@demo.com",
         phoneNumber: "0700000005",
         jobTitle: "Pharmacy technician",
-        roles: ["CASHIER", "STORE_KEEPER"],
+        roles: ["PHARMACY_TECHNICIAN"],
         status: "ACTIVE",
       },
     ],
