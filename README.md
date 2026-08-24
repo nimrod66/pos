@@ -19,13 +19,16 @@ Implemented and hardened:
 
 - Server-side login sessions with an HttpOnly cookie and CSRF protection
 - Pharmacy and branch-scoped access control
-- Five pharmacy roles with explicit permissions
+- Six pharmacy roles with explicit permissions
 - Medicine and supplier management
 - Purchase orders and idempotent goods-received notes (GRNs)
 - Batch and expiry tracking with audited stock movements
 - Staff shifts and cash-drawer reconciliation
 - Authoritative checkout with server pricing, tax, FEFO allocation, and receipts
-- Cash and manually confirmed M-Pesa payments
+- Cash, manually confirmed M-Pesa, and optional Safaricom Daraja STK Push
+- Prescription workspace with a dedicated Rx-medicine view
+- Branch notifications and live register/peripheral health
+- Per-terminal cash, receipt, scanner, printer, drawer, and customer-display configuration
 - Idempotent sale returns with returned stock placed in quarantine
 - Sales, stock, audit, customer, prescription, and reporting reads scoped to the active branch
 - Flyway migrations and PostgreSQL-backed integration tests
@@ -33,7 +36,7 @@ Implemented and hardened:
 Deferred from the MVP:
 
 - eTIMS/KRA fiscal submission
-- Automated M-Pesa STK callbacks and other online payment gateways
+- Provider-signed M-Pesa callbacks and other online payment gateways
 - Insurance, supplier accounting, expenses, credit notes, and debit notes
 - A production central sync deployment
 
@@ -91,7 +94,7 @@ The example environment enables these development accounts:
 | Pharmacist | `pharmacist@demo.com` | `pharmacist123` | `PHARMACIST` |
 | Cashier | `cashier@demo.com` | `cashier123` | `CASHIER` |
 | Store keeper | `storekeeper@demo.com` | `stock1234` | `STORE_KEEPER` |
-| Pharmacy technician | `technician@demo.com` | `tech12345` | `CASHIER`, `STORE_KEEPER` |
+| Pharmacy technician | `technician@demo.com` | `tech12345` | `PHARMACY_TECHNICIAN` |
 
 These accounts are only for local development. Set `POS_SEED_DEMO_ENABLED=false` for every real pharmacy, create a proper owner account, and do not reuse any demonstration password.
 
@@ -143,6 +146,7 @@ The pharmacy-facing roles are:
 - `PHARMACIST`: dispensing, prescription approval, POS, inventory reads, and shifts
 - `CASHIER`: POS, receipts, returns, and shifts
 - `STORE_KEEPER`: medicines, suppliers, procurement, GRNs, and inventory reports
+- `PHARMACY_TECHNICIAN`: supervised dispensing support, POS, stock receiving, prescriptions, and shifts
 
 Frontend visibility is based on permission codes returned by `GET /api/v1/auth/me`, not role-name guesses. See `NOTES-TO-FRONTEND.md` for the permission matrix.
 

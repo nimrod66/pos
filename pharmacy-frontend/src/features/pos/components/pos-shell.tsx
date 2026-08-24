@@ -13,6 +13,8 @@ import {
   PERMISSIONS,
 } from "@/features/auth/access-control";
 import { useAuthStore } from "@/features/auth/store/auth-store";
+import { NotificationMenu } from "@/features/notifications/components/notification-menu";
+import { PeripheralHealthBar } from "@/features/terminals/components/peripheral-health-bar";
 import { useWorkspaceQuery } from "@/features/workspace/gateway/workspace-gateway";
 
 export function PosShell({ children }: { children: React.ReactNode }) {
@@ -63,6 +65,7 @@ export function PosShell({ children }: { children: React.ReactNode }) {
           <p className="truncate text-xs text-[var(--text-muted)]">{session.user.activeBranch.name}</p>
         </div>
         <div className="ml-auto flex items-center gap-2">
+          <NotificationMenu branchId={session.user.activeBranch.id} />
           {shiftAccess ? <Link href="/shifts/current" className={`hidden min-h-9 items-center gap-2 rounded-md px-3 text-xs font-semibold sm:flex ${currentShiftId ? "bg-[var(--success-soft)] text-[var(--success)]" : "bg-[var(--warning-soft)] text-[var(--warning)]"}`}>
             <ClipboardCheck aria-hidden="true" size={15} /> {currentShiftId ? "Shift open" : "Open shift"}
           </Link> : null}
@@ -72,6 +75,7 @@ export function PosShell({ children }: { children: React.ReactNode }) {
           </button>
         </div>
       </header>
+      <PeripheralHealthBar canConfigure={session.user.permissions.includes(PERMISSIONS.TERMINAL_READ)} />
       <main>{children}</main>
     </div>
   );

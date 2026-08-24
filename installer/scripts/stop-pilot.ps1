@@ -6,6 +6,7 @@ $ErrorActionPreference = "Stop"
 
 try {
     $root = Resolve-PilotRoot -InstallDir $InstallDir
+    Stop-PilotHardwareConnector -Root $root
     $environmentPath = Ensure-PilotEnvironment -Root $root
     $docker = Resolve-DockerExecutable
     Wait-ForDockerEngine -DockerExecutable $docker
@@ -14,7 +15,7 @@ try {
         -Root $root `
         -EnvironmentPath $environmentPath `
         -Arguments @("down")
-    Write-Host "Pharmacy POS stopped. Database volumes were retained."
+    Write-Host "Pharmacy POS and the hardware connector stopped. Database volumes were retained."
 } catch {
     Write-Error $_
     exit 1

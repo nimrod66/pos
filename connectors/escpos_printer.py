@@ -44,6 +44,11 @@ class EscposPrinter:
                 s = serial.Serial(self.com_port, self.baud_rate, timeout=1)
                 s.close()
                 return True
+            elif self.connection_type == "usb":
+                return usb.core.find(
+                    idVendor=self.vendor_id,
+                    idProduct=self.product_id,
+                ) is not None
         except:
             return False
         return False

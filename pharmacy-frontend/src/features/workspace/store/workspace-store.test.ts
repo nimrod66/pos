@@ -22,6 +22,8 @@ describe("workspace transactions", () => {
       cashierName: "Test Cashier",
       items: [{ medicineId: "med-panadol", quantity: 3 }],
       paymentMethod: "CASH",
+      mpesaMode: "MANUAL",
+      mpesaPhone: "",
       mpesaReference: "",
       pharmacistApproved: false,
     });
@@ -47,6 +49,8 @@ describe("workspace transactions", () => {
       cashierName: "Test Cashier",
       items: [{ medicineId: "med-brufen", quantity: 1 }],
       paymentMethod: "CASH" as const,
+      mpesaMode: "MANUAL" as const,
+      mpesaPhone: "",
       mpesaReference: "",
       pharmacistApproved: false,
     };
@@ -65,6 +69,8 @@ describe("workspace transactions", () => {
         cashierName: "Test Cashier",
         items: [{ medicineId: "med-amoxil", quantity: 1 }],
         paymentMethod: "CASH",
+        mpesaMode: "MANUAL",
+        mpesaPhone: "",
         mpesaReference: "",
         pharmacistApproved: false,
       }),
@@ -78,6 +84,8 @@ describe("workspace transactions", () => {
       cashierName: "Test Cashier",
       items: [{ medicineId: "med-panadol", quantity: 2 }],
       paymentMethod: "CASH",
+      mpesaMode: "MANUAL",
+      mpesaPhone: "",
       mpesaReference: "",
       pharmacistApproved: false,
     });

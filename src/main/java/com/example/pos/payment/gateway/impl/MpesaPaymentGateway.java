@@ -57,6 +57,11 @@ public class MpesaPaymentGateway implements PaymentGateway {
         }
 
         try {
+            String phoneNumber = sanitizePhone(request.getPhoneNumber());
+            if (phoneNumber == null) {
+                return failResponse("INVALID_PHONE",
+                        "Enter a valid Kenyan M-Pesa phone number");
+            }
             String accessToken = getAccessToken();
             if (accessToken == null) {
                 return failResponse("AUTH_ERROR", "Failed to get M-Pesa access token");
@@ -72,9 +77,9 @@ public class MpesaPaymentGateway implements PaymentGateway {
             body.put("Timestamp", timestamp);
             body.put("TransactionType", "CustomerPayBillOnline");
             body.put("Amount", request.getAmount().intValue());
-            body.put("PartyA", sanitizePhone(request.getPhoneNumber()));
+            body.put("PartyA", phoneNumber);
             body.put("PartyB", shortcode);
-            body.put("PhoneNumber", sanitizePhone(request.getPhoneNumber()));
+            body.put("PhoneNumber", phoneNumber);
             body.put("CallBackURL", callbackUrl);
             body.put("AccountReference", request.getAccountReference() != null
                     ? request.getAccountReference() : request.getReference());
@@ -111,7 +116,9 @@ public class MpesaPaymentGateway implements PaymentGateway {
             }
         } catch (Exception e) {
             log.error("M-Pesa STK Push error", e);
-            return failResponse("PROCESSING_ERROR", e.getMessage());
+            return failResponse(
+                    "PROCESSING_ERROR",
+                    "M-Pesa did not return a definitive response. Verify the payment before retrying");
         }
     }
 
@@ -147,18 +154,27 @@ public class MpesaPaymentGateway implements PaymentGateway {
                     Map.class);
 
             Map<String, Object> respBody = response.getBody();
-            String resultCode = String.valueOf(respBody != null ? respBody.get("ResultCode") : "UNKNOWN");
+            Object resultCodeValue = respBody != null ? respBody.get("ResultCode") : null;
+            String resultCode = resultCodeValue == null ? null : String.valueOf(resultCodeValue);
+            String responseCode = respBody != null && respBody.get("ResponseCode") != null
+                    ? String.valueOf(respBody.get("ResponseCode")) : null;
 
-            String status = "0".equals(resultCode)
-                    ? PaymentGatewayResponse.Status.COMPLETED.name()
-                    : "1032".equals(resultCode)
-                            ? PaymentGatewayResponse.Status.PROCESSING.name()
-                            : PaymentGatewayResponse.Status.FAILED.name();
+            String status;
+            if ("0".equals(resultCode)) {
+                status = PaymentGatewayResponse.Status.COMPLETED.name();
+            } else if ("1032".equals(resultCode)) {
+                status = PaymentGatewayResponse.Status.CANCELLED.name();
+            } else if (resultCode == null) {
+                status = PaymentGatewayResponse.Status.PROCESSING.name();
+            } else {
+                status = PaymentGatewayResponse.Status.FAILED.name();
+            }
 
             return PaymentGatewayResponse.builder()
-                    .success("0".equals(resultCode))
+                    .success("0".equals(resultCode)
+                            || PaymentGatewayResponse.Status.PROCESSING.name().equals(status))
                     .status(status)
-                    .responseCode(resultCode)
+                    .responseCode(resultCode != null ? resultCode : responseCode)
                     .responseDescription((String) respBody.get("ResultDesc"))
                     .checkoutRequestId(checkoutRequestId)
                     .rawResponse(respBody != null ? respBody.toString() : null)
@@ -166,7 +182,14 @@ public class MpesaPaymentGateway implements PaymentGateway {
                     .build();
         } catch (Exception e) {
             log.error("M-Pesa query error", e);
-            return failResponse("QUERY_ERROR", e.getMessage());
+            return PaymentGatewayResponse.builder()
+                    .success(false)
+                    .status(PaymentGatewayResponse.Status.PROCESSING.name())
+                    .responseCode("QUERY_ERROR")
+                    .responseDescription("M-Pesa status is temporarily unavailable; the payment remains pending")
+                    .checkoutRequestId(checkoutRequestId)
+                    .timestamp(LocalDateTime.now())
+                    .build();
         }
     }
 
@@ -208,20 +231,21 @@ public class MpesaPaymentGateway implements PaymentGateway {
     }
 
     private String sanitizePhone(String phone) {
-        if (phone == null) return "254700000000";
+        if (phone == null || phone.isBlank()) return null;
         String cleaned = phone.replaceAll("[^0-9]", "");
         if (cleaned.startsWith("0")) {
-            return "254" + cleaned.substring(1);
+            cleaned = "254" + cleaned.substring(1);
+        } else if (!cleaned.startsWith("254")) {
+            cleaned = "254" + cleaned;
         }
-        if (cleaned.startsWith("254")) {
-            return cleaned;
-        }
-        return "254" + cleaned;
+        return cleaned.matches("254(7|1)\\d{8}") ? cleaned : null;
     }
 
     private boolean isConfigured() {
         return consumerKey != null && !consumerKey.isBlank()
-                && consumerSecret != null && !consumerSecret.isBlank();
+                && consumerSecret != null && !consumerSecret.isBlank()
+                && passkey != null && !passkey.isBlank()
+                && callbackUrl != null && !callbackUrl.isBlank();
     }
 
     private PaymentGatewayResponse failResponse(String code, String desc) {

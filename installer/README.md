@@ -12,9 +12,11 @@ Docker-free commercial package.
 
 ## Build locally
 
-Install Inno Setup 6, then run:
+Install Python 3.13 and Inno Setup 6, then run:
 
 ```powershell
+python -m pip install -r connectors\requirements.txt "PyInstaller>=6.0,<7"
+.\installer\build-hardware-connector.ps1
 .\installer\build-installer.ps1
 ```
 
@@ -26,8 +28,9 @@ The output is `outputs\installer\PharmacyPOS-Pilot-Setup.exe`.
    local application directory.
 2. Creates a unique PostgreSQL password in `.env.pilot`.
 3. Builds and starts PostgreSQL, Spring Boot, and Next.js containers.
-4. Waits for both health endpoints before completing.
-5. Adds Open, Start, Stop, Status, encrypted Backup, guarded Restore, and
+4. Starts the bundled local hardware connector without requiring Python on the client.
+5. Waits for the application and connector health endpoints before completing.
+6. Adds Open, Start, Stop, Status, encrypted Backup, guarded Restore, and
    verified Update shortcuts.
 
 Reinstalling upgrades the application while retaining Docker data volumes.
@@ -36,6 +39,11 @@ volumes for recovery.
 
 The installation log is `pharmacy-pos-install.log` inside the installation
 directory.
+
+Printer, scanner, cash-drawer, and customer-display ports are configured from
+the terminal Hardware setup screen. The local profile is stored as
+`connectors\hardware_config.json` in the installation directory. The connector
+binds only to `127.0.0.1:9100`.
 
 ## Backup and restore
 

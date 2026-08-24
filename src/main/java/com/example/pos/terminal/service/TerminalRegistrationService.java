@@ -9,16 +9,18 @@ import com.example.pos.security.auth.AuthenticatedUserContext;
 import com.example.pos.terminal.dto.*;
 import com.example.pos.terminal.model.*;
 import com.example.pos.terminal.repository.HardwarePeripheralRepository;
+import com.example.pos.terminal.repository.TerminalConfigurationRepository;
 import com.example.pos.terminal.repository.TerminalRegistryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.security.SecureRandom;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Base64;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -30,6 +32,7 @@ public class TerminalRegistrationService {
 
     private final TerminalRegistryRepository terminalRepository;
     private final HardwarePeripheralRepository hardwarePeripheralRepository;
+    private final TerminalConfigurationRepository configurationRepository;
     private final BranchRepository branchRepository;
     private final AuthenticatedUserContext current;
 
@@ -218,6 +221,67 @@ public class TerminalRegistrationService {
         return toPeripheralDto(peripheral);
     }
 
+    @Transactional(readOnly = true)
+    public CashRegisterConfigDto getCashRegisterConfig(String terminalId) {
+        Terminal terminal = scopedTerminal(terminalId);
+        Map<String, String> values = configurationRepository.findByTerminalId(terminal.getId())
+                .stream()
+                .collect(Collectors.toMap(
+                        TerminalConfiguration::getConfigKey,
+                        config -> config.getConfigValue() == null ? "" : config.getConfigValue(),
+                        (left, right) -> right));
+        return CashRegisterConfigDto.builder()
+                .defaultOpeningFloat(decimal(values, "register.defaultOpeningFloat", "0.00"))
+                .cashEnabled(bool(values, "register.cashEnabled", true))
+                .mpesaEnabled(bool(values, "register.mpesaEnabled", true))
+                .requireOpenShift(bool(values, "register.requireOpenShift", true))
+                .autoPrintReceipt(bool(values, "register.autoPrintReceipt", true))
+                .openDrawerOnCashSale(bool(values, "register.openDrawerOnCashSale", true))
+                .receiptCopies(integer(values, "register.receiptCopies", 1))
+                .receiptPaperWidth(integer(values, "register.receiptPaperWidth", 80))
+                .scannerMode(values.getOrDefault("register.scannerMode", "KEYBOARD_WEDGE"))
+                .barcodeSubmitKey(values.getOrDefault("register.barcodeSubmitKey", "ENTER"))
+                .build();
+    }
+
+    public CashRegisterConfigDto updateCashRegisterConfig(
+            String terminalId, CashRegisterConfigRequestDto request) {
+        Terminal terminal = scopedTerminal(terminalId);
+        if (request.getReceiptPaperWidth() != 58 && request.getReceiptPaperWidth() != 80) {
+            throw new BadRequestException("Receipt paper width must be 58 mm or 80 mm",
+                    "INVALID_RECEIPT_WIDTH");
+        }
+        String scannerMode = request.getScannerMode().trim().toUpperCase(Locale.ROOT);
+        if (!List.of("KEYBOARD_WEDGE", "CAMERA", "LOCAL_CONNECTOR").contains(scannerMode)) {
+            throw new BadRequestException("Unsupported scanner mode", "INVALID_SCANNER_MODE");
+        }
+        String submitKey = request.getBarcodeSubmitKey().trim().toUpperCase(Locale.ROOT);
+        if (!List.of("ENTER", "TAB").contains(submitKey)) {
+            throw new BadRequestException("Barcode submit key must be ENTER or TAB",
+                    "INVALID_BARCODE_SUBMIT_KEY");
+        }
+
+        upsertConfig(terminal, "register.defaultOpeningFloat",
+                request.getDefaultOpeningFloat().toPlainString(), "Default shift opening float");
+        upsertConfig(terminal, "register.cashEnabled",
+                request.getCashEnabled().toString(), "Allow cash checkout");
+        upsertConfig(terminal, "register.mpesaEnabled",
+                request.getMpesaEnabled().toString(), "Allow M-Pesa checkout");
+        upsertConfig(terminal, "register.requireOpenShift",
+                request.getRequireOpenShift().toString(), "Require an active shift for checkout");
+        upsertConfig(terminal, "register.autoPrintReceipt",
+                request.getAutoPrintReceipt().toString(), "Print receipt after successful checkout");
+        upsertConfig(terminal, "register.openDrawerOnCashSale",
+                request.getOpenDrawerOnCashSale().toString(), "Open drawer after a cash sale");
+        upsertConfig(terminal, "register.receiptCopies",
+                request.getReceiptCopies().toString(), "Receipt copies per sale");
+        upsertConfig(terminal, "register.receiptPaperWidth",
+                request.getReceiptPaperWidth().toString(), "Receipt paper width in millimetres");
+        upsertConfig(terminal, "register.scannerMode", scannerMode, "Barcode scanner mode");
+        upsertConfig(terminal, "register.barcodeSubmitKey", submitKey, "Scanner suffix key");
+        return getCashRegisterConfig(terminalId);
+    }
+
     public List<HardwarePeripheralDto> replacePeripherals(String terminalId, List<HardwarePeripheralRequestDto> requests) {
         Terminal terminal = scopedTerminal(terminalId);
 
@@ -311,6 +375,40 @@ public class TerminalRegistrationService {
                         "Hardware peripheral not found: " + peripheralId));
         requireVisibleBranch(peripheral.getTerminal().getBranchId());
         return peripheral;
+    }
+
+    private void upsertConfig(Terminal terminal, String key, String value, String description) {
+        TerminalConfiguration config = configurationRepository
+                .findByTerminalIdAndConfigKey(terminal.getId(), key)
+                .orElseGet(() -> TerminalConfiguration.builder()
+                        .terminal(terminal)
+                        .configKey(key)
+                        .description(description)
+                        .build());
+        config.setConfigValue(value);
+        config.setDescription(description);
+        configurationRepository.save(config);
+    }
+
+    private boolean bool(Map<String, String> values, String key, boolean fallback) {
+        String value = values.get(key);
+        return value == null || value.isBlank() ? fallback : Boolean.parseBoolean(value);
+    }
+
+    private int integer(Map<String, String> values, String key, int fallback) {
+        try {
+            return Integer.parseInt(values.getOrDefault(key, String.valueOf(fallback)));
+        } catch (NumberFormatException ignored) {
+            return fallback;
+        }
+    }
+
+    private BigDecimal decimal(Map<String, String> values, String key, String fallback) {
+        try {
+            return new BigDecimal(values.getOrDefault(key, fallback));
+        } catch (NumberFormatException ignored) {
+            return new BigDecimal(fallback);
+        }
     }
 
     private Branch accessibleBranch(UUID branchId) {

@@ -31,6 +31,7 @@ export const PERMISSIONS = {
   AUDIT_READ: "audit.read",
   TERMINAL_READ: "terminal.read",
   TERMINAL_MANAGE: "terminal.manage",
+  PRESCRIPTION_READ: "prescription.read",
   PRESCRIPTION_APPROVE: "prescription.approve",
 } as const;
 
@@ -44,6 +45,7 @@ export const TENANT_ROLES = [
   "PHARMACIST",
   "CASHIER",
   "STORE_KEEPER",
+  "PHARMACY_TECHNICIAN",
 ] as const;
 
 export type TenantRole = (typeof TENANT_ROLES)[number];
@@ -95,6 +97,7 @@ export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
       PERMISSIONS.REPORT_INVENTORY_READ,
       PERMISSIONS.TERMINAL_READ,
       PERMISSIONS.TERMINAL_MANAGE,
+      PERMISSIONS.PRESCRIPTION_READ,
     ],
   },
   {
@@ -112,6 +115,7 @@ export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
       PERMISSIONS.CUSTOMER_WRITE,
       PERMISSIONS.SHIFT_OPEN,
       PERMISSIONS.SHIFT_CLOSE,
+      PERMISSIONS.PRESCRIPTION_READ,
       PERMISSIONS.PRESCRIPTION_APPROVE,
     ],
   },
@@ -149,6 +153,27 @@ export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
       PERMISSIONS.PURCHASE_ORDER_READ,
       PERMISSIONS.PURCHASE_ORDER_WRITE,
       PERMISSIONS.REPORT_INVENTORY_READ,
+    ],
+  },
+  {
+    code: "PHARMACY_TECHNICIAN",
+    label: "Pharmacy technician",
+    description: "Assisted dispensing, counter sales, customers, and stock receiving.",
+    scope: "BRANCH",
+    permissions: [
+      PERMISSIONS.POS_SELL,
+      PERMISSIONS.SALE_READ,
+      PERMISSIONS.SALE_RECEIPT_REPRINT,
+      PERMISSIONS.MEDICINE_READ,
+      PERMISSIONS.INVENTORY_READ,
+      PERMISSIONS.INVENTORY_RECEIVE,
+      PERMISSIONS.SUPPLIER_READ,
+      PERMISSIONS.CUSTOMER_READ,
+      PERMISSIONS.CUSTOMER_WRITE,
+      PERMISSIONS.PURCHASE_ORDER_READ,
+      PERMISSIONS.SHIFT_OPEN,
+      PERMISSIONS.SHIFT_CLOSE,
+      PERMISSIONS.PRESCRIPTION_READ,
     ],
   },
 ];
@@ -231,6 +256,10 @@ const routeAccessRules: Array<{
   {
     path: "/medicines",
     rule: { allOf: [PERMISSIONS.MEDICINE_READ] },
+  },
+  {
+    path: "/prescriptions",
+    rule: { allOf: [PERMISSIONS.PRESCRIPTION_READ] },
   },
   {
     path: "/inventory",

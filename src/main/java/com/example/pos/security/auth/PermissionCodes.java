@@ -37,6 +37,7 @@ public final class PermissionCodes {
     public static final String AUDIT_READ = "audit.read";
     public static final String TERMINAL_READ = "terminal.read";
     public static final String TERMINAL_MANAGE = "terminal.manage";
+    public static final String PRESCRIPTION_READ = "prescription.read";
     public static final String PRESCRIPTION_APPROVE = "prescription.approve";
 
     public static final List<String> ALL = List.of(
@@ -72,6 +73,7 @@ public final class PermissionCodes {
             AUDIT_READ,
             TERMINAL_READ,
             TERMINAL_MANAGE,
+            PRESCRIPTION_READ,
             PRESCRIPTION_APPROVE);
 
     public static final Map<String, List<String>> ROLE_BUNDLES = Map.of(
@@ -82,11 +84,11 @@ public final class PermissionCodes {
                     INVENTORY_ADJUST_APPROVE, SUPPLIER_READ, CUSTOMER_READ,
                     CUSTOMER_WRITE, PURCHASE_ORDER_READ, SHIFT_VARIANCE_APPROVE,
                     REPORT_SALES_READ, REPORT_INVENTORY_READ, TERMINAL_READ,
-                    TERMINAL_MANAGE),
+                    TERMINAL_MANAGE, PRESCRIPTION_READ),
             "PHARMACIST", List.of(
                     DASHBOARD_READ, POS_SELL, SALE_READ, MEDICINE_READ, INVENTORY_READ,
                     CUSTOMER_READ, CUSTOMER_WRITE,
-                    SHIFT_OPEN, SHIFT_CLOSE, PRESCRIPTION_APPROVE),
+                    SHIFT_OPEN, SHIFT_CLOSE, PRESCRIPTION_READ, PRESCRIPTION_APPROVE),
             "CASHIER", List.of(
                     POS_SELL, POS_DISCOUNT_REQUEST, SALE_READ, SALE_RECEIPT_REPRINT,
                     SALE_RETURN, MEDICINE_READ, CUSTOMER_READ, CUSTOMER_WRITE,
@@ -94,7 +96,12 @@ public final class PermissionCodes {
             "STORE_KEEPER", List.of(
                     MEDICINE_READ, MEDICINE_WRITE, INVENTORY_READ, INVENTORY_RECEIVE,
                     INVENTORY_ADJUST_REQUEST, SUPPLIER_READ, SUPPLIER_WRITE,
-                    PURCHASE_ORDER_READ, PURCHASE_ORDER_WRITE, REPORT_INVENTORY_READ));
+                    PURCHASE_ORDER_READ, PURCHASE_ORDER_WRITE, REPORT_INVENTORY_READ),
+            "PHARMACY_TECHNICIAN", List.of(
+                    POS_SELL, SALE_READ, SALE_RECEIPT_REPRINT, MEDICINE_READ,
+                    INVENTORY_READ, INVENTORY_RECEIVE, SUPPLIER_READ,
+                    CUSTOMER_READ, CUSTOMER_WRITE, PURCHASE_ORDER_READ,
+                    SHIFT_OPEN, SHIFT_CLOSE, PRESCRIPTION_READ));
 
     private PermissionCodes() {
     }

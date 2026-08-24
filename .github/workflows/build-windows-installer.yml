@@ -48,6 +48,16 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: connectors/requirements.txt
+      - name: Build hardware connector
+        shell: pwsh
+        run: |
+          python -m pip install --disable-pip-version-check -r connectors/requirements.txt "PyInstaller>=6.0,<7"
+          .\installer\build-hardware-connector.ps1
       - name: Install Inno Setup
         shell: pwsh
         run: choco install innosetup --no-progress --yes

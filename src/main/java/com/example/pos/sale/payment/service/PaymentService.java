@@ -11,6 +11,7 @@ import com.example.pos.sale.payment.model.Payment;
 import com.example.pos.sale.payment.repository.PaymentRepository;
 import com.example.pos.sale.sales.model.Sales;
 import com.example.pos.sale.sales.repository.SalesRepository;
+import com.example.pos.sale.sales.service.SaleService;
 import com.example.pos.security.auth.AuthenticatedUserContext;
 import com.example.pos.sync.config.TerminalConfig;
 import com.example.pos.sync.event.EventType;
@@ -44,6 +45,7 @@ public class PaymentService {
     private final SyncService syncService;
     private final TerminalConfig terminalConfig;
     private final AuthenticatedUserContext current;
+    private final SaleService saleService;
 
     @Value("${mpesa.callback-hmac-key:}")
     private String callbackHmacKey;
@@ -54,18 +56,35 @@ public class PaymentService {
     @Value("${stripe.webhook-secret:}")
     private String stripeWebhookSecret; 
 
+    @Value("${mpesa.consumer-key:}")
+    private String mpesaConsumerKey;
+
+    @Value("${mpesa.consumer-secret:}")
+    private String mpesaConsumerSecret;
+
+    @Value("${mpesa.passkey:}")
+    private String mpesaPasskey;
+
+    @Value("${mpesa.callback-url:}")
+    private String mpesaCallbackUrl;
+
+    @Value("${mpesa.environment:sandbox}")
+    private String mpesaEnvironment;
+
     public PaymentService(PaymentRepository paymentRepository,
                           SalesRepository salesRepository,
                           PaymentGatewayFactory gatewayFactory,
                           SyncService syncService,
                           TerminalConfig terminalConfig,
-                          AuthenticatedUserContext current) {
+                          AuthenticatedUserContext current,
+                          SaleService saleService) {
         this.paymentRepository = paymentRepository;
         this.salesRepository = salesRepository;
         this.gatewayFactory = gatewayFactory;
         this.syncService = syncService;
         this.terminalConfig = terminalConfig;
         this.current = current;
+        this.saleService = saleService;
     }
 
     public Payment addPayment(PaymentRequestDto dto) {
@@ -75,6 +94,25 @@ public class PaymentService {
     }
 
     public PaymentGatewayResponse processPayment(Payment payment, String phoneNumber) {
+        if (payment.getPaymentMethod() != Payment.PaymentMethod.M_PESA) {
+            throw new BadRequestException("Only pending M-Pesa STK payments can be processed",
+                    "PAYMENT_NOT_PROCESSABLE");
+        }
+        if ("COMPLETED".equalsIgnoreCase(payment.getPaymentStatus())) {
+            return currentResponse(payment, PaymentGatewayResponse.Status.COMPLETED);
+        }
+        if ("FAILED".equalsIgnoreCase(payment.getPaymentStatus())
+                || "CANCELLED".equalsIgnoreCase(payment.getPaymentStatus())) {
+            return currentResponse(payment, PaymentGatewayResponse.Status.valueOf(
+                    payment.getPaymentStatus().toUpperCase(Locale.ROOT)));
+        }
+        if ("UNKNOWN".equalsIgnoreCase(payment.getPaymentStatus())) {
+            return currentResponse(payment, PaymentGatewayResponse.Status.PENDING);
+        }
+        if (payment.getCheckoutRequestId() != null) {
+            return currentResponse(payment, PaymentGatewayResponse.Status.PROCESSING);
+        }
+
         PaymentGateway gateway = gatewayFactory.getGateway(payment.getPaymentMethod());
 
         String email = payment.getSales() != null && payment.getSales().getCustomer() != null
@@ -97,17 +135,24 @@ public class PaymentService {
                 payment.getPaymentMethod(), response.isSuccess(), response.getTransactionReference());
 
         if (response.isSuccess()) {
-            payment.setTransactionReference(response.getTransactionReference());
+            payment.setMerchantRequestId(response.getMerchantRequestId());
+            payment.setCheckoutRequestId(response.getCheckoutRequestId());
             payment.setPaymentStatus(response.getStatus());
-            paymentRepository.save(payment);
+            paymentRepository.saveAndFlush(payment);
 
             if ("COMPLETED".equalsIgnoreCase(response.getStatus())) {
-                recalculateSalePaymentStatus(payment.getSales());
+                payment.setPaymentDate(LocalDateTime.now());
+                saleService.finalizeOnlinePayment(payment.getSales().getId());
             }
         } else {
-            payment.setPaymentStatus("FAILED");
-            payment.setTransactionReference(response.getResponseCode());
-            paymentRepository.save(payment);
+            boolean uncertain = "PROCESSING_ERROR".equalsIgnoreCase(response.getResponseCode());
+            payment.setPaymentStatus(uncertain ? "UNKNOWN" : "FAILED");
+            payment.setDescription(response.getResponseDescription());
+            paymentRepository.saveAndFlush(payment);
+            if (!uncertain) saleService.failOnlinePayment(payment.getSales().getId());
+            if (uncertain) {
+                response.setStatus(PaymentGatewayResponse.Status.PENDING.name());
+            }
         }
 
         return response;
@@ -123,17 +168,36 @@ public class PaymentService {
         Payment payment = paymentRepository.findByIdAndSalesBranchId(paymentId, current.branchId())
                 .orElseThrow(() -> new ResourceNotFoundException("Payment", paymentId));
 
-        if (payment.getTransactionReference() == null) {
-            throw new BadRequestException("Payment has no transaction reference to query");
+        if ("COMPLETED".equalsIgnoreCase(payment.getPaymentStatus())) {
+            return currentResponse(payment, PaymentGatewayResponse.Status.COMPLETED);
+        }
+        if ("FAILED".equalsIgnoreCase(payment.getPaymentStatus())
+                || "CANCELLED".equalsIgnoreCase(payment.getPaymentStatus())) {
+            return currentResponse(payment, PaymentGatewayResponse.Status.valueOf(
+                    payment.getPaymentStatus().toUpperCase(Locale.ROOT)));
+        }
+        if (payment.getCheckoutRequestId() == null) {
+            throw new BadRequestException("Payment has no checkout request ID to query",
+                    "MPESA_CHECKOUT_ID_MISSING");
         }
 
         PaymentGateway gateway = gatewayFactory.getGateway(payment.getPaymentMethod());
-        PaymentGatewayResponse response = gateway.queryStatus(payment.getTransactionReference());
+        PaymentGatewayResponse response = gateway.queryStatus(payment.getCheckoutRequestId());
 
-        if (response.isSuccess() && "COMPLETED".equalsIgnoreCase(response.getStatus())) {
+        if ("COMPLETED".equalsIgnoreCase(response.getStatus())) {
             payment.setPaymentStatus("COMPLETED");
+            payment.setPaymentDate(LocalDateTime.now());
+            paymentRepository.saveAndFlush(payment);
+            saleService.finalizeOnlinePayment(payment.getSales().getId());
+        } else if ("FAILED".equalsIgnoreCase(response.getStatus())
+                || "CANCELLED".equalsIgnoreCase(response.getStatus())) {
+            payment.setPaymentStatus(response.getStatus().toUpperCase(Locale.ROOT));
+            payment.setDescription(response.getResponseDescription());
+            paymentRepository.saveAndFlush(payment);
+            saleService.failOnlinePayment(payment.getSales().getId());
+        } else {
+            payment.setPaymentStatus("PROCESSING");
             paymentRepository.save(payment);
-            recalculateSalePaymentStatus(payment.getSales());
         }
 
         return response;
@@ -169,7 +233,8 @@ public class PaymentService {
             PROCESSED_CALLBACKS.clear();
         }
 
-        Payment payment = paymentRepository.findByTransactionReference(merchantRequestId)
+        Payment payment = paymentRepository.findByMerchantRequestId(merchantRequestId)
+                .or(() -> paymentRepository.findByCheckoutRequestId(checkoutRequestId))
                 .orElse(null);
 
         if (payment == null) {
@@ -184,8 +249,10 @@ public class PaymentService {
 
         if ("0".equals(resultCode)) {
             payment.setPaymentStatus("COMPLETED");
-            payment = paymentRepository.save(payment);
-            recalculateSalePaymentStatus(payment.getSales());
+            payment.setPaymentDate(LocalDateTime.now());
+            payment.setTransactionReference(mpesaReceiptNumber(stkCallback));
+            payment = paymentRepository.saveAndFlush(payment);
+            saleService.finalizeOnlinePayment(payment.getSales().getId());
 
             syncService.writeOutboxEvent(EventType.PAYMENT_RECEIVED, "PAYMENT",
                     payment.getId().toString(),
@@ -195,10 +262,11 @@ public class PaymentService {
                             + ",\"saleId\":" + payment.getSales().getId()
                             + ",\"terminalId\":\"" + terminalConfig.getTerminalId() + "\"}");
         } else {
-            payment.setPaymentStatus("FAILED");
+            payment.setPaymentStatus("1032".equals(resultCode) ? "CANCELLED" : "FAILED");
             payment.setDescription("M-Pesa failed: " + stkCallback.get("ResultDesc"));
+            paymentRepository.saveAndFlush(payment);
+            saleService.failOnlinePayment(payment.getSales().getId());
         }
-        paymentRepository.save(payment);
     }
 
     private boolean validateHmac(Map<String, Object> callback, String providedSignature) {
@@ -340,5 +408,48 @@ public class PaymentService {
             sale.setPaymentStatus(Sales.PaymentStatus.NOT_PAID);
         }
         salesRepository.save(sale);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> capabilities() {
+        boolean configured = notBlank(mpesaConsumerKey)
+                && notBlank(mpesaConsumerSecret)
+                && notBlank(mpesaPasskey)
+                && notBlank(mpesaCallbackUrl);
+        return Map.of(
+                "mpesaStkConfigured", configured,
+                "mpesaEnvironment", mpesaEnvironment,
+                "pollingSupported", true);
+    }
+
+    private PaymentGatewayResponse currentResponse(
+            Payment payment, PaymentGatewayResponse.Status status) {
+        return PaymentGatewayResponse.builder()
+                .success(status == PaymentGatewayResponse.Status.COMPLETED
+                        || status == PaymentGatewayResponse.Status.PROCESSING)
+                .status(status.name())
+                .transactionReference(payment.getTransactionReference())
+                .merchantRequestId(payment.getMerchantRequestId())
+                .checkoutRequestId(payment.getCheckoutRequestId())
+                .responseDescription(payment.getDescription())
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+
+    private boolean notBlank(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    @SuppressWarnings("unchecked")
+    private String mpesaReceiptNumber(Map<String, Object> stkCallback) {
+        Map<String, Object> metadata = (Map<String, Object>) stkCallback.get("CallbackMetadata");
+        if (metadata == null || !(metadata.get("Item") instanceof List<?> items)) return null;
+        for (Object value : items) {
+            if (!(value instanceof Map<?, ?> item)) continue;
+            if ("MpesaReceiptNumber".equals(item.get("Name")) && item.get("Value") != null) {
+                return String.valueOf(item.get("Value"));
+            }
+        }
+        return null;
     }
 }

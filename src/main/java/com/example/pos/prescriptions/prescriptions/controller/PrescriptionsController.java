@@ -31,7 +31,7 @@ public class PrescriptionsController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('prescription.approve')")
+    @PreAuthorize("hasAuthority('prescription.read')")
     public ResponseEntity<ApiResponse<PagedResponse<PrescriptionResponseDto>>> getAll(
             @PageableDefault(size = 20) Pageable pageable) {
         Page<Prescriptions> page = service.getAll(pageable);
@@ -39,7 +39,7 @@ public class PrescriptionsController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('prescription.approve')")
+    @PreAuthorize("hasAuthority('prescription.read')")
     public ResponseEntity<ApiResponse<PrescriptionResponseDto>> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(service.toDto(service.getById(id))));
     }

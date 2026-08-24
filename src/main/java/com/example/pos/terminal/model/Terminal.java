@@ -54,7 +54,7 @@ public class Terminal extends BaseEntity {
     @Column(name = "api_key", nullable = false, length = 128)
     private String apiKey;
 
-    @Column(name = "api_secret", nullable = false, length = 16)
+    @Column(name = "api_secret", nullable = false, length = 128)
     private String apiSecret;
 
     @Enumerated(EnumType.STRING)

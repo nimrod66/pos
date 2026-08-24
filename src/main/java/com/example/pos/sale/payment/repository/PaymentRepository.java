@@ -27,6 +27,10 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
 
     Optional<Payment> findByTransactionReference(String transactionReference);
 
+    Optional<Payment> findByMerchantRequestId(String merchantRequestId);
+
+    Optional<Payment> findByCheckoutRequestId(String checkoutRequestId);
+
     boolean existsByTransactionReferenceIgnoreCase(String transactionReference);
 
     @Query("select coalesce(sum(payment.amount), 0) from Payment payment "

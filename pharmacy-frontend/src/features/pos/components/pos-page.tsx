@@ -2,6 +2,7 @@
 
 import { Banknote, Minus, PackageSearch, Plus, Search, ShieldCheck, Smartphone, Trash2, UserRound } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -14,6 +15,17 @@ import {
   operationsGateway,
 } from "@/features/operations/operations-gateway";
 import { useCartStore } from "@/features/pos/store/cart-store";
+import { medicineImage } from "@/features/medicines/lib/medicine-image";
+import {
+  type Prescription,
+  prescriptionGateway,
+} from "@/features/prescriptions/prescription-gateway";
+import {
+  type CashRegisterConfig,
+  getLocalTerminalId,
+  terminalGateway,
+} from "@/features/terminals/terminal-gateway";
+import { getLastConnectorBarcode } from "@/features/terminals/local-hardware-connector";
 import {
   addMoney,
   centsToMoney,
@@ -27,6 +39,8 @@ import {
   useWorkspaceQuery,
   workspaceGateway,
 } from "@/features/workspace/gateway/workspace-gateway";
+import { WorkspaceError } from "@/features/workspace/store/workspace-store";
+import type { PaymentCapabilities } from "@/features/workspace/types";
 import type { PosLookupItem } from "@/features/workspace/types";
 import { cn } from "@/lib/cn";
 
@@ -43,6 +57,8 @@ export function PosPage() {
   const customerId = useCartStore((state) => state.customerId);
   const cashTendered = useCartStore((state) => state.cashTendered);
   const paymentMethod = useCartStore((state) => state.paymentMethod);
+  const mpesaMode = useCartStore((state) => state.mpesaMode);
+  const mpesaPhone = useCartStore((state) => state.mpesaPhone);
   const mpesaReference = useCartStore((state) => state.mpesaReference);
   const prescriptionReferenceId = useCartStore(
     (state) => state.prescriptionReferenceId,
@@ -51,6 +67,8 @@ export function PosPage() {
   const removeItem = useCartStore((state) => state.removeItem);
   const setQuantity = useCartStore((state) => state.setQuantity);
   const setPaymentMethod = useCartStore((state) => state.setPaymentMethod);
+  const setMpesaMode = useCartStore((state) => state.setMpesaMode);
+  const setMpesaPhone = useCartStore((state) => state.setMpesaPhone);
   const setMpesaReference = useCartStore((state) => state.setMpesaReference);
   const setCashTendered = useCartStore((state) => state.setCashTendered);
   const setCustomerId = useCartStore((state) => state.setCustomerId);
@@ -58,9 +76,15 @@ export function PosPage() {
     (state) => state.setPrescriptionReferenceId,
   );
   const prepareCheckoutKey = useCartStore((state) => state.prepareCheckoutKey);
+  const resetCheckoutKey = useCartStore((state) => state.resetCheckoutKey);
   const clear = useCartStore((state) => state.clear);
   const [query, setQuery] = useState("");
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
+  const [paymentCapabilities, setPaymentCapabilities] =
+    useState<PaymentCapabilities | null>(null);
+  const [registerConfig, setRegisterConfig] =
+    useState<CashRegisterConfig | null>(null);
   const [categoryId, setCategoryId] = useState("ALL");
   const [mobileView, setMobileView] = useState<"products" | "cart">("products");
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
@@ -85,6 +109,70 @@ export function PosPage() {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    void workspaceGateway
+      .getPaymentCapabilities()
+      .then((capabilities) => {
+        if (!active) return;
+        setPaymentCapabilities(capabilities);
+        if (!capabilities.mpesaStkConfigured) setMpesaMode("MANUAL");
+      })
+      .catch(() => {
+        if (!active) return;
+        setPaymentCapabilities({
+          mpesaEnvironment: "unavailable",
+          mpesaStkConfigured: false,
+          pollingSupported: false,
+        });
+        setMpesaMode("MANUAL");
+      });
+    return () => {
+      active = false;
+    };
+  }, [setMpesaMode]);
+
+  useEffect(() => {
+    if (!canApprovePrescription) return;
+    let active = true;
+    void prescriptionGateway
+      .list()
+      .then((items) => {
+        if (active) setPrescriptions(items.filter((item) => item.status === "ACTIVE"));
+      })
+      .catch(() => {
+        if (active) setPrescriptions([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [canApprovePrescription]);
+
+  useEffect(() => {
+    const terminalId = getLocalTerminalId();
+    if (!terminalId) return;
+    let active = true;
+    void terminalGateway.getCashRegisterConfig(terminalId)
+      .then((config) => {
+        if (active) setRegisterConfig(config);
+      })
+      .catch(() => {
+        if (active) setRegisterConfig(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!registerConfig) return;
+    if (paymentMethod === "CASH" && !registerConfig.cashEnabled && registerConfig.mpesaEnabled) {
+      setPaymentMethod("MPESA");
+    } else if (paymentMethod === "MPESA" && !registerConfig.mpesaEnabled && registerConfig.cashEnabled) {
+      setPaymentMethod("CASH");
+    }
+  }, [paymentMethod, registerConfig, setPaymentMethod]);
 
   useEffect(() => {
     function handleGlobalKeyDown(event: KeyboardEvent) {
@@ -173,6 +261,9 @@ export function PosPage() {
           Math.max(0, moneyToCents(cashTendered) - moneyToCents(total)),
         )
       : "0.00";
+  const validMpesaPhone = /^(?:\+?254|0)(?:7|1)\d{8}$/.test(
+    mpesaPhone.replace(/[\s-]/g, ""),
+  );
 
   function addMedicine(medicineId: string, availableStock?: number) {
     const medicine = medicines.find((item) => item.id === medicineId);
@@ -192,7 +283,8 @@ export function PosPage() {
   }
 
   async function handleSearchKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
-    if (event.key !== "Enter") return;
+    const submitKey = registerConfig?.barcodeSubmitKey === "TAB" ? "Tab" : "Enter";
+    if (event.key !== submitKey) return;
     const searchValue = query.trim();
     if (!searchValue) return;
     event.preventDefault();
@@ -222,6 +314,53 @@ export function PosPage() {
     }
   }
 
+  useEffect(() => {
+    if (registerConfig?.scannerMode !== "LOCAL_CONNECTOR") return;
+    let active = true;
+    let timer: number | null = null;
+    let polling = false;
+
+    async function poll(connectorUrl: string) {
+      if (!active || polling) return;
+      polling = true;
+      try {
+        const { barcode } = await getLastConnectorBarcode(connectorUrl);
+        if (!active || !barcode) return;
+        const matches = await workspaceGateway.lookupPos(barcode);
+        const exact = matches.find(
+          (item) =>
+            item.barcode === barcode ||
+            item.sku.toLowerCase() === barcode.toLowerCase(),
+        );
+        if (!exact) {
+          setScanStatus(`No exact product was found for ${barcode}.`);
+          return;
+        }
+        const medicine = medicines.find((item) => item.id === exact.id);
+        const existing = lines.find((line) => line.medicineId === exact.id)?.quantity ?? 0;
+        if (existing >= exact.stockAvailable) {
+          setScanStatus(`${medicine?.brandName ?? "Product"} has no more sellable stock.`);
+          return;
+        }
+        addItem(exact.id);
+        setScanStatus(`${medicine?.brandName ?? "Product"} added to the cart.`);
+      } catch {
+        // The health bar reports connector failures without interrupting checkout.
+      } finally {
+        polling = false;
+        if (active) timer = window.setTimeout(() => void poll(connectorUrl), 750);
+      }
+    }
+
+    void terminalGateway.getHardwareConfig()
+      .then((bridge) => poll(bridge.connectorUrl))
+      .catch(() => undefined);
+    return () => {
+      active = false;
+      if (timer !== null) window.clearTimeout(timer);
+    };
+  }, [addItem, lines, medicines, registerConfig?.scannerMode]);
+
   async function handleCheckout() {
     setCheckoutError(null);
     setSubmitting(true);
@@ -235,6 +374,8 @@ export function PosPage() {
           quantity,
         })),
         paymentMethod,
+        mpesaMode,
+        mpesaPhone,
         mpesaReference,
         pharmacistApproved: canApprovePrescription,
         cashTendered: cashTendered || total,
@@ -242,9 +383,25 @@ export function PosPage() {
           ? prescriptionReferenceId.trim()
           : undefined,
       });
+      if (
+        paymentMethod === "CASH" &&
+        registerConfig?.openDrawerOnCashSale
+      ) {
+        void terminalGateway.getHardwareConfig().then((bridge) =>
+          fetch(`${bridge.connectorUrl}/cash-drawer/open`, { method: "POST" }),
+        ).catch(() => undefined);
+      }
       clear();
-      router.push(`/sales/${saleId}?completed=1`);
+      router.push(`/sales/${saleId}?completed=1${registerConfig?.autoPrintReceipt ? "&autoprint=1" : ""}`);
     } catch (error) {
+      if (
+        error instanceof WorkspaceError &&
+        (error.code.startsWith("MPESA_FINAL_") ||
+          error.code === "MPESA_FAILED" ||
+          error.code === "MPESA_CANCELLED")
+      ) {
+        resetCheckoutKey();
+      }
       setCheckoutError(
         getWorkspaceErrorMessage(error, "Checkout could not be completed."),
       );
@@ -253,8 +410,8 @@ export function PosPage() {
   }
 
   return (
-    <div className="grid min-h-[calc(100vh-4rem)] content-start xl:grid-cols-[minmax(0,1fr)_430px]">
-      <div className="sticky top-16 z-20 col-span-full grid grid-cols-2 gap-1 border-b border-[var(--border)] bg-white p-2 xl:hidden">
+    <div className="grid min-h-[calc(100vh-6.25rem)] content-start xl:grid-cols-[minmax(0,1fr)_430px]">
+      <div className="sticky top-[6.25rem] z-20 col-span-full grid grid-cols-2 gap-1 border-b border-[var(--border)] bg-white p-2 xl:hidden">
         <button
           type="button"
           onClick={() => setMobileView("products")}
@@ -301,8 +458,9 @@ export function PosPage() {
             {products.map(({ medicine, stock }) => {
               const inCart = lines.find((line) => line.medicineId === medicine.id)?.quantity ?? 0;
               return (
-                <button type="button" disabled={stock === 0 || inCart >= stock} onClick={() => addMedicine(medicine.id, stock)} key={medicine.id} className="flex min-h-32 flex-col rounded-md border border-[var(--border)] bg-white p-3 text-left transition hover:border-[var(--brand)] hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-55">
+                <button type="button" disabled={stock === 0 || inCart >= stock} onClick={() => addMedicine(medicine.id, stock)} key={medicine.id} className="flex min-h-48 flex-col rounded-md border border-[var(--border)] bg-white p-3 text-left transition hover:border-[var(--brand)] hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-55">
                   <div className="flex w-full items-start justify-between gap-2"><span className="text-xs font-medium text-[var(--text-muted)]">{medicine.sku}</span>{medicine.prescriptionRequired ? <span className="rounded bg-[var(--accent-soft)] px-1.5 py-0.5 text-xs font-semibold text-[var(--accent)]">Rx</span> : null}</div>
+                  <Image src={medicineImage(medicine)} alt="" width={160} height={96} className="mx-auto my-2 h-16 w-full object-contain" />
                   <span className="mt-2 line-clamp-2 text-sm font-semibold">{medicine.brandName}</span>
                   <span className="mt-0.5 line-clamp-1 text-xs text-[var(--text-muted)]">{medicine.genericName}</span>
                   <div className="mt-auto flex w-full items-end justify-between gap-2 pt-3"><span className="font-semibold text-[var(--brand-strong)]">{formatKes(medicine.sellingPrice)}</span><span className={cn("text-xs", stock <= medicine.reorderLevel ? "text-[var(--danger)]" : "text-[var(--text-muted)]")}>{stock} left</span></div>
@@ -313,7 +471,7 @@ export function PosPage() {
         ) : <div className="mt-16 flex flex-col items-center text-center"><PackageSearch aria-hidden="true" className="text-[var(--text-subtle)]" size={32} /><p className="mt-3 text-sm font-semibold">No products found</p><p className="mt-1 text-xs text-[var(--text-muted)]">Adjust the search or category.</p></div>}
       </section>
 
-      <aside className={cn("min-h-[620px] flex-col bg-white xl:sticky xl:top-16 xl:flex xl:h-[calc(100vh-4rem)]", mobileView === "cart" ? "flex" : "hidden")}>
+      <aside className={cn("min-h-[620px] flex-col bg-white xl:sticky xl:top-[6.25rem] xl:flex xl:h-[calc(100vh-6.25rem)]", mobileView === "cart" ? "flex" : "hidden")}>
         <div className="border-b border-[var(--border)] px-4 py-4 sm:px-5"><div className="flex items-center justify-between"><h2 className="text-base font-semibold">Current sale</h2><span className="text-xs text-[var(--text-muted)]">{itemCount} {itemCount === 1 ? "item" : "items"}</span></div></div>
         <div className="min-h-48 flex-1 overflow-y-auto">
           {detailedLines.length ? <div className="divide-y divide-[var(--border)]">{detailedLines.map(({ medicine, quantity, stock }) => (
@@ -344,16 +502,63 @@ export function PosPage() {
             </Select>
           </label>
           <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Payment method">
-            <button type="button" role="radio" aria-checked={paymentMethod === "CASH"} onClick={() => setPaymentMethod("CASH")} className={cn("flex h-11 items-center justify-center gap-2 rounded-md border text-sm font-semibold", paymentMethod === "CASH" ? "border-[var(--brand)] bg-[var(--brand-soft)] text-[var(--brand-strong)]" : "border-[var(--border-strong)] text-[var(--text-muted)]")}><Banknote aria-hidden="true" size={17} /> Cash</button>
-            <button type="button" role="radio" aria-checked={paymentMethod === "MPESA"} onClick={() => setPaymentMethod("MPESA")} className={cn("flex h-11 items-center justify-center gap-2 rounded-md border text-sm font-semibold", paymentMethod === "MPESA" ? "border-[var(--brand)] bg-[var(--brand-soft)] text-[var(--brand-strong)]" : "border-[var(--border-strong)] text-[var(--text-muted)]")}><Smartphone aria-hidden="true" size={17} /> M-Pesa</button>
+            <button type="button" role="radio" aria-checked={paymentMethod === "CASH"} disabled={registerConfig?.cashEnabled === false} onClick={() => setPaymentMethod("CASH")} className={cn("flex h-11 items-center justify-center gap-2 rounded-md border text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40", paymentMethod === "CASH" ? "border-[var(--brand)] bg-[var(--brand-soft)] text-[var(--brand-strong)]" : "border-[var(--border-strong)] text-[var(--text-muted)]")}><Banknote aria-hidden="true" size={17} /> Cash</button>
+            <button type="button" role="radio" aria-checked={paymentMethod === "MPESA"} disabled={registerConfig?.mpesaEnabled === false} onClick={() => setPaymentMethod("MPESA")} className={cn("flex h-11 items-center justify-center gap-2 rounded-md border text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40", paymentMethod === "MPESA" ? "border-[var(--brand)] bg-[var(--brand-soft)] text-[var(--brand-strong)]" : "border-[var(--border-strong)] text-[var(--text-muted)]")}><Smartphone aria-hidden="true" size={17} /> M-Pesa</button>
           </div>
-          {paymentMethod === "MPESA" ? <label className="mt-3 block"><span className="mb-1.5 block text-xs font-semibold">Confirmed M-Pesa reference</span><Input autoCapitalize="characters" placeholder="e.g. SGA12ABC34" value={mpesaReference} onChange={(event) => setMpesaReference(event.target.value.toUpperCase())} /></label> : null}
+          {paymentMethod === "MPESA" ? (
+            <div className="mt-3 space-y-3">
+              <div className="grid grid-cols-2 gap-1 rounded-md bg-[var(--surface-muted)] p-1" role="radiogroup" aria-label="M-Pesa payment mode">
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={mpesaMode === "STK"}
+                  disabled={!paymentCapabilities?.mpesaStkConfigured}
+                  title={paymentCapabilities?.mpesaStkConfigured ? undefined : "Configure Daraja credentials to enable STK Push"}
+                  onClick={() => setMpesaMode("STK")}
+                  className={cn(
+                    "h-9 rounded text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-45",
+                    mpesaMode === "STK"
+                      ? "bg-white text-[var(--brand-strong)] shadow-sm"
+                      : "text-[var(--text-muted)]",
+                  )}
+                >
+                  STK Push
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={mpesaMode === "MANUAL"}
+                  onClick={() => setMpesaMode("MANUAL")}
+                  className={cn(
+                    "h-9 rounded text-xs font-semibold",
+                    mpesaMode === "MANUAL"
+                      ? "bg-white text-[var(--brand-strong)] shadow-sm"
+                      : "text-[var(--text-muted)]",
+                  )}
+                >
+                  Manual code
+                </button>
+              </div>
+              {mpesaMode === "STK" && paymentCapabilities?.mpesaStkConfigured ? (
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-semibold">M-Pesa phone number</span>
+                  <Input inputMode="tel" autoComplete="tel" placeholder="0712 345 678" value={mpesaPhone} onChange={(event) => setMpesaPhone(event.target.value)} />
+                  {mpesaPhone && !validMpesaPhone ? <span className="mt-1.5 block text-xs text-[var(--danger)]">Enter a valid Kenyan mobile number.</span> : null}
+                </label>
+              ) : (
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-semibold">Confirmed M-Pesa reference</span>
+                  <Input autoCapitalize="characters" placeholder="e.g. SGA12ABC34" value={mpesaReference} onChange={(event) => setMpesaReference(event.target.value.toUpperCase())} />
+                </label>
+              )}
+            </div>
+          ) : null}
           {paymentMethod === "CASH" ? <label className="mt-3 block"><span className="mb-1.5 block text-xs font-semibold">Cash tendered</span><Input inputMode="decimal" placeholder={total} value={cashTendered} onChange={(event) => setCashTendered(event.target.value)} />{cashTendered && validCashTendered && cashCoversTotal ? <span className="mt-1.5 block text-xs text-[var(--text-muted)]">Change due: {formatKes(changeDue)}</span> : null}</label> : null}
-          {requiresApproval && canApprovePrescription ? <label className="mt-3 block rounded-md bg-[var(--accent-soft)] p-3 text-sm"><span className="mb-1.5 flex items-center gap-1.5 font-semibold"><ShieldCheck aria-hidden="true" size={16} /> Prescription reference</span><Input placeholder="Prescription UUID" value={prescriptionReferenceId} onChange={(event) => setPrescriptionReferenceId(event.target.value.trim())} /></label> : null}
+          {requiresApproval && canApprovePrescription ? <label className="mt-3 block rounded-md bg-[var(--accent-soft)] p-3 text-sm"><span className="mb-1.5 flex items-center gap-1.5 font-semibold"><ShieldCheck aria-hidden="true" size={16} /> Prescription</span><Select value={prescriptionReferenceId} onChange={(event) => setPrescriptionReferenceId(event.target.value)}><option value="">Select an active prescription</option>{prescriptionReferenceId && !prescriptions.some((item) => item.id === prescriptionReferenceId) ? <option value={prescriptionReferenceId}>Selected prescription</option> : null}{prescriptions.map((prescription) => <option key={prescription.id} value={prescription.id}>{prescription.prescriptionNumber} - {prescription.customerName}</option>)}</Select></label> : null}
           {requiresApproval && !canApprovePrescription ? <div className="mt-3 flex items-start gap-2.5 rounded-md bg-[var(--warning-soft)] p-3 text-sm text-[var(--warning)]"><ShieldCheck aria-hidden="true" className="mt-0.5 shrink-0" size={16} /><span><span className="block font-semibold">Pharmacist approval required</span><span className="mt-0.5 block text-xs">A staff member with prescription approval permission must complete this sale.</span></span></div> : null}
           <div className="my-4 flex items-center justify-between"><span className="text-sm text-[var(--text-muted)]">Total due</span><span className="text-2xl font-semibold">{formatKes(total)}</span></div>
           <FormError message={checkoutError} />
-          <PrimaryButton type="button" onClick={() => void handleCheckout()} disabled={submitting || !currentShiftId || detailedLines.length === 0 || (paymentMethod === "MPESA" && !mpesaReference.trim()) || (paymentMethod === "CASH" && (!validCashTendered || !cashCoversTotal)) || (requiresApproval && (!canApprovePrescription || !prescriptionReferenceId.trim()))} className="mt-3 h-12 w-full text-base">{submitting ? "Completing sale..." : `Complete sale - ${formatKes(total)}`}</PrimaryButton>
+          <PrimaryButton type="button" onClick={() => void handleCheckout()} disabled={submitting || !currentShiftId || detailedLines.length === 0 || (paymentMethod === "MPESA" && (mpesaMode === "STK" ? !paymentCapabilities?.mpesaStkConfigured || !validMpesaPhone : !mpesaReference.trim())) || (paymentMethod === "CASH" && (!validCashTendered || !cashCoversTotal)) || (requiresApproval && (!canApprovePrescription || !prescriptionReferenceId.trim()))} className="mt-3 h-12 w-full text-base">{submitting ? paymentMethod === "MPESA" && mpesaMode === "STK" ? "Waiting for M-Pesa..." : "Completing sale..." : paymentMethod === "MPESA" && mpesaMode === "STK" ? `Send STK Push - ${formatKes(total)}` : `Complete sale - ${formatKes(total)}`}</PrimaryButton>
         </div>
       </aside>
     </div>

@@ -110,6 +110,32 @@ public class TerminalRegistryController {
         return ResponseEntity.ok(ApiResponse.deleted());
     }
 
+    @PatchMapping("/peripherals/{peripheralId}/status")
+    @PreAuthorize("hasAuthority('terminal.manage') or hasRole('PLATFORM_ADMIN')")
+    public ResponseEntity<ApiResponse<HardwarePeripheralDto>> updatePeripheralStatus(
+            @PathVariable UUID peripheralId,
+            @Valid @RequestBody PeripheralStatusUpdateDto request) {
+        return ResponseEntity.ok(ApiResponse.updated(
+                registrationService.updatePeripheralStatus(peripheralId, request.getStatus())));
+    }
+
+    @GetMapping("/{terminalId}/register-config")
+    @PreAuthorize("hasAnyAuthority('terminal.read', 'terminal.manage', 'pos.sell') or hasRole('PLATFORM_ADMIN')")
+    public ResponseEntity<ApiResponse<CashRegisterConfigDto>> getRegisterConfig(
+            @PathVariable String terminalId) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                registrationService.getCashRegisterConfig(terminalId)));
+    }
+
+    @PutMapping("/{terminalId}/register-config")
+    @PreAuthorize("hasAuthority('terminal.manage') or hasRole('PLATFORM_ADMIN')")
+    public ResponseEntity<ApiResponse<CashRegisterConfigDto>> updateRegisterConfig(
+            @PathVariable String terminalId,
+            @Valid @RequestBody CashRegisterConfigRequestDto request) {
+        return ResponseEntity.ok(ApiResponse.updated(
+                registrationService.updateCashRegisterConfig(terminalId, request)));
+    }
+
     @GetMapping("/{terminalId}/sessions")
     public ResponseEntity<ApiResponse<List<TerminalSessionResponseDto>>> getSessions(@PathVariable String terminalId) {
         return ResponseEntity.ok(ApiResponse.ok(sessionService.getActiveSessions(

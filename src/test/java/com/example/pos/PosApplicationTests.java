@@ -14,7 +14,9 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import jakarta.servlet.http.Cookie;
+import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -115,6 +117,52 @@ class PosApplicationTests {
                         .cookie(owner.cookie()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.pharmacyWide").value(true));
+    }
+
+    @Test
+    void ownerCanRegisterTerminalAndPersistHardwareTelemetry() throws Exception {
+        AuthenticatedSession owner = login("admin@demo.com", "admin123");
+        String terminalName = "Test register " + UUID.randomUUID();
+
+        var registration = mockMvc.perform(post("/api/v1/terminals/register")
+                        .with(csrf())
+                        .cookie(owner.cookie())
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsBytes(Map.of(
+                                "name", terminalName,
+                                "terminalType", "WINDOWS",
+                                "manufacturer", "Test",
+                                "model", "Integration",
+                                "platform", "Browser",
+                                "osVersion", "Test",
+                                "branchId", owner.branchId()))))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String terminalId = objectMapper.readTree(registration.getResponse().getContentAsByteArray())
+                .at("/data/terminalId").asText();
+
+        mockMvc.perform(post("/api/v1/terminals/{terminalId}/peripherals", terminalId)
+                        .with(csrf())
+                        .cookie(owner.cookie())
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsBytes(Map.of(
+                                "type", "PRINTER",
+                                "manufacturer", "Generic ESC/POS",
+                                "model", "Thermal 80 mm",
+                                "connectionType", "NETWORK",
+                                "configuration", "192.168.1.100:9100"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.configuration").value("192.168.1.100:9100"));
+
+        mockMvc.perform(post("/api/v1/terminals/{terminalId}/heartbeat", terminalId)
+                        .with(csrf())
+                        .cookie(owner.cookie())
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsBytes(Map.of(
+                                "terminalId", terminalId,
+                                "networkType", "ONLINE"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("received"));
     }
 
     private AuthenticatedSession login(String email, String password) throws Exception {

@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$CurrentVersion = "0.1.0",
+    [string]$CurrentVersion = "0.2.0",
     [string]$Repository = "Mark-Gachau/pos",
     [string]$ManifestUri
 )

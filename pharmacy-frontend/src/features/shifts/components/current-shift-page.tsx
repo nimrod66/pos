@@ -1,7 +1,7 @@
 "use client";
 
 import { Banknote, Clock3, LockKeyhole, Play, Square } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { PrimaryButton } from "@/components/ui/buttons";
 import { Field, FormError, Input } from "@/components/ui/form-controls";
@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { PERMISSIONS } from "@/features/auth/access-control";
 import { usePermission } from "@/features/auth/hooks/use-permission";
+import { getLocalTerminalId, terminalGateway } from "@/features/terminals/terminal-gateway";
 import { addMoney, centsToMoney, formatKes, moneyToCents } from "@/features/workspace/lib/money";
 import {
   getWorkspaceErrorMessage,
@@ -27,6 +28,21 @@ export function CurrentShiftPage() {
   const [openingFloat, setOpeningFloat] = useState("2000.00");
   const [actualCash, setActualCash] = useState(currentShift?.expectedCash ?? "");
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (currentShift) return;
+    const terminalId = getLocalTerminalId();
+    if (!terminalId) return;
+    let active = true;
+    void terminalGateway.getCashRegisterConfig(terminalId)
+      .then((config) => {
+        if (active) setOpeningFloat(config.defaultOpeningFloat.toFixed(2));
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [currentShift]);
 
   async function handleOpen(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();

@@ -1,0 +1,30 @@
+{
+  "printer": {
+    "type": "network",
+    "host": "192.168.1.100",
+    "port": 9100,
+    "com_port": "COM3",
+    "baud_rate": 9600,
+    "vendor_id": 1208,
+    "product_id": 3624,
+    "width": 42
+  },
+  "scanner": {
+    "mode": "keyboard_wedge",
+    "com_port": "COM2",
+    "baud_rate": 9600
+  },
+  "cash_drawer": {
+    "enabled": false,
+    "mode": "printer",
+    "com_port": "COM4",
+    "pin": 2
+  },
+  "display": {
+    "enabled": false,
+    "com_port": "COM5",
+    "baud_rate": 9600,
+    "lines": 2,
+    "columns": 20
+  }
+}

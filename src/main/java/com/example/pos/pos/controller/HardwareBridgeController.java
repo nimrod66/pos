@@ -13,7 +13,7 @@ import java.util.Map;
 public class HardwareBridgeController {
 
     @GetMapping("/status")
-    @PreAuthorize("hasAnyAuthority('terminal.read', 'terminal.manage', 'pos.sell')")
+    @PreAuthorize("hasAnyAuthority('terminal.read', 'terminal.manage', 'pos.sell', 'inventory.read')")
     public ApiResponse<Map<String, String>> status() {
         return ApiResponse.ok(Map.of(
                 "mode", "rest",
@@ -23,7 +23,7 @@ public class HardwareBridgeController {
     }
 
     @GetMapping("/config")
-    @PreAuthorize("hasAnyAuthority('terminal.read', 'terminal.manage', 'pos.sell')")
+    @PreAuthorize("hasAnyAuthority('terminal.read', 'terminal.manage', 'pos.sell', 'inventory.read')")
     public ApiResponse<Map<String, Object>> config() {
         return ApiResponse.ok(Map.of(
                 "connectorUrl", "http://localhost:9100",

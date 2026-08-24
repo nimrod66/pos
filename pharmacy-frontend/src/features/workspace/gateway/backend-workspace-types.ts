@@ -169,9 +169,23 @@ export interface BackendSaleItem {
 }
 
 export interface BackendPayment {
+  id: string;
   paymentMethod: string;
   amount: number;
   transactionReference: string | null;
+  merchantRequestId: string | null;
+  checkoutRequestId: string | null;
+  paymentStatus: string;
+}
+
+export interface BackendPaymentGatewayResponse {
+  success: boolean;
+  transactionReference: string | null;
+  status: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED" | "CANCELLED";
+  responseCode: string | null;
+  responseDescription: string | null;
+  merchantRequestId: string | null;
+  checkoutRequestId: string | null;
 }
 
 export interface BackendSale {

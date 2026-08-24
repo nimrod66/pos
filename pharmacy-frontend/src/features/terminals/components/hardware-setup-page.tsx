@@ -2,12 +2,14 @@
 
 import {
   ArrowLeft,
+  Banknote,
   Cable,
   CheckCircle2,
   Keyboard,
   PlugZap,
   Printer,
   RefreshCw,
+  Save,
   ScanBarcode,
   Server,
   Trash2,
@@ -29,11 +31,15 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { AccessRestricted } from "@/features/auth/components/access-restricted";
 import { PERMISSIONS } from "@/features/auth/access-control";
 import { usePermission } from "@/features/auth/hooks/use-permission";
+import { ConnectorConfigurationPanel } from "@/features/terminals/components/connector-configuration-panel";
+import { announceHardwareStatusChanged } from "@/features/terminals/local-hardware-connector";
 import {
   type ConnectionType,
+  type CashRegisterConfig,
   type HardwareBridgeConfig,
   type HardwarePeripheral,
   type PeripheralInput,
+  type PeripheralStatus,
   type PeripheralType,
   type Terminal,
   terminalGateway,
@@ -90,6 +96,8 @@ export function HardwareSetupPage() {
   const [bridgeState, setBridgeState] = useState<
     "checking" | "online" | "offline"
   >("checking");
+  const [registerConfig, setRegisterConfig] =
+    useState<CashRegisterConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -98,6 +106,8 @@ export function HardwareSetupPage() {
   const [removeTarget, setRemoveTarget] = useState<HardwarePeripheral | null>(null);
   const [scannerValue, setScannerValue] = useState("");
   const [lastScan, setLastScan] = useState<string | null>(null);
+  const [scannerTestPeripheralId, setScannerTestPeripheralId] =
+    useState<string | null>(null);
   const [printing, setPrinting] = useState(false);
   const [printTimestamp, setPrintTimestamp] = useState("");
 
@@ -106,6 +116,7 @@ export function HardwareSetupPage() {
     setLoading(true);
     try {
       setTerminal(await terminalGateway.getTerminal(params.id));
+      announceHardwareStatusChanged();
       setError(null);
     } catch (caught) {
       setError(errorMessage(caught, "Terminal hardware could not be loaded."));
@@ -128,6 +139,7 @@ export function HardwareSetupPage() {
       setBridgeState("offline");
     } finally {
       window.clearTimeout(timeout);
+      announceHardwareStatusChanged();
     }
   }, []);
 
@@ -137,11 +149,13 @@ export function HardwareSetupPage() {
     void Promise.all([
       terminalGateway.getTerminal(params.id),
       terminalGateway.getHardwareConfig(),
+      terminalGateway.getCashRegisterConfig(params.id),
     ])
-      .then(([terminalResult, config]) => {
+      .then(([terminalResult, config, cashRegisterConfig]) => {
         if (!active) return;
         setTerminal(terminalResult);
         setBridgeConfig(config);
+        setRegisterConfig(cashRegisterConfig);
         setError(null);
         void checkBridge(config);
       })
@@ -201,12 +215,109 @@ export function HardwareSetupPage() {
     }
   }
 
-  function printTestReceipt() {
+  async function updatePeripheralStatus(
+    peripheralId: string,
+    status: PeripheralStatus,
+  ) {
+    if (!canManage) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await terminalGateway.updatePeripheralStatus(peripheralId, status);
+      await loadTerminal();
+    } catch (caught) {
+      setError(errorMessage(caught, "The device status could not be updated."));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function saveRegisterConfig() {
+    if (!terminal || !registerConfig || !canManage) return;
+    setSaving(true);
+    setError(null);
+    try {
+      setRegisterConfig(await terminalGateway.updateCashRegisterConfig(
+        terminal.terminalId,
+        registerConfig,
+      ));
+    } catch (caught) {
+      setError(errorMessage(caught, "The cash register configuration could not be saved."));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function updateRegister<K extends keyof CashRegisterConfig>(
+    key: K,
+    value: CashRegisterConfig[K],
+  ) {
+    setRegisterConfig((current) => current ? { ...current, [key]: value } : current);
+  }
+
+  async function testConnectorPeripheral(peripheral: HardwarePeripheral) {
+    if (!bridgeConfig) return;
+    const endpoint = peripheral.type === "CASH_DRAWER"
+      ? "/cash-drawer/open"
+      : "/display/show";
+    setSaving(true);
+    setError(null);
+    try {
+      const response = await fetch(`${bridgeConfig.connectorUrl}${endpoint}`, {
+        body: peripheral.type === "DISPLAY"
+          ? JSON.stringify({ line1: "PHARMACY POS", line2: "DISPLAY TEST" })
+          : undefined,
+        headers: peripheral.type === "DISPLAY"
+          ? { "Content-Type": "application/json" }
+          : undefined,
+        method: "POST",
+      });
+      await terminalGateway.updatePeripheralStatus(
+        peripheral.id,
+        response.ok ? "ONLINE" : "ERROR",
+      );
+      if (!response.ok) throw new Error("The connector rejected the device test.");
+      await loadTerminal();
+    } catch (caught) {
+      await terminalGateway.updatePeripheralStatus(peripheral.id, "ERROR").catch(() => undefined);
+      setError(errorMessage(caught, "The device test failed."));
+      await loadTerminal();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function printTestReceipt() {
     setPrintTimestamp(new Intl.DateTimeFormat("en-KE", {
       dateStyle: "medium",
       timeStyle: "short",
       timeZone: "Africa/Nairobi",
     }).format(new Date()));
+    const printer = terminal?.peripherals.find((item) => item.type === "PRINTER");
+    if (terminal && bridgeConfig && bridgeState === "online" && printer) {
+      setSaving(true);
+      try {
+        const response = await fetch(`${bridgeConfig.connectorUrl}/print`, {
+          body: JSON.stringify({
+            receipt: `PHARMACY POS\n${terminal.name}\nPRINT TEST\n${new Date().toISOString()}\n`,
+          }),
+          headers: { "Content-Type": "application/json" },
+          method: "POST",
+        });
+        await terminalGateway.updatePeripheralStatus(
+          printer.id,
+          response.ok ? "ONLINE" : "ERROR",
+        );
+        if (!response.ok) throw new Error("The connector rejected the print test.");
+        await loadTerminal();
+        return;
+      } catch (caught) {
+        setError(errorMessage(caught, "The receipt printer test failed."));
+        await loadTerminal();
+      } finally {
+        setSaving(false);
+      }
+    }
     setPrinting(true);
     window.setTimeout(() => {
       window.print();
@@ -386,15 +497,58 @@ export function HardwareSetupPage() {
                         </p>
                       </div>
                       {canManage ? (
-                        <button
-                          type="button"
-                          title="Remove peripheral"
-                          aria-label={`Remove ${peripheral.type}`}
-                          onClick={() => setRemoveTarget(peripheral)}
-                          className="flex size-9 items-center justify-center rounded-md text-[var(--danger)] hover:bg-[var(--danger-soft)]"
-                        >
-                          <Trash2 aria-hidden="true" size={16} />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <Select
+                            aria-label={`${peripheral.type} status`}
+                            className="h-9 w-28 text-xs"
+                            disabled={saving}
+                            value={peripheral.status}
+                            onChange={(event) => void updatePeripheralStatus(
+                              peripheral.id,
+                              event.target.value as PeripheralStatus,
+                            )}
+                          >
+                            <option value="UNKNOWN">Unknown</option>
+                            <option value="ONLINE">Online</option>
+                            <option value="OFFLINE">Offline</option>
+                            <option value="ERROR">Error</option>
+                          </Select>
+                          {peripheral.type === "SCANNER" ? (
+                            <button
+                              type="button"
+                              title="Test scanner"
+                              aria-label="Test scanner"
+                              onClick={() => {
+                                setScannerTestPeripheralId(peripheral.id);
+                                document.getElementById("scanner-test-input")?.focus();
+                              }}
+                              className="flex size-9 items-center justify-center rounded-md text-[var(--brand-strong)] hover:bg-[var(--brand-soft)]"
+                            >
+                              <ScanBarcode aria-hidden="true" size={16} />
+                            </button>
+                          ) : null}
+                          {peripheral.type === "CASH_DRAWER" || peripheral.type === "DISPLAY" ? (
+                            <button
+                              type="button"
+                              title={`Test ${peripheral.type.replaceAll("_", " ").toLowerCase()}`}
+                              aria-label={`Test ${peripheral.type}`}
+                              disabled={saving || bridgeState !== "online"}
+                              onClick={() => void testConnectorPeripheral(peripheral)}
+                              className="flex size-9 items-center justify-center rounded-md text-[var(--brand-strong)] hover:bg-[var(--brand-soft)] disabled:opacity-35"
+                            >
+                              <PlugZap aria-hidden="true" size={16} />
+                            </button>
+                          ) : null}
+                          <button
+                            type="button"
+                            title="Remove peripheral"
+                            aria-label={`Remove ${peripheral.type}`}
+                            onClick={() => setRemoveTarget(peripheral)}
+                            className="flex size-9 items-center justify-center rounded-md text-[var(--danger)] hover:bg-[var(--danger-soft)]"
+                          >
+                            <Trash2 aria-hidden="true" size={16} />
+                          </button>
+                        </div>
                       ) : null}
                     </div>
                   );
@@ -409,6 +563,72 @@ export function HardwareSetupPage() {
             )}
           </section>
 
+          {registerConfig ? (
+            <section className="rounded-md border border-[var(--border)] bg-white">
+              <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3.5">
+                <div className="flex items-center gap-2">
+                  <Banknote aria-hidden="true" className="text-[var(--brand)]" size={18} />
+                  <h2 className="text-sm font-semibold">Cash register</h2>
+                </div>
+                {canManage ? (
+                  <SecondaryButton type="button" disabled={saving} onClick={() => void saveRegisterConfig()}>
+                    <Save aria-hidden="true" size={15} /> {saving ? "Saving..." : "Save"}
+                  </SecondaryButton>
+                ) : null}
+              </div>
+              <div className="grid gap-x-6 gap-y-4 p-4 md:grid-cols-2">
+                <Field label="Default opening float (KES)">
+                  <Input type="number" min={0} step="0.01" readOnly={!canManage} value={registerConfig.defaultOpeningFloat} onChange={(event) => updateRegister("defaultOpeningFloat", Number(event.target.value))} />
+                </Field>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Paper width">
+                    <Select disabled={!canManage} value={registerConfig.receiptPaperWidth} onChange={(event) => updateRegister("receiptPaperWidth", Number(event.target.value))}>
+                      <option value={58}>58 mm</option>
+                      <option value={80}>80 mm</option>
+                    </Select>
+                  </Field>
+                  <Field label="Receipt copies">
+                    <Select disabled={!canManage} value={registerConfig.receiptCopies} onChange={(event) => updateRegister("receiptCopies", Number(event.target.value))}>
+                      <option value={1}>1</option><option value={2}>2</option><option value={3}>3</option>
+                    </Select>
+                  </Field>
+                </div>
+                <Field label="Scanner mode">
+                  <Select disabled={!canManage} value={registerConfig.scannerMode} onChange={(event) => updateRegister("scannerMode", event.target.value as CashRegisterConfig["scannerMode"])}>
+                    <option value="KEYBOARD_WEDGE">Keyboard wedge</option>
+                    <option value="CAMERA">Camera</option>
+                    <option value="LOCAL_CONNECTOR">Local connector</option>
+                  </Select>
+                </Field>
+                <Field label="Scanner suffix">
+                  <Select disabled={!canManage} value={registerConfig.barcodeSubmitKey} onChange={(event) => updateRegister("barcodeSubmitKey", event.target.value as CashRegisterConfig["barcodeSubmitKey"])}>
+                    <option value="ENTER">Enter</option><option value="TAB">Tab</option>
+                  </Select>
+                </Field>
+                <div className="grid gap-2 sm:grid-cols-2 md:col-span-2">
+                  {([
+                    ["cashEnabled", "Cash payments"],
+                    ["mpesaEnabled", "M-Pesa payments"],
+                    ["autoPrintReceipt", "Print receipt automatically"],
+                    ["openDrawerOnCashSale", "Open drawer after cash sale"],
+                  ] as const).map(([key, label]) => (
+                    <label key={key} className="flex min-h-10 items-center gap-3 rounded-md border border-[var(--border)] px-3 text-sm">
+                      <input type="checkbox" disabled={!canManage} checked={registerConfig[key]} onChange={(event) => updateRegister(key, event.target.checked)} className="size-4 accent-[var(--brand)]" />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </section>
+          ) : null}
+
+          {bridgeConfig ? (
+            <ConnectorConfigurationPanel
+              canManage={canManage}
+              connectorUrl={bridgeConfig.connectorUrl}
+            />
+          ) : null}
+
           <section className="grid gap-5 md:grid-cols-2">
             <div className="rounded-md border border-[var(--border)] bg-white p-4">
               <div className="flex items-center gap-2">
@@ -418,6 +638,7 @@ export function HardwareSetupPage() {
               <label className="mt-4 block">
                 <span className="sr-only">Scan barcode</span>
                 <Input
+                  id="scanner-test-input"
                   placeholder="Focus here and scan"
                   value={scannerValue}
                   onChange={(event) => setScannerValue(event.target.value)}
@@ -426,6 +647,13 @@ export function HardwareSetupPage() {
                     event.preventDefault();
                     setLastScan(scannerValue.trim());
                     setScannerValue("");
+                    const scanner = scannerTestPeripheralId
+                      ? terminal.peripherals.find((item) => item.id === scannerTestPeripheralId)
+                      : terminal.peripherals.find((item) => item.type === "SCANNER");
+                    if (scanner && canManage) {
+                      void updatePeripheralStatus(scanner.id, "ONLINE");
+                    }
+                    setScannerTestPeripheralId(null);
                   }}
                 />
               </label>
@@ -454,7 +682,7 @@ export function HardwareSetupPage() {
               <SecondaryButton
                 type="button"
                 className="mt-4 w-full"
-                onClick={printTestReceipt}
+                onClick={() => void printTestReceipt()}
               >
                 <Printer aria-hidden="true" size={16} /> Print test
               </SecondaryButton>
