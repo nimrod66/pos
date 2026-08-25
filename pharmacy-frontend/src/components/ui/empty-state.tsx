@@ -1,10 +1,13 @@
 import type { LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
 
 export function EmptyState({
+  action,
   description,
   icon: Icon,
   title,
 }: {
+  action?: ReactNode;
   description: string;
   icon: LucideIcon;
   title: string;
@@ -16,6 +19,7 @@ export function EmptyState({
       </span>
       <p className="mt-3 text-sm font-medium">{title}</p>
       <p className="mt-1 max-w-sm text-xs text-[var(--text-muted)]">{description}</p>
+      {action ? <div className="mt-4">{action}</div> : null}
     </div>
   );
 }

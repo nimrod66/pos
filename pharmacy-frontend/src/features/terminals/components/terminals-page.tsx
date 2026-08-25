@@ -115,6 +115,8 @@ export function TerminalsPage() {
   const [regenerateTarget, setRegenerateTarget] = useState<Terminal | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [localTerminalId, setLocalTerminal] = useState<string | null>(null);
+  const [registered, setRegistered] = useState<Terminal | null>(null);
+  const [registeredApproved, setRegisteredApproved] = useState(false);
 
   const fallbackBranch = useMemo<BranchSummary | null>(
     () =>
@@ -201,6 +203,7 @@ export function TerminalsPage() {
 
   function openCreate() {
     setEditing(null);
+    setRegistered(null);
     setDraft(emptyDraft(session?.user.activeBranch.id ?? ""));
     setAssignLocally(true);
     setWizardStep(1);
@@ -256,6 +259,15 @@ export function TerminalsPage() {
       const saved = editing
         ? await terminalGateway.updateTerminal(editing.terminalId, normalized)
         : await terminalGateway.registerTerminal(normalized);
+      let approved = Boolean(editing) && saved.status === "ACTIVE";
+      if (!editing && saved.status === "PENDING") {
+        try {
+          await terminalGateway.approveTerminal(saved.terminalId);
+          approved = true;
+        } catch {
+          approved = false;
+        }
+      }
       if (assignLocally) {
         setLocalTerminalId(saved.terminalId);
         setLocalTerminal(saved.terminalId);
@@ -263,8 +275,14 @@ export function TerminalsPage() {
         setLocalTerminalId(null);
         setLocalTerminal(null);
       }
-      setWizardOpen(false);
       await loadTerminals();
+      if (editing) {
+        setWizardOpen(false);
+      } else {
+        setRegistered({ ...saved, status: approved ? "ACTIVE" : saved.status });
+        setRegisteredApproved(approved);
+        setWizardStep(4);
+      }
     } catch (caught) {
       setError(errorMessage(caught, "The terminal could not be saved."));
     } finally {
@@ -387,23 +405,50 @@ export function TerminalsPage() {
 
       <section className="mb-5 grid overflow-hidden rounded-md border border-[var(--border)] bg-white sm:grid-cols-3">
         {[
-          { icon: Wifi, label: "Online", value: onlineCount },
-          { icon: CircleDot, label: "Awaiting approval", value: pendingCount },
-          { icon: Activity, label: "Updates required", value: outdatedCount },
-        ].map(({ icon: Icon, label, value }, index) => (
-          <div
-            key={label}
-            className={`flex items-center gap-3 px-4 py-4 ${index ? "border-t border-[var(--border)] sm:border-l sm:border-t-0" : ""}`}
-          >
-            <span className="flex size-9 items-center justify-center rounded-md bg-[var(--brand-soft)] text-[var(--brand-strong)]">
-              <Icon aria-hidden="true" size={17} />
-            </span>
-            <div>
-              <p className="text-xl font-semibold">{value}</p>
-              <p className="text-xs text-[var(--text-muted)]">{label}</p>
+          { icon: Wifi, label: "Online", value: onlineCount, filter: null as string | null },
+          {
+            icon: CircleDot,
+            label: "Awaiting approval",
+            value: pendingCount,
+            filter: pendingCount ? "PENDING" : null,
+          },
+          { icon: Activity, label: "Updates required", value: outdatedCount, filter: null as string | null },
+        ].map(({ icon: Icon, label, value, filter }, index) => {
+          const clickable = Boolean(filter);
+          const content = (
+            <>
+              <span className="flex size-9 items-center justify-center rounded-md bg-[var(--brand-soft)] text-[var(--brand-strong)]">
+                <Icon aria-hidden="true" size={17} />
+              </span>
+              <div>
+                <p className="text-xl font-semibold">{value}</p>
+                <p className="text-xs text-[var(--text-muted)]">
+                  {clickable ? `${label} - click to review` : label}
+                </p>
+              </div>
+            </>
+          );
+          return clickable && canManage ? (
+            <button
+              key={label}
+              type="button"
+              onClick={() => {
+                setQuery("");
+                setStatusFilter(filter as string);
+              }}
+              className={`flex items-center gap-3 px-4 py-4 text-left hover:bg-[var(--surface-muted)] ${index ? "border-t border-[var(--border)] sm:border-l sm:border-t-0" : ""}`}
+            >
+              {content}
+            </button>
+          ) : (
+            <div
+              key={label}
+              className={`flex items-center gap-3 px-4 py-4 ${index ? "border-t border-[var(--border)] sm:border-l sm:border-t-0" : ""}`}
+            >
+              {content}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </section>
 
       <div className="mb-4 grid gap-3 md:grid-cols-[minmax(240px,1fr)_220px_200px]">
@@ -546,16 +591,16 @@ export function TerminalsPage() {
                             </button>
                           ) : null}
                           {canManage && terminal.status === "PENDING" ? (
-                            <button
+                            <SecondaryButton
                               type="button"
                               title={`Approve ${terminal.name}`}
                               aria-label={`Approve ${terminal.name}`}
+                              className="min-h-9 gap-1.5 px-3 text-[var(--success)]"
                               disabled={busyId === terminal.id}
                               onClick={() => void approve(terminal)}
-                              className="flex size-9 items-center justify-center rounded-md text-[var(--success)] hover:bg-[var(--success-soft)]"
                             >
-                              <Check aria-hidden="true" size={17} />
-                            </button>
+                              <Check aria-hidden="true" size={15} /> Approve
+                            </SecondaryButton>
                           ) : null}
                           {canManage && terminal.status === "ACTIVE" ? (
                             <button
@@ -615,6 +660,13 @@ export function TerminalsPage() {
                 ? "Adjust the branch, status, or search filters."
                 : "Register the first pharmacy workstation."
             }
+            action={
+              !terminals.length && canManage ? (
+                <PrimaryButton type="button" onClick={openCreate}>
+                  <Plus aria-hidden="true" size={17} /> Register terminal
+                </PrimaryButton>
+              ) : undefined
+            }
           />
         )}
       </section>
@@ -633,7 +685,7 @@ export function TerminalsPage() {
                   {editing ? "Edit terminal" : "Terminal onboarding"}
                 </h2>
                 <p className="mt-0.5 text-xs text-[var(--text-muted)]">
-                  Step {wizardStep} of 3
+                  {wizardStep === 4 ? "Setup complete" : `Step ${wizardStep} of 3`}
                 </p>
               </div>
               <button
@@ -648,6 +700,44 @@ export function TerminalsPage() {
             </div>
 
             <div className="p-5">
+              {wizardStep === 4 && registered ? (
+                <div>
+                  <p className="text-sm text-[var(--text-muted)]">
+                    {registered.name} is ready to use.
+                  </p>
+                  <ul className="mt-4 space-y-2 text-sm">
+                    {[
+                      { label: "Registered", done: true },
+                      {
+                        label: registeredApproved
+                          ? "Approved"
+                          : "Approval pending - a manager must approve it from the terminals list",
+                        done: registeredApproved,
+                      },
+                      {
+                        label: assignLocally
+                          ? "Assigned to this computer"
+                          : "Not assigned to this computer",
+                        done: assignLocally,
+                      },
+                    ].map((item) => (
+                      <li key={item.label} className="flex items-center gap-2">
+                        <Check
+                          aria-hidden="true"
+                          size={16}
+                          className={item.done ? "text-[var(--success)]" : "text-[var(--warning)]"}
+                        />
+                        {item.label}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-4 rounded-md bg-[var(--surface-muted)] p-3">
+                    <p className="text-xs text-[var(--text-muted)]">Terminal ID</p>
+                    <p className="mt-1 font-mono text-base font-semibold">{registered.terminalId}</p>
+                  </div>
+                </div>
+              ) : null}
+
               {wizardStep === 1 ? (
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Terminal name" required>
@@ -778,13 +868,17 @@ export function TerminalsPage() {
             </div>
 
             <div className="flex items-center justify-between border-t border-[var(--border)] px-5 py-4">
-              <SecondaryButton
-                type="button"
-                disabled={wizardStep === 1 || saving}
-                onClick={() => setWizardStep((step) => step - 1)}
-              >
-                Back
-              </SecondaryButton>
+              {wizardStep === 4 ? (
+                <span />
+              ) : (
+                <SecondaryButton
+                  type="button"
+                  disabled={wizardStep === 1 || saving}
+                  onClick={() => setWizardStep((step) => step - 1)}
+                >
+                  Back
+                </SecondaryButton>
+              )}
               {wizardStep < 3 ? (
                 <PrimaryButton
                   type="button"
@@ -799,7 +893,7 @@ export function TerminalsPage() {
                 >
                   Continue
                 </PrimaryButton>
-              ) : (
+              ) : wizardStep === 3 ? (
                 <PrimaryButton
                   type="button"
                   disabled={saving}
@@ -807,6 +901,13 @@ export function TerminalsPage() {
                 >
                   <HardDrive aria-hidden="true" size={17} />
                   {saving ? "Saving..." : editing ? "Save terminal" : "Register terminal"}
+                </PrimaryButton>
+              ) : (
+                <PrimaryButton
+                  type="button"
+                  onClick={() => setWizardOpen(false)}
+                >
+                  Done
                 </PrimaryButton>
               )}
             </div>
