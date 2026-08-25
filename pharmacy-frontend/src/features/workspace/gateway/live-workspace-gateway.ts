@@ -190,7 +190,7 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
     const lastName = names.join(" ") || "User";
     const response = await apiRequest<BackendUser>("/users", {
       body: {
-        branchId: session.user.activeBranch.id,
+        branchId: input.branchId || session.user.activeBranch.id,
         email: input.username.trim(),
         firstName,
         lastName,
@@ -768,7 +768,7 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
     const lastName = names.join(" ") || "User";
     await apiRequest<BackendUser>(path(`/users/${id}`), {
       body: {
-        branchId: session.user.activeBranch.id,
+        branchId: input.branchId || session.user.activeBranch.id,
         email: input.username.trim(),
         firstName,
         lastName,
@@ -1113,6 +1113,8 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
       roles,
       status: user.status === "ACTIVE" ? "ACTIVE" : "DISABLED",
       username: user.email,
+      branchId: user.branchId ?? null,
+      branchName: user.branchName ?? null,
     };
   }
 

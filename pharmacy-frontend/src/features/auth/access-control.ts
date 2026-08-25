@@ -300,6 +300,10 @@ const routeAccessRules: Array<{
     rule: { allOf: [PERMISSIONS.SETTINGS_MANAGE] },
   },
   {
+    path: "/admin/shifts",
+    rule: { allOf: [PERMISSIONS.SHIFT_VARIANCE_APPROVE] },
+  },
+  {
     path: "/admin/terminals",
     rule: { allOf: [PERMISSIONS.TERMINAL_READ] },
   },

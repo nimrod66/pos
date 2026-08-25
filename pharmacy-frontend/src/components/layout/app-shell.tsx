@@ -13,6 +13,7 @@ import {
   ContactRound,
   FileText,
   FileClock,
+  History,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -163,6 +164,13 @@ export const appNavigation: NavigationItem[] = [
     icon: Building2,
     label: "Branches",
     access: { allOf: [PERMISSIONS.SETTINGS_MANAGE] },
+    section: "Management",
+  },
+  {
+    href: "/admin/shifts",
+    icon: History,
+    label: "Shift history",
+    access: { allOf: [PERMISSIONS.SHIFT_VARIANCE_APPROVE] },
     section: "Management",
   },
   {

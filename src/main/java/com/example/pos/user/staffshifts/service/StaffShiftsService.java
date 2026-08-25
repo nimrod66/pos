@@ -6,6 +6,7 @@ import com.example.pos.common.exception.ConflictException;
 import com.example.pos.common.exception.ForbiddenException;
 import com.example.pos.common.exception.ResourceNotFoundException;
 import com.example.pos.core.branch.model.Branch;
+import com.example.pos.core.branch.repository.BranchRepository;
 import com.example.pos.finance.cashdrawers.model.CashDrawers;
 import com.example.pos.finance.cashdrawers.repository.CashDrawersRepository;
 import com.example.pos.finance.cashtransactions.repository.CashTransactionsRepository;
@@ -36,17 +37,20 @@ public class StaffShiftsService {
     private final CashDrawersRepository drawerRepository;
     private final PaymentRepository paymentRepository;
     private final CashTransactionsRepository cashTransactionsRepository;
+    private final BranchRepository branchRepository;
     private final AuthenticatedUserContext current;
 
     public StaffShiftsService(StaffShiftsRepository shiftRepository,
                               CashDrawersRepository drawerRepository,
                               PaymentRepository paymentRepository,
                               CashTransactionsRepository cashTransactionsRepository,
+                              BranchRepository branchRepository,
                               AuthenticatedUserContext current) {
         this.shiftRepository = shiftRepository;
         this.drawerRepository = drawerRepository;
         this.paymentRepository = paymentRepository;
         this.cashTransactionsRepository = cashTransactionsRepository;
+        this.branchRepository = branchRepository;
         this.current = current;
     }
 
@@ -172,6 +176,30 @@ public class StaffShiftsService {
                 .filter(shift -> current.hasAuthority(PermissionCodes.SHIFT_VARIANCE_APPROVE)
                         || shift.getUser().getId().equals(current.userId()))
                 .toList();
+    }
+
+    /**
+     * Reconciliation view for owners: the most recent shifts across every
+     * branch of the pharmacy, or one specific branch. Requires variance
+     * approval permission.
+     */
+    @Transactional(readOnly = true)
+    public List<StaffShifts> getShiftHistory(UUID branchId) {
+        if (!current.hasAuthority(PermissionCodes.SHIFT_VARIANCE_APPROVE)) {
+            throw new ForbiddenException(
+                    "Shift reconciliation requires the variance approval permission");
+        }
+        UUID pharmacyId = current.pharmacy().getId();
+        if (branchId != null) {
+            Branch branch = branchRepository.findById(branchId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Branch", branchId));
+            if (branch.getPharmacy() == null
+                    || !pharmacyId.equals(branch.getPharmacy().getId())) {
+                throw new ForbiddenException("That branch belongs to another pharmacy");
+            }
+            return shiftRepository.findHistoryForBranch(pharmacyId, branchId);
+        }
+        return shiftRepository.findHistoryForPharmacy(pharmacyId);
     }
 
     @Transactional(readOnly = true)

@@ -42,5 +42,16 @@ public interface StaffShiftsRepository extends JpaRepository<StaffShifts, UUID> 
 
     List<StaffShifts> findByStatus(StaffShifts.Status status);
 
+    @Query("select shift from StaffShifts shift join fetch shift.user join fetch shift.branch "
+            + "where shift.branch.pharmacy.id = :pharmacyId "
+            + "order by shift.shiftStartTime desc")
+    List<StaffShifts> findHistoryForPharmacy(@Param("pharmacyId") UUID pharmacyId);
+
+    @Query("select shift from StaffShifts shift join fetch shift.user join fetch shift.branch "
+            + "where shift.branch.pharmacy.id = :pharmacyId and shift.branch.id = :branchId "
+            + "order by shift.shiftStartTime desc")
+    List<StaffShifts> findHistoryForBranch(
+            @Param("pharmacyId") UUID pharmacyId, @Param("branchId") UUID branchId);
+
     boolean existsByUserIdAndStatus(UUID userId, StaffShifts.Status status);
 }

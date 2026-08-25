@@ -260,6 +260,8 @@ export interface BackendUser {
   lastName: string;
   phoneNumber: string;
   status: string;
+  branchId?: string | null;
+  branchName?: string | null;
   roles?: Array<{ roleName?: string }> | string[];
   createdAt: string;
 }

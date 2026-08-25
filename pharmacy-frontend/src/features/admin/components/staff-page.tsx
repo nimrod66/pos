@@ -9,10 +9,10 @@ import {
   UserX,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
-import { Field, FormError, Input } from "@/components/ui/form-controls";
+import { Field, FormError, Input, Select } from "@/components/ui/form-controls";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { AccessRestricted } from "@/features/auth/components/access-restricted";
@@ -23,6 +23,10 @@ import {
 } from "@/features/auth/access-control";
 import { usePermission } from "@/features/auth/hooks/use-permission";
 import { useAuthStore } from "@/features/auth/store/auth-store";
+import {
+  type BranchSummary,
+  terminalGateway,
+} from "@/features/terminals/terminal-gateway";
 import {
   getWorkspaceErrorMessage,
   useWorkspaceQuery,
@@ -37,9 +41,11 @@ import type {
 export function StaffPage() {
   const staff = useWorkspaceQuery((state) => state.staff);
   const canManageStaff = usePermission(PERMISSIONS.USER_MANAGE);
+  const session = useAuthStore((state) => state.session);
   const currentUsername = useAuthStore(
     (state) => state.session?.user.username ?? "",
   );
+  const [branches, setBranches] = useState<BranchSummary[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState("");
@@ -47,6 +53,9 @@ export function StaffPage() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [jobTitle, setJobTitle] = useState("");
   const [password, setPassword] = useState("");
+  const [branchId, setBranchId] = useState(
+    session?.user.activeBranch.id ?? "",
+  );
   const [roles, setRoles] = useState<StaffRole[]>(["CASHIER"]);
   const [error, setError] = useState<string | null>(null);
   const [busyStaffId, setBusyStaffId] = useState<string | null>(null);
@@ -55,6 +64,22 @@ export function StaffPage() {
     (user) => user.status === "ACTIVE" && user.roles.includes("OWNER"),
   ).length;
 
+  useEffect(() => {
+    if (!canManageStaff || !session) return;
+    let active = true;
+    void terminalGateway
+      .listBranches(session.user.pharmacyId)
+      .then((rows) => {
+        if (active) setBranches(rows.filter((item) => item.status === "ACTIVE"));
+      })
+      .catch(() => {
+        if (active) setBranches([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [canManageStaff, session]);
+
   function resetForm() {
     setDisplayName("");
     setUsername("");
@@ -62,6 +87,7 @@ export function StaffPage() {
     setJobTitle("");
     setPassword("");
     setRoles(["CASHIER"]);
+    setBranchId(session?.user.activeBranch.id ?? "");
     setEditingId(null);
     setError(null);
   }
@@ -77,6 +103,7 @@ export function StaffPage() {
     setPhoneNumber(user.phoneNumber);
     setJobTitle(user.jobTitle);
     setRoles(user.roles);
+    setBranchId(user.branchId ?? session?.user.activeBranch.id ?? "");
     setEditingId(user.id);
     setError(null);
     setShowForm(true);
@@ -120,6 +147,10 @@ export function StaffPage() {
       setError("Assign at least one access role.");
       return;
     }
+    if (!branchId) {
+      setError("Choose the branch this staff member works in.");
+      return;
+    }
     if (!editingId && password.length < 8) {
       setError("Enter a temporary password with at least 8 characters.");
       return;
@@ -134,6 +165,7 @@ export function StaffPage() {
         jobTitle: jobTitle.trim(),
         password: editingId ? undefined : password,
         roles,
+        branchId,
       };
       if (editingId) {
         await workspaceGateway.updateStaff(editingId, input);
@@ -247,6 +279,19 @@ export function StaffPage() {
                 onChange={(event) => setJobTitle(event.target.value)}
               />
             </Field>
+            <Field label="Branch" required>
+              <Select
+                value={branchId}
+                onChange={(event) => setBranchId(event.target.value)}
+              >
+                <option value="">Choose branch</option>
+                {branches.map((branch) => (
+                  <option key={branch.id} value={branch.id}>
+                    {branch.branchName} ({branch.branchCode})
+                  </option>
+                ))}
+              </Select>
+            </Field>
             {!editingId ? (
               <Field label="Temporary password" required>
                 <Input
@@ -322,6 +367,7 @@ export function StaffPage() {
               <tr>
                 <th className="px-4 py-3 font-semibold">Staff member</th>
                 <th className="px-4 py-3 font-semibold">Email</th>
+                <th className="px-4 py-3 font-semibold">Branch</th>
                 <th className="px-4 py-3 font-semibold">Phone</th>
                 <th className="px-4 py-3 font-semibold">Job title</th>
                 <th className="px-4 py-3 font-semibold">Access roles</th>
@@ -337,6 +383,9 @@ export function StaffPage() {
                   </td>
                   <td className="px-4 py-3.5 font-mono text-xs">
                     {user.username}
+                  </td>
+                  <td className="px-4 py-3.5 text-[var(--text-muted)]">
+                    {user.branchName ?? "Unassigned"}
                   </td>
                   <td className="px-4 py-3.5 text-[var(--text-muted)]">
                     {user.phoneNumber || "Not set"}

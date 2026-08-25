@@ -73,6 +73,17 @@ public class StaffShiftsController {
         return ResponseEntity.ok(ApiResponse.ok(shiftService.toResponse(shift)));
     }
 
+    @GetMapping("/history")
+    @PreAuthorize("hasAuthority('shift.variance.approve')")
+    public ResponseEntity<ApiResponse<List<StaffShiftResponseDto>>> getHistory(
+            @RequestParam(required = false) UUID branchId) {
+        List<StaffShiftResponseDto> response = shiftService.getShiftHistory(branchId)
+                .stream()
+                .map(shiftService::toResponse)
+                .toList();
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('shift.open', 'shift.close', 'shift.variance.approve')")
     public ResponseEntity<ApiResponse<StaffShiftResponseDto>> getById(@PathVariable UUID id) {

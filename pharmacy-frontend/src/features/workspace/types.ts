@@ -162,6 +162,8 @@ export interface StaffUser {
   jobTitle: string;
   roles: StaffRole[];
   status: "ACTIVE" | "DISABLED";
+  branchId?: string | null;
+  branchName?: string | null;
 }
 
 export interface StaffInput {
@@ -171,6 +173,7 @@ export interface StaffInput {
   jobTitle: string;
   roles: StaffRole[];
   password?: string;
+  branchId?: string;
 }
 
 export interface PharmacySettings {
