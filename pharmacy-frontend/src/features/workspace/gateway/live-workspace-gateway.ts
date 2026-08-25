@@ -239,6 +239,7 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
       if (!line.lineId) {
         throw new WorkspaceError("INVALID_CART", "Remove and add the cart item again before checkout.");
       }
+      const discountPercent = line.discountPercent ?? 0;
       return {
         expectedUnitPrice: Number(medicine.sellingPrice),
         lineId: line.lineId,
@@ -246,10 +247,12 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
         quantity: line.quantity,
         requestedBatchId: null,
         sellingUnitId: medicine.unitId || null,
+        discountPercent,
       };
     });
     const total = lines.reduce(
-      (sum, line) => sum + line.expectedUnitPrice * line.quantity,
+      (sum, line) =>
+        sum + line.expectedUnitPrice * line.quantity * (1 - (line.discountPercent ?? 0) / 100),
       0,
     );
     const method = input.paymentMethod === "MPESA"
@@ -594,6 +597,11 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
         settings: {
           ...currentSettings,
           branchName: activeBranch?.branchName ?? session.user.activeBranch.name,
+          kraPin: activePharmacy?.kraPin ?? currentSettings.kraPin,
+          address:
+            activeBranch?.location ??
+            activePharmacy?.address ??
+            currentSettings.address,
           lowStockThresholdDays: settingNumber(
             settingValue("inventory.low_stock_threshold"),
             currentSettings.lowStockThresholdDays,

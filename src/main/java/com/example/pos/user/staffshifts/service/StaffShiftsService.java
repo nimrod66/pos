@@ -150,6 +150,23 @@ public class StaffShiftsService {
         return shiftRepository.save(shift);
     }
 
+    /** Owner sign-off on a closed shift's cash variance - appends a review note. */
+    public StaffShifts reviewVariance(UUID id, UpdateShiftStatusDto dto) {
+        if (!current.hasAuthority(PermissionCodes.SHIFT_VARIANCE_APPROVE)) {
+            throw new ForbiddenException(
+                    "Reviewing variances requires the variance approval permission");
+        }
+        StaffShifts shift = getBranchShiftForUpdate(id);
+        if (shift.getStatus() == StaffShifts.Status.ACTIVE) {
+            throw new BadRequestException(
+                    "Variances can only be reviewed after the shift is closed",
+                    "SHIFT_NOT_CLOSED");
+        }
+        appendRemarks(shift, "Variance reviewed"
+                + (trimToNull(dto.getRemarks()) == null ? "" : ": " + trimToNull(dto.getRemarks())));
+        return shiftRepository.save(shift);
+    }
+
     @Transactional(readOnly = true)
     public List<StaffShifts> getShiftsByBranch(UUID branchId) {
         Branch branch = current.branch();

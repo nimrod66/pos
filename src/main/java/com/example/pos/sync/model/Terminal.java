@@ -1,5 +1,6 @@
 package com.example.pos.sync.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -24,9 +25,11 @@ public class Terminal {
     @Column(nullable = false, unique = true, length = 100)
     private String name;
 
+    @JsonIgnore
     @Column(nullable = false, length = 128)
     private String apiKey;
 
+    @JsonIgnore
     @Column(nullable = false, length = 16)
     private String apiSecret;
 

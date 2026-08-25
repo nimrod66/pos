@@ -108,4 +108,13 @@ public class StaffShiftsController {
         StaffShifts shift = shiftService.cancelShift(id, dto);
         return ResponseEntity.ok(ApiResponse.updated(shiftService.toResponse(shift)));
     }
+
+    @PatchMapping("/{id}/variance-review")
+    @PreAuthorize("hasAuthority('shift.variance.approve')")
+    public ResponseEntity<ApiResponse<StaffShiftResponseDto>> reviewVariance(
+            @PathVariable UUID id,
+            @RequestBody UpdateShiftStatusDto dto) {
+        StaffShifts shift = shiftService.reviewVariance(id, dto);
+        return ResponseEntity.ok(ApiResponse.updated(shiftService.toResponse(shift)));
+    }
 }

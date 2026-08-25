@@ -22,11 +22,13 @@ public class ExpiryLogsController {
     public ExpiryLogsController(ExpiryLogsService service) { this.service = service; }
 
     @PostMapping
+    @org.springframework.security.access.prepost.PreAuthorize("hasAuthority('inventory.adjust.approve')")
     public ResponseEntity<ApiResponse<ExpiryLogResponseDto>> log(@RequestBody @Valid ExpiryLogRequestDto dto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.created(ExpiryLogResponseDto.from(service.log(dto))));
     }
 
     @GetMapping
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyAuthority('inventory.read', 'inventory.adjust.approve')")
     public ResponseEntity<ApiResponse<List<ExpiryLogResponseDto>>> getAll(@RequestParam(required = false) UUID batchId) {
         List<ExpiryLogs> list = batchId != null ? service.getByBatch(batchId) : service.getAll();
         return ResponseEntity.ok(ApiResponse.ok(list.stream().map(ExpiryLogResponseDto::from).toList()));

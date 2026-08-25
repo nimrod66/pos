@@ -27,9 +27,18 @@ public class AuditLogController {
             @PageableDefault(size = 20) Pageable pageable,
             @RequestParam(required = false) String tableName,
             @RequestParam(required = false) String recordId,
-            @RequestParam(required = false) UUID userId) {
+            @RequestParam(required = false) UUID userId,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate fromDate,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate toDate) {
         Page<AuditLog> page;
-        if (userId != null) page = service.getByUser(userId, pageable);
+        if (fromDate != null || toDate != null) {
+            java.time.LocalDateTime from = fromDate == null
+                    ? java.time.LocalDateTime.of(2000, 1, 1, 0, 0) : fromDate.atStartOfDay();
+            java.time.LocalDateTime to = toDate == null
+                    ? java.time.LocalDate.now().plusDays(1).atStartOfDay()
+                    : toDate.plusDays(1).atStartOfDay();
+            page = service.getByDateRange(from, to, pageable);
+        } else if (userId != null) page = service.getByUser(userId, pageable);
         else if (tableName != null) page = service.getByTable(tableName, recordId, pageable);
         else page = service.getAll(pageable);
         return ResponseEntity.ok(ApiResponse.ok(PagedResponse.from(page, AuditLogResponseDto::from)));

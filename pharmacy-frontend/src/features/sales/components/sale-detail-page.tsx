@@ -147,11 +147,14 @@ export function SaleDetailPage() {
     }
   }
 
+  const isReprint = searchParams.get("completed") !== "1";
+  const itemsCount = sale.items.reduce((sum, item) => sum + item.quantity, 0);
+
   return (
     <div>
       <div className="print:hidden">
         <PageHeader
-          eyebrow="Sales receipt"
+          eyebrow={isReprint ? "Receipt copy" : "Sales receipt"}
           title={sale.receiptNumber}
           description={`Completed ${formatDateTime(sale.completedAt)} by ${sale.cashierName}.`}
           actions={
@@ -161,6 +164,11 @@ export function SaleDetailPage() {
                   <Printer aria-hidden="true" size={17} />
                   {printedAt ? "Print again" : "Print receipt"}
                 </SecondaryButton>
+              ) : null}
+              {isReprint && canPrintReceipt ? (
+                <span className="self-center text-xs font-semibold text-[var(--warning)]">
+                  Copies are watermarked COPY
+                </span>
               ) : null}
               {returnableItems.length > 0 && canReturnSale ? (
                 <PrimaryButton
@@ -207,25 +215,47 @@ export function SaleDetailPage() {
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px] print:block">
         <section
           className={cn(
-            "receipt-print mx-auto w-full max-w-2xl rounded-md border border-[var(--border)] bg-white p-5 shadow-sm sm:p-8 print:rounded-none print:border-0 print:shadow-none",
+            "receipt-print relative mx-auto w-full max-w-2xl overflow-hidden rounded-md border border-[var(--border)] bg-white p-5 shadow-sm sm:p-8 print:rounded-none print:border-0 print:shadow-none",
             settings.receiptPaperWidth === "58MM"
               ? "receipt-print--58mm"
               : "receipt-print--80mm",
           )}
         >
-          <div className="text-center">
+          {isReprint ? (
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 flex select-none items-center justify-center text-[6rem] font-black uppercase tracking-widest text-[var(--border)]/60 -rotate-12"
+            >
+              Copy
+            </span>
+          ) : null}
+          <div className="relative text-center">
             <h2 className="text-lg font-bold">{settings.pharmacyName}</h2>
+            {settings.address ? (
+              <p className="text-sm">{settings.address}</p>
+            ) : null}
             <p className="mt-1 text-sm">{settings.branchName}</p>
+            {settings.kraPin ? (
+              <p className="text-xs">PIN: {settings.kraPin}</p>
+            ) : null}
             {settings.phone ? (
               <p className="text-xs text-[var(--text-muted)]">{settings.phone}</p>
             ) : null}
           </div>
+          {isReprint ? (
+            <div className="relative mt-3 border-y border-dashed border-[var(--warning)] py-1.5 text-center">
+              <p className="text-base font-black uppercase text-[var(--warning)]" style={{ fontSize: "1.5rem" }}>
+                Copy
+              </p>
+              <p className="text-xs font-bold uppercase">This is not an official receipt</p>
+            </div>
+          ) : null}
           {sale.status !== "COMPLETED" ? (
-            <p className="mt-3 border-y border-dashed border-[var(--danger)] py-1.5 text-center text-xs font-bold text-[var(--danger)]">
+            <p className="relative mt-3 border-y border-dashed border-[var(--danger)] py-1.5 text-center text-xs font-bold text-[var(--danger)]">
               {sale.status.replaceAll("_", " ")}
             </p>
           ) : null}
-          <div className="my-5 border-y border-dashed border-[var(--border-strong)] py-3 text-xs">
+          <div className="relative my-5 border-y border-dashed border-[var(--border-strong)] py-3 text-xs">
             <div className="flex justify-between gap-4">
               <span>Receipt</span>
               <strong>{sale.receiptNumber}</strong>
@@ -239,7 +269,7 @@ export function SaleDetailPage() {
               <span>{sale.cashierName}</span>
             </div>
           </div>
-          <table className="w-full text-sm">
+          <table className="relative w-full text-sm">
             <thead className="border-b border-[var(--border)] text-left text-xs text-[var(--text-muted)]">
               <tr>
                 <th className="pb-2 font-semibold">Item</th>
@@ -272,7 +302,7 @@ export function SaleDetailPage() {
               ))}
             </tbody>
           </table>
-          <div className="ml-auto mt-5 max-w-xs space-y-2 text-sm">
+          <div className="relative ml-auto mt-5 max-w-xs space-y-2 text-sm">
             <div className="flex justify-between gap-6">
               <span className="text-[var(--text-muted)]">Subtotal</span>
               <span>{formatKes(sale.subtotal)}</span>
@@ -291,8 +321,12 @@ export function SaleDetailPage() {
               <span>Net total</span>
               <span>{formatKes(addMoney(sale.total, `-${sale.refundTotal}`))}</span>
             </div>
+            <div className="flex justify-between gap-6 text-xs text-[var(--text-muted)]">
+              <span>Items number</span>
+              <span>{itemsCount}</span>
+            </div>
           </div>
-          <div className="mt-6 border-y border-dashed border-[var(--border-strong)] py-3 text-sm">
+          <div className="relative mt-6 border-y border-dashed border-[var(--border-strong)] py-3 text-sm">
             {sale.payments.map((payment, index) => (
               <div className={index ? "mt-2" : ""} key={`${payment.method}-${index}`}>
                 <div className="flex justify-between gap-4">
@@ -320,7 +354,7 @@ export function SaleDetailPage() {
               </div>
             ) : null}
           </div>
-          <p className="mt-6 text-center text-xs text-[var(--text-muted)]">
+          <p className="relative mt-6 text-center text-xs text-[var(--text-muted)]">
             {settings.receiptFooter}
           </p>
         </section>

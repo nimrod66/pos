@@ -48,6 +48,7 @@ public class PurchaseOrdersService {
         this.current = current;
     }
 
+    @com.example.pos.common.annotation.Auditable(action = "CREATE_PURCHASE_ORDER", entity = "PurchaseOrder")
     public PurchaseOrders create(PurchaseOrderRequestDto dto) {
         User orderedBy = current.user();
         Branch branch = orderedBy.getBranch();
@@ -121,6 +122,7 @@ public class PurchaseOrdersService {
                 .orElseThrow(() -> new ResourceNotFoundException("PurchaseOrder", id));
     }
 
+    @com.example.pos.common.annotation.Auditable(action = "APPROVE_PURCHASE_ORDER", entity = "PurchaseOrder")
     public PurchaseOrders approve(UUID id, UUID approvedById) {
         User approver = current.user();
         if (approvedById != null && !approver.getId().equals(approvedById)) {

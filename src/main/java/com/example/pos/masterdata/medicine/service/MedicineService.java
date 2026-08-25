@@ -17,6 +17,8 @@ import com.example.pos.masterdata.tax.model.Tax;
 import com.example.pos.masterdata.tax.repository.TaxRepository;
 import com.example.pos.masterdata.units.model.Unit;
 import com.example.pos.masterdata.units.repository.UnitRepository;
+import com.example.pos.procurement.pricehistory.model.PriceHistory;
+import com.example.pos.procurement.pricehistory.repository.PriceHistoryRepository;
 import com.example.pos.security.auth.AuthenticatedUserContext;
 import com.example.pos.terminal.barcode.BarcodeSource;
 import com.example.pos.terminal.barcode.BarcodeType;
@@ -27,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 import java.math.RoundingMode;
+import java.math.BigDecimal;
 import java.util.Locale;
 
 @Service
@@ -40,6 +43,7 @@ public class MedicineService {
     private final UnitRepository unitRepository;
     private final TaxRepository taxRepository;
     private final AuthenticatedUserContext current;
+    private final PriceHistoryRepository priceHistoryRepository;
 
     public MedicineService(MedicineRepository medicineRepository,
                            ManufacturerRepository manufacturerRepository,
@@ -47,7 +51,8 @@ public class MedicineService {
                            DosageFormRepository dosageFormRepository,
                            UnitRepository unitRepository,
                            TaxRepository taxRepository,
-                           AuthenticatedUserContext current) {
+                           AuthenticatedUserContext current,
+                           PriceHistoryRepository priceHistoryRepository) {
         this.medicineRepository = medicineRepository;
         this.manufacturerRepository = manufacturerRepository;
         this.categoriesRepository = categoriesRepository;
@@ -55,6 +60,7 @@ public class MedicineService {
         this.unitRepository = unitRepository;
         this.taxRepository = taxRepository;
         this.current = current;
+        this.priceHistoryRepository = priceHistoryRepository;
     }
 
     @Auditable(action = "CREATE_MEDICINE", entity = "Medicine")
@@ -75,7 +81,9 @@ public class MedicineService {
         resolveReferences(dto, medicine);
         mapToEntity(dto, medicine);
         medicine.setStatus(Medicine.Status.AVAILABLE);
-        return medicineRepository.save(medicine);
+        Medicine savedMedicine = medicineRepository.save(medicine);
+        recordPriceHistory(savedMedicine, null, null);
+        return savedMedicine;
     }
 
     @Transactional(readOnly = true)
@@ -134,9 +142,13 @@ public class MedicineService {
             throw new ConflictException("SKU " + dto.getSku() + " already exists");
         }
 
+        BigDecimal oldBuying = medicine.getBuyingPrice();
+        BigDecimal oldSelling = medicine.getSellingPrice();
         resolveReferences(dto, medicine);
         mapToEntity(dto, medicine);
-        return medicineRepository.save(medicine);
+        Medicine savedMedicine = medicineRepository.save(medicine);
+        recordPriceHistory(savedMedicine, oldBuying, oldSelling);
+        return savedMedicine;
     }
 
     @Auditable(action = "DELETE_MEDICINE", entity = "Medicine")
@@ -224,6 +236,30 @@ public class MedicineService {
     private String normalizeSku(String value) {
         if (value == null || value.isBlank()) return null;
         return value.trim().toUpperCase(Locale.ROOT);
+    }
+
+    /** Journals selling-price changes so the price history view has data. */
+    private void recordPriceHistory(Medicine medicine,
+                                    java.math.BigDecimal oldBuying,
+                                    java.math.BigDecimal oldSelling) {
+        java.math.BigDecimal newBuying = medicine.getBuyingPrice();
+        java.math.BigDecimal newSelling = medicine.getSellingPrice();
+        boolean buyingChanged = oldBuying == null
+                ? newBuying != null : newBuying == null || oldBuying.compareTo(newBuying) != 0;
+        boolean sellingChanged = oldSelling == null
+                ? newSelling != null : newSelling == null || oldSelling.compareTo(newSelling) != 0;
+        if (!buyingChanged && !sellingChanged) {
+            return;
+        }
+        priceHistoryRepository.save(PriceHistory.builder()
+                .medicine(medicine)
+                .user(current.user())
+                .oldBuyingPrice(oldBuying)
+                .oldSellingPrice(oldSelling)
+                .newBuyingPrice(newBuying)
+                .newSellingPrice(newSelling)
+                .changedAt(java.time.LocalDateTime.now())
+                .build());
     }
 
     private String normalizeOptional(String value) {

@@ -2,10 +2,11 @@
 
 import { AlertTriangle, Boxes, ClipboardList, Layers3, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
-import { PrimaryLink } from "@/components/ui/buttons";
+import { PrimaryButton, PrimaryLink, SecondaryButton } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Input } from "@/components/ui/form-controls";
+import { Field, FormError, Input, Select } from "@/components/ui/form-controls";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { PERMISSIONS } from "@/features/auth/access-control";
@@ -17,6 +18,7 @@ import {
   stockForMedicine,
 } from "@/features/workspace/lib/workspace-helpers";
 import { useWorkspaceQuery } from "@/features/workspace/gateway/workspace-gateway";
+import { apiRequest } from "@/lib/api-client";
 import { cn } from "@/lib/cn";
 
 type InventoryTab = "stock" | "batches" | "movements" | "alerts";
@@ -35,6 +37,7 @@ function expiryTone(days: number, nearExpiryDays: number) {
 }
 
 export function InventoryPage() {
+  const router = useRouter();
   const medicines = useWorkspaceQuery((state) => state.medicines);
   const batches = useWorkspaceQuery((state) => state.batches);
   const suppliers = useWorkspaceQuery((state) => state.suppliers);
@@ -42,8 +45,43 @@ export function InventoryPage() {
   const units = useWorkspaceQuery((state) => state.units);
   const settings = useWorkspaceQuery((state) => state.settings);
   const canReceiveStock = usePermission(PERMISSIONS.INVENTORY_RECEIVE);
+  const canWriteOff = usePermission(PERMISSIONS.INVENTORY_ADJUST_APPROVE);
   const [tab, setTab] = useState<InventoryTab>("stock");
   const [query, setQuery] = useState("");
+  const [writeOffTarget, setWriteOffTarget] = useState<{
+    batch: { id: string; batchNumber: string; quantity: number };
+    medicineName: string;
+    remaining: number;
+  } | null>(null);
+  const [writeOffQty, setWriteOffQty] = useState("1");
+  const [writeOffMethod, setWriteOffMethod] = useState("DISPOSAL");
+  const [writeOffBusy, setWriteOffBusy] = useState(false);
+  const [writeOffError, setWriteOffError] = useState<string | null>(null);
+
+  async function submitWriteOff(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!writeOffTarget || writeOffBusy) return;
+    setWriteOffBusy(true);
+    setWriteOffError(null);
+    try {
+      await apiRequest("/expiry-logs", {
+        method: "POST",
+        body: {
+          medicineBatchesId: writeOffTarget.batch.id,
+          disposalMethod: writeOffMethod,
+          quantityDisposed: Math.max(1, Math.floor(Number(writeOffQty) || 1)),
+        },
+      });
+      setWriteOffTarget(null);
+      window.location.reload();
+    } catch (caught) {
+      setWriteOffError(
+        caught instanceof Error ? caught.message : "The write-off could not be recorded.",
+      );
+    } finally {
+      setWriteOffBusy(false);
+    }
+  }
 
   const normalizedQuery = query.trim().toLowerCase();
   const stockRows = useMemo(
@@ -275,10 +313,32 @@ export function InventoryPage() {
         {tab === "alerts" ? (
           <div className="grid gap-6 p-4 lg:grid-cols-2 lg:p-6">
             <section>
-              <h2 className="flex items-center gap-2 text-sm font-semibold">
-                <AlertTriangle aria-hidden="true" className="text-[var(--danger)]" size={17} />
-                Low stock ({lowStock.length})
-              </h2>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="flex items-center gap-2 text-sm font-semibold">
+                  <AlertTriangle aria-hidden="true" className="text-[var(--danger)]" size={17} />
+                  Low stock ({lowStock.length})
+                </h2>
+                {lowStock.length && canWriteOff ? (
+                  <SecondaryButton
+                    type="button"
+                    onClick={() => {
+                      const draft = lowStock.map(({ medicine, stock }) => ({
+                        medicineId: medicine.id,
+                        brandName: medicine.brandName,
+                        suggestedQty: Math.max(1, (medicine.reorderLevel ?? 0) - stock),
+                        unitCost: medicine.buyingPrice,
+                      }));
+                      window.localStorage.setItem(
+                        "pharmacy-pos:reorder-draft",
+                        JSON.stringify(draft),
+                      );
+                      router.push("/procurement/purchase-orders?draft=1");
+                    }}
+                  >
+                    Draft purchase order
+                  </SecondaryButton>
+                ) : null}
+              </div>
               <div className="mt-3 divide-y divide-[var(--border)] border-y border-[var(--border)]">
                 {lowStock.length ? lowStock.map(({ medicine, stock }) => (
                   <div className="flex items-center justify-between gap-4 py-3" key={medicine.id}>
@@ -306,7 +366,20 @@ export function InventoryPage() {
                         <p className="truncate text-sm font-semibold">{medicine?.brandName}</p>
                         <p className="text-xs text-[var(--text-muted)]">{batch.batchNumber} · {batch.quantity} units</p>
                       </div>
-                      <StatusBadge tone={expiryTone(remaining, settings.nearExpiryDays)}>{remaining < 0 ? "Expired" : `${remaining} days`}</StatusBadge>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <StatusBadge tone={expiryTone(remaining, settings.nearExpiryDays)}>{remaining < 0 ? "Expired" : `${remaining} days`}</StatusBadge>
+                        {canWriteOff ? (
+                          <SecondaryButton
+                            type="button"
+                            title="Write off this batch as expired stock"
+                            onClick={() =>
+                              setWriteOffTarget({ batch, medicineName: medicine?.brandName ?? "Batch", remaining })
+                            }
+                          >
+                            Write off
+                          </SecondaryButton>
+                        ) : null}
+                      </div>
                     </div>
                   );
                 }) : <p className="py-5 text-sm text-[var(--text-muted)]">No batches are near expiry.</p>}
@@ -315,6 +388,68 @@ export function InventoryPage() {
           </div>
         ) : null}
       </section>
+
+      {writeOffTarget ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
+          <form
+            onSubmit={submitWriteOff}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Write off expired stock"
+            className="w-full max-w-md rounded-md border border-[var(--border)] bg-white p-5 shadow-xl"
+          >
+            <h2 className="text-base font-semibold">Write off expired stock</h2>
+            <p className="mt-1 text-sm text-[var(--text-muted)]">
+              {writeOffTarget.medicineName} · batch {writeOffTarget.batch.batchNumber} ·{" "}
+              {writeOffTarget.batch.quantity} units on hand. This removes units from
+              sellable stock permanently and records a regulatory disposal log.
+            </p>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <Field label="Units to dispose" required>
+                <Input
+                  autoFocus
+                  inputMode="numeric"
+                  min={1}
+                  max={writeOffTarget.batch.quantity}
+                  type="number"
+                  value={writeOffQty}
+                  onChange={(event) => setWriteOffQty(event.target.value)}
+                />
+              </Field>
+              <Field label="Disposal method" required>
+                <Select
+                  value={writeOffMethod}
+                  onChange={(event) => setWriteOffMethod(event.target.value)}
+                >
+                  <option value="DISPOSAL">Disposal</option>
+                  <option value="RETURN_TO_SUPPLIER">Return to supplier</option>
+                  <option value="DESTRUCTION">Destruction</option>
+                  <option value="DONATION">Donation (pre-expiry)</option>
+                </Select>
+              </Field>
+            </div>
+            <div className="mt-4">
+              <FormError message={writeOffError} />
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <SecondaryButton type="button" onClick={() => setWriteOffTarget(null)}>
+                Cancel
+              </SecondaryButton>
+              <PrimaryButton
+                type="submit"
+                disabled={
+                  writeOffBusy ||
+                  !writeOffQty ||
+                  Number(writeOffQty) < 1 ||
+                  Number(writeOffQty) > writeOffTarget.batch.quantity
+                }
+              >
+                {writeOffBusy ? "Saving..." : "Record write-off"}
+              </PrimaryButton>
+            </div>
+          </form>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -1,10 +1,10 @@
 "use client";
 
-import { History, RefreshCw } from "lucide-react";
+import { FileText, History, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { SecondaryButton } from "@/components/ui/buttons";
-import { Field, FormError, Select } from "@/components/ui/form-controls";
+import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
+import { Field, FormError, Input, Select } from "@/components/ui/form-controls";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { AccessRestricted } from "@/features/auth/components/access-restricted";
@@ -37,6 +37,28 @@ interface ShiftRow {
   variance: number | null;
 }
 
+interface ZReport {
+  shiftId: string;
+  shiftName: string | null;
+  branchName: string | null;
+  cashierName: string | null;
+  openedAt: string | null;
+  closedAt: string | null;
+  status: string | null;
+  openingBalance: number;
+  expectedClosingBalance: number;
+  actualClosingBalance: number | null;
+  variance: number | null;
+  salesCount: number;
+  totalSales: number;
+  totalCashPayments: number;
+  totalMpesaPayments: number;
+  totalCardPayments: number;
+  totalRefunds: number;
+  refundCount: number;
+  paymentBreakdown: Array<Record<string, unknown>>;
+}
+
 function money(value: number) {
   return value.toFixed(2);
 }
@@ -49,6 +71,10 @@ export function ShiftHistoryPage() {
   const [shifts, setShifts] = useState<ShiftRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [zReport, setZReport] = useState<ZReport | null>(null);
+  const [resolveTarget, setResolveTarget] = useState<ShiftRow | null>(null);
+  const [resolveNote, setResolveNote] = useState("");
+  const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     if (!session || !canReconcile) return;
@@ -110,6 +136,47 @@ export function ShiftHistoryPage() {
     }
     return { expected, actual, variance, varianceCount };
   }, [shifts]);
+
+  async function openZReport(shiftId: string) {
+    setError(null);
+    try {
+      const response = await apiRequest<ZReport>(
+        `/reports/shift-z/${shiftId}`,
+        { cache: "no-store" },
+      );
+      setZReport(response.data);
+    } catch (caught) {
+      setError(
+        caught instanceof ApiClientError || caught instanceof Error
+          ? caught.message
+          : "The Z report could not be generated.",
+      );
+    }
+  }
+
+  async function resolveVariance(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!resolveTarget || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await apiRequest(`/shifts/${resolveTarget.id}/variance-review`, {
+        method: "PATCH",
+        body: { remarks: resolveNote.trim() || null, status: null, actualCash: null },
+      });
+      setResolveTarget(null);
+      setResolveNote("");
+      await load();
+    } catch (caught) {
+      setError(
+        caught instanceof ApiClientError || caught instanceof Error
+          ? caught.message
+          : "The variance could not be resolved.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
 
   if (!canReconcile) {
     return (
@@ -201,6 +268,7 @@ export function ShiftHistoryPage() {
                   <th className="px-4 py-3 text-right font-semibold">Expected</th>
                   <th className="px-4 py-3 text-right font-semibold">Counted</th>
                   <th className="px-4 py-3 text-right font-semibold">Variance</th>
+                  <th className="px-4 py-3 text-right font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border)]">
@@ -269,6 +337,31 @@ export function ShiftHistoryPage() {
                       >
                         {shift.variance == null ? "-" : money(variance)}
                       </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex justify-end gap-2">
+                          <SecondaryButton
+                            type="button"
+                            className="min-h-9 gap-1.5 px-3"
+                            disabled={busy}
+                            onClick={() => void openZReport(shift.id)}
+                          >
+                            <FileText aria-hidden="true" size={14} /> Z report
+                          </SecondaryButton>
+                          {shift.status === "CLOSED" && hasVariance ? (
+                            <SecondaryButton
+                              type="button"
+                              className="min-h-9 px-3"
+                              disabled={busy}
+                              onClick={() => {
+                                setResolveTarget(shift);
+                                setResolveNote("");
+                              }}
+                            >
+                              Resolve
+                            </SecondaryButton>
+                          ) : null}
+                        </div>
+                      </td>
                     </tr>
                   );
                 })}
@@ -289,6 +382,91 @@ export function ShiftHistoryPage() {
           </div>
         )}
       </section>
+
+      {zReport ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4 print:static print:bg-white print:p-0">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Z report"
+            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-md border border-[var(--border)] bg-white p-6 shadow-xl print:max-h-none print:border-0 print:shadow-none"
+          >
+            <div className="flex items-start justify-between gap-3 print:hidden">
+              <h2 className="text-base font-semibold">Z report - {zReport.branchName}</h2>
+              <button
+                type="button"
+                aria-label="Close Z report"
+                onClick={() => setZReport(null)}
+                className="text-sm text-[var(--text-muted)] hover:text-[var(--text)]"
+              >
+                Close
+              </button>
+            </div>
+            <dl className="relative mt-4 space-y-2 text-sm">
+              <p className="text-center text-sm font-bold uppercase">Z daily report</p>
+              <div className="flex justify-between"><dt className="text-[var(--text-muted)]">Branch</dt><dd>{zReport.branchName}</dd></div>
+              <div className="flex justify-between"><dt className="text-[var(--text-muted)]">Cashier</dt><dd>{zReport.cashierName ?? "-"}</dd></div>
+              <div className="flex justify-between"><dt className="text-[var(--text-muted)]">Opened</dt><dd>{zReport.openedAt ? formatDateTime(zReport.openedAt) : "-"}</dd></div>
+              <div className="flex justify-between"><dt className="text-[var(--text-muted)]">Closed</dt><dd>{zReport.closedAt ? formatDateTime(zReport.closedAt) : "-"}</dd></div>
+              <div className="flex justify-between border-t border-[var(--border)] pt-2"><dt>Sales receipts</dt><dd>{zReport.salesCount}</dd></div>
+              <div className="flex justify-between"><dt>Total sales (incl. tax)</dt><dd className="font-semibold">{money(Number(zReport.totalSales ?? 0))}</dd></div>
+              <div className="flex justify-between"><dt>Cash payments</dt><dd>{money(Number(zReport.totalCashPayments ?? 0))}</dd></div>
+              <div className="flex justify-between"><dt>M-Pesa payments</dt><dd>{money(Number(zReport.totalMpesaPayments ?? 0))}</dd></div>
+              {Number(zReport.totalCardPayments ?? 0) > 0 ? (
+                <div className="flex justify-between"><dt>Card payments</dt><dd>{money(Number(zReport.totalCardPayments))}</dd></div>
+              ) : null}
+              <div className="flex justify-between"><dt>Credit notes / refunds</dt><dd>{money(Number(zReport.totalRefunds ?? 0))} ({zReport.refundCount})</dd></div>
+              <div className="flex justify-between border-t border-[var(--border)] pt-2"><dt>Opening float</dt><dd>{money(Number(zReport.openingBalance ?? 0))}</dd></div>
+              <div className="flex justify-between"><dt>Expected in drawer</dt><dd>{money(Number(zReport.expectedClosingBalance ?? 0))}</dd></div>
+              <div className="flex justify-between"><dt>Counted</dt><dd>{zReport.actualClosingBalance == null ? "-" : money(Number(zReport.actualClosingBalance))}</dd></div>
+              <div className={`flex justify-between font-semibold ${Math.abs(Number(zReport.variance ?? 0)) > 0.004 ? "text-[var(--danger)]" : "text-[var(--success)]"}`}><dt>Variance</dt><dd>{zReport.variance == null ? "-" : money(Number(zReport.variance))}</dd></div>
+            </dl>
+            <div className="mt-5 flex justify-end print:hidden">
+              <PrimaryButton type="button" onClick={() => window.print()}>
+                Print Z report
+              </PrimaryButton>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {resolveTarget ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
+          <form
+            onSubmit={resolveVariance}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Resolve variance"
+            className="w-full max-w-md rounded-md border border-[var(--border)] bg-white p-5 shadow-xl"
+          >
+            <h2 className="text-base font-semibold">
+              Resolve variance for {resolveTarget.userName ?? "shift"}
+            </h2>
+            <p className="mt-1 text-sm text-[var(--text-muted)]">
+              Variance of {money(Number(resolveTarget.variance ?? 0))} on{" "}
+              {resolveTarget.branchName}. Add a review note explaining the outcome.
+            </p>
+            <div className="mt-4">
+              <Field label="Review note" required>
+                <Input
+                  autoFocus
+                  placeholder="e.g. Counting error corrected with cashier"
+                  value={resolveNote}
+                  onChange={(event) => setResolveNote(event.target.value)}
+                />
+              </Field>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <SecondaryButton type="button" onClick={() => setResolveTarget(null)}>
+                Cancel
+              </SecondaryButton>
+              <PrimaryButton type="submit" disabled={busy || !resolveNote.trim()}>
+                {busy ? "Saving..." : "Record resolution"}
+              </PrimaryButton>
+            </div>
+          </form>
+        </div>
+      ) : null}
     </div>
   );
 }

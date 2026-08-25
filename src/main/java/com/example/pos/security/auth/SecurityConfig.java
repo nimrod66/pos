@@ -148,11 +148,11 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/v1/auth/csrf", "/api/v1/auth/login",
                     "/actuator/health", "/actuator/info",
-                    "/swagger-ui/**", "/v3/api-docs/**",
                     "/api/v1/payments/mpesa/callback",
                     "/api/v1/payments/paystack/callback",
                     "/api/v1/payments/stripe/callback",
                     "/api/v1/sync/health").permitAll()
+                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").authenticated()
                 .requestMatchers("/api/v1/auth/me", "/api/v1/auth/logout").authenticated()
                 // Deferred modules stay unreachable until their tenant and accounting workflows are complete.
                 .requestMatchers(
@@ -172,22 +172,22 @@ public class SecurityConfig {
                     "/api/v1/categories/**", "/api/v1/dosage-forms/**",
                     "/api/v1/units/**", "/api/v1/taxes/**",
                     "/api/v1/tax-categories/**", "/api/v1/manufacturers/**",
-                    "/api/v1/catalog/**", "/api/v1/role-permissions/**").denyAll()
+                    "/api/v1/catalog/**").denyAll()
                 .requestMatchers(HttpMethod.PUT,
                     "/api/v1/categories/**", "/api/v1/dosage-forms/**",
                     "/api/v1/units/**", "/api/v1/taxes/**",
                     "/api/v1/tax-categories/**", "/api/v1/manufacturers/**",
-                    "/api/v1/catalog/**", "/api/v1/role-permissions/**").denyAll()
+                    "/api/v1/catalog/**").denyAll()
                 .requestMatchers(HttpMethod.PATCH,
                     "/api/v1/categories/**", "/api/v1/dosage-forms/**",
                     "/api/v1/units/**", "/api/v1/taxes/**",
                     "/api/v1/tax-categories/**", "/api/v1/manufacturers/**",
-                    "/api/v1/catalog/**", "/api/v1/role-permissions/**").denyAll()
+                    "/api/v1/catalog/**").denyAll()
                 .requestMatchers(HttpMethod.DELETE,
                     "/api/v1/categories/**", "/api/v1/dosage-forms/**",
                     "/api/v1/units/**", "/api/v1/taxes/**",
                     "/api/v1/tax-categories/**", "/api/v1/manufacturers/**",
-                    "/api/v1/catalog/**", "/api/v1/role-permissions/**").denyAll()
+                    "/api/v1/catalog/**").denyAll()
                 .requestMatchers("/api/v1/sync/push").hasAnyRole("TERMINAL", "OWNER", "PLATFORM_ADMIN")
                 .requestMatchers("/api/v1/pharmacies/**").hasAnyRole("OWNER", "PLATFORM_ADMIN")
                 .requestMatchers("/api/v1/branches/**").hasAnyRole("OWNER", "PLATFORM_ADMIN")
@@ -196,7 +196,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/login-history/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "PLATFORM_ADMIN")
                 .requestMatchers("/api/v1/roles/**").hasAnyRole("OWNER", "PLATFORM_ADMIN")
                 .requestMatchers("/api/v1/permissions/**").hasAnyRole("OWNER", "PLATFORM_ADMIN")
-                .requestMatchers("/api/v1/role-permissions/**").hasAnyRole("OWNER", "PLATFORM_ADMIN")
+                
                 .requestMatchers("/api/v1/system-settings/**").authenticated()
                 .requestMatchers("/api/v1/medicines/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "PHARMACIST", "CASHIER", "STORE_KEEPER", "PHARMACY_TECHNICIAN")
                 .requestMatchers("/api/v1/batches/**").hasAnyAuthority(

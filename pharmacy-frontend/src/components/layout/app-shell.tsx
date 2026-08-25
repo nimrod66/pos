@@ -233,6 +233,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [switchingBranch, setSwitchingBranch] = useState(false);
   const [branchError, setBranchError] = useState<string | null>(null);
   const session = useAuthStore((state) => state.session);
+  const offline = useAuthStore((state) => state.offline);
   const signOut = useAuthStore((state) => state.signOut);
   const switchBranch = useAuthStore((state) => state.switchBranch);
   const status = useAuthStore((state) => state.status);
@@ -518,6 +519,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <PeripheralHealthBar
             canConfigure={session.user.permissions.includes(PERMISSIONS.TERMINAL_READ)}
           />
+        ) : null}
+
+        {offline ? (
+          <div
+            role="status"
+            className="mt-3 flex flex-wrap items-center gap-2 rounded-md border border-[var(--warning)]/40 bg-[var(--warning-soft)] px-3 py-2 text-sm text-[var(--warning)] print:hidden"
+          >
+            <AlertTriangle aria-hidden="true" size={16} />
+            Working offline - the server is unreachable. Sales will fail until
+            the connection returns.
+          </div>
         ) : null}
 
         <main className="mx-auto w-full max-w-[1500px] px-4 py-6 print:max-w-none print:p-0 sm:px-6 sm:py-8">

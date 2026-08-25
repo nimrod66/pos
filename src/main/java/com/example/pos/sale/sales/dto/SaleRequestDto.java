@@ -65,6 +65,11 @@ public class SaleRequestDto {
 
         private UUID requestedBatchId;
         private UUID discountRequestId;
+
+        /** Percentage discount applied to this line (0-100). */
+        @DecimalMin(value = "0.00", inclusive = true)
+        @Digits(integer = 3, fraction = 2)
+        private BigDecimal discountPercent;
     }
 
     @Data

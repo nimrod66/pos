@@ -130,6 +130,35 @@ export function PurchaseOrdersPage() {
     };
   }, [canRead, loadOrders, session]);
 
+  // Prefill a purchase order from a low-stock reorder draft (inventory page).
+  useEffect(() => {
+    const initial = window.setTimeout(() => {
+      const raw = window.localStorage.getItem("pharmacy-pos:reorder-draft");
+      if (!raw) return;
+      window.localStorage.removeItem("pharmacy-pos:reorder-draft");
+      type ReorderItem = { medicineId: string; suggestedQty: number; unitCost: number };
+      let draft: ReorderItem[] = [];
+      try {
+        draft = JSON.parse(raw) as ReorderItem[];
+      } catch {
+        return;
+      }
+      const mapped = draft
+        .map((item) =>
+          newLine(
+            item.medicineId,
+            Number(item.unitCost ?? 0).toFixed(2),
+          ),
+        )
+        .map((line, index) => ({ ...line, quantity: Math.max(1, draft[index].suggestedQty) }));
+      if (mapped.length) {
+        setLines(mapped);
+        setFormOpen(true);
+      }
+    }, 0);
+    return () => window.clearTimeout(initial);
+  }, []);
+
   function resetForm() {
     const medicine = activeMedicines[0];
     setSupplierId(activeSuppliers[0]?.id ?? "");

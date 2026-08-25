@@ -180,6 +180,8 @@ export interface PharmacySettings {
   pharmacyName: string;
   branchName: string;
   phone: string;
+  kraPin: string;
+  address: string;
   receiptPrefix: string;
   receiptFooter: string;
   receiptPaperWidth: "58MM" | "80MM";
@@ -226,7 +228,7 @@ export interface ReceiveStockInput {
 export interface CheckoutInput {
   idempotencyKey: string;
   customerId?: string;
-  items: Array<{ lineId?: string; medicineId: string; quantity: number }>;
+  items: Array<{ lineId?: string; medicineId: string; quantity: number; discountPercent?: number }>;
   paymentMethod: PaymentMethod;
   mpesaMode: "STK" | "MANUAL";
   mpesaPhone: string;

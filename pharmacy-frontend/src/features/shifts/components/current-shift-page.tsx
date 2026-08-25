@@ -1,9 +1,9 @@
 "use client";
 
-import { Banknote, Clock3, LockKeyhole, Play, Square } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ArrowDownToLine, ArrowUpFromLine, Banknote, Clock3, LockKeyhole, Play, Square } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 
-import { PrimaryButton } from "@/components/ui/buttons";
+import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
 import { Field, FormError, Input } from "@/components/ui/form-controls";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -17,7 +17,16 @@ import {
   workspaceGateway,
 } from "@/features/workspace/gateway/workspace-gateway";
 import { formatDateTime } from "@/lib/format";
+import { apiRequest } from "@/lib/api-client";
 import { cn } from "@/lib/cn";
+
+interface DrawerTransaction {
+  id: string;
+  transactionType: string;
+  amount: number;
+  remarks: string | null;
+  createdAt: string;
+}
 
 export function CurrentShiftPage() {
   const currentShiftId = useWorkspaceQuery((state) => state.currentShiftId);
@@ -28,6 +37,57 @@ export function CurrentShiftPage() {
   const [openingFloat, setOpeningFloat] = useState("2000.00");
   const [actualCash, setActualCash] = useState(currentShift?.expectedCash ?? "");
   const [error, setError] = useState<string | null>(null);
+  const [drawerTxns, setDrawerTxns] = useState<DrawerTransaction[]>([]);
+  const [cashDialog, setCashDialog] = useState<"CASH_IN" | "CASH_OUT" | null>(null);
+  const [cashAmount, setCashAmount] = useState("");
+  const [cashReason, setCashReason] = useState("");
+  const [cashBusy, setCashBusy] = useState(false);
+
+  const loadDrawerTransactions = useCallback(async () => {
+    if (!currentShiftId) return;
+    try {
+      const response = await apiRequest<{ drawerId: string; transactions: DrawerTransaction[] } | null>(
+        "/cash-transactions/active-drawer",
+        { cache: "no-store" },
+      );
+      setDrawerTxns(response.data?.transactions ?? []);
+    } catch {
+      setDrawerTxns([]);
+    }
+  }, [currentShiftId]);
+
+  useEffect(() => {
+    if (!currentShift) return;
+    const initial = window.setTimeout(() => void loadDrawerTransactions(), 0);
+    return () => window.clearTimeout(initial);
+  }, [currentShift, loadDrawerTransactions]);
+
+  async function submitCashMovement(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!cashDialog || cashBusy) return;
+    setCashBusy(true);
+    setError(null);
+    try {
+      await apiRequest("/cash-transactions", {
+        method: "POST",
+        body: {
+          transactionType: cashDialog,
+          amount: Number(cashAmount),
+          remarks: cashReason.trim(),
+        },
+      });
+      setCashDialog(null);
+      setCashAmount("");
+      setCashReason("");
+      await loadDrawerTransactions();
+    } catch (caught) {
+      setError(
+        caught instanceof Error ? caught.message : "The cash movement could not be recorded.",
+      );
+    } finally {
+      setCashBusy(false);
+    }
+  }
 
   useEffect(() => {
     if (currentShift) return;
@@ -118,6 +178,61 @@ export function CurrentShiftPage() {
                 <span className="text-sm text-[var(--text-muted)]">Expected cash in drawer</span>
                 <span className="text-xl font-semibold">{formatKes(currentShift.expectedCash)}</span>
               </div>
+
+              <div className="mt-5 flex flex-wrap gap-2">
+                <SecondaryButton
+                  type="button"
+                  onClick={() => { setCashDialog("CASH_IN"); setCashAmount(""); setCashReason(""); }}
+                >
+                  <ArrowDownToLine aria-hidden="true" size={15} /> Cash deposit
+                </SecondaryButton>
+                <SecondaryButton
+                  type="button"
+                  onClick={() => { setCashDialog("CASH_OUT"); setCashAmount(""); setCashReason(""); }}
+                >
+                  <ArrowUpFromLine aria-hidden="true" size={15} /> Cash pay-out
+                </SecondaryButton>
+              </div>
+
+              {cashDialog ? (
+                <form onSubmit={submitCashMovement} className="mt-4 rounded-md border border-[var(--border)] bg-[var(--surface-muted)] p-3">
+                  <p className="text-sm font-semibold">
+                    {cashDialog === "CASH_IN" ? "Record cash deposit" : "Record cash pay-out"}
+                  </p>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-[140px_minmax(0,1fr)]">
+                    <Field label="Amount (KES)" required>
+                      <Input autoFocus inputMode="decimal" value={cashAmount} onChange={(event) => setCashAmount(event.target.value)} />
+                    </Field>
+                    <Field label="Reason" required>
+                      <Input placeholder={cashDialog === "CASH_IN" ? "e.g. Change top-up" : "e.g. Petty cash, courier"} value={cashReason} onChange={(event) => setCashReason(event.target.value)} />
+                    </Field>
+                  </div>
+                  <div className="mt-3 flex justify-end gap-2">
+                    <SecondaryButton type="button" onClick={() => setCashDialog(null)}>Cancel</SecondaryButton>
+                    <PrimaryButton type="submit" disabled={cashBusy || !cashAmount || !cashReason.trim()}>
+                      {cashBusy ? "Saving..." : "Record"}
+                    </PrimaryButton>
+                  </div>
+                </form>
+              ) : null}
+
+              {drawerTxns.length ? (
+                <div className="mt-5 border-t border-[var(--border)] pt-4">
+                  <h3 className="text-xs font-semibold uppercase text-[var(--text-muted)]">Drawer movements</h3>
+                  <ul className="mt-2 space-y-1.5 text-sm">
+                    {drawerTxns.slice(0, 6).map((txn) => (
+                      <li key={txn.id} className="flex items-center justify-between gap-3">
+                        <span className="min-w-0 truncate text-[var(--text-muted)]">
+                          {formatDateTime(txn.createdAt)} - {txn.remarks}
+                        </span>
+                        <span className={txn.transactionType === "CASH_IN" ? "font-medium text-[var(--success)]" : "font-medium text-[var(--danger)]"}>
+                          {txn.transactionType === "CASH_IN" ? "+" : "-"}{formatKes(txn.amount)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
             </section>
           </div>
 

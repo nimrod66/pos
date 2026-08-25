@@ -7,6 +7,8 @@ export interface CartLine {
   lineId: string;
   medicineId: string;
   quantity: number;
+  /** Percentage discount applied at the till (0-100). */
+  discountPercent?: number;
 }
 
 interface CartStore {
@@ -34,6 +36,7 @@ interface CartStore {
   setCustomerId(customerId: string | null): void;
   setPrescriptionReferenceId(reference: string): void;
   setQuantity(medicineId: string, quantity: number): void;
+  setLineDiscount(medicineId: string, discountPercent: number): void;
 }
 
 export const useCartStore = create<CartStore>()(
@@ -133,6 +136,15 @@ export const useCartStore = create<CartStore>()(
                     ? { ...line, quantity: normalized }
                     : line,
                 ),
+        });
+      },
+      setLineDiscount(medicineId, discountPercent) {
+        const normalized = Math.max(0, Math.min(100, discountPercent));
+        set({
+          checkoutKey: null,
+          lines: get().lines.map((line) =>
+            line.medicineId === medicineId ? { ...line, discountPercent: normalized } : line,
+          ),
         });
       },
     }),

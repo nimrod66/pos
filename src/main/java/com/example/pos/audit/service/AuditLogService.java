@@ -62,4 +62,12 @@ public class AuditLogService {
                 .orElseThrow(() -> new ResourceNotFoundException("User", userId));
         return repo.findByPharmacyIdAndUserId(current.pharmacy().getId(), userId, pageable);
     }
+
+    @Transactional(readOnly = true)
+    public Page<AuditLog> getByDateRange(java.time.LocalDateTime from,
+                                         java.time.LocalDateTime to,
+                                         Pageable pageable) {
+        return repo.findByPharmacyIdAndCreatedAtBetween(
+                current.pharmacy().getId(), from, to, pageable);
+    }
 }

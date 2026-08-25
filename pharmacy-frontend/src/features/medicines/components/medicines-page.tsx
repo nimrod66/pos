@@ -3,6 +3,7 @@
 import {
   Archive,
   ArchiveRestore,
+  History,
   PackageSearch,
   Pencil,
   Plus,
@@ -30,6 +31,16 @@ import {
   workspaceGateway,
 } from "@/features/workspace/gateway/workspace-gateway";
 import type { Medicine } from "@/features/workspace/types";
+import { apiRequest } from "@/lib/api-client";
+
+interface PriceHistoryEntry {
+  id: string;
+  oldBuyingPrice: number | null;
+  oldSellingPrice: number | null;
+  newBuyingPrice: number | null;
+  newSellingPrice: number | null;
+  createdAt: string;
+}
 
 export function MedicinesPage() {
   const medicines = useWorkspaceQuery((state) => state.medicines);
@@ -46,6 +57,22 @@ export function MedicinesPage() {
   const [busyMedicineId, setBusyMedicineId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Medicine | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [priceHistory, setPriceHistory] = useState<{
+    medicine: Medicine;
+    entries: PriceHistoryEntry[];
+  } | null>(null);
+
+  async function openPriceHistory(medicine: Medicine) {
+    try {
+      const response = await apiRequest<PriceHistoryEntry[]>(
+        `/price-history?medicineId=${medicine.id}`,
+        { cache: "no-store" },
+      );
+      setPriceHistory({ medicine, entries: response.data });
+    } catch {
+      setPriceHistory({ medicine, entries: [] });
+    }
+  }
 
   function hasHistory(medicineId: string) {
     return (
@@ -248,6 +275,15 @@ export function MedicinesPage() {
                       {canWrite ? (
                         <td className="px-4 py-3.5">
                           <div className="flex justify-end gap-1">
+                            <button
+                              type="button"
+                              title={`Price history for ${medicine.brandName}`}
+                              aria-label={`Price history for ${medicine.brandName}`}
+                              onClick={() => void openPriceHistory(medicine)}
+                              className="flex size-9 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text)]"
+                            >
+                              <History aria-hidden="true" size={16} />
+                            </button>
                             <Link
                               href={`/medicines/${medicine.id}`}
                               title={`Edit ${medicine.brandName}`}
@@ -319,6 +355,70 @@ export function MedicinesPage() {
         onCancel={() => setDeleteTarget(null)}
         onConfirm={() => void handleDelete()}
       />
+
+      {priceHistory ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Price history"
+            className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-md border border-[var(--border)] bg-white p-5 shadow-xl"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold">Price history</h2>
+                <p className="mt-0.5 text-xs text-[var(--text-muted)]">
+                  {priceHistory.medicine.brandName}
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="Close price history"
+                onClick={() => setPriceHistory(null)}
+                className="text-sm text-[var(--text-muted)] hover:text-[var(--text)]"
+              >
+                ✕
+              </button>
+            </div>
+            {priceHistory.entries.length ? (
+              <table className="mt-4 w-full text-left text-sm">
+                <thead className="border-b border-[var(--border)] text-xs text-[var(--text-muted)]">
+                  <tr>
+                    <th className="pb-2 font-semibold">Changed</th>
+                    <th className="pb-2 text-right font-semibold">Old buying</th>
+                    <th className="pb-2 text-right font-semibold">New buying</th>
+                    <th className="pb-2 text-right font-semibold">Old selling</th>
+                    <th className="pb-2 text-right font-semibold">New selling</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border)]">
+                  {priceHistory.entries.map((entry) => (
+                    <tr key={entry.id}>
+                      <td className="py-2 text-xs">{new Date(entry.createdAt).toLocaleDateString()}</td>
+                      <td className="py-2 text-right">
+                        {entry.oldBuyingPrice == null ? "-" : formatKes(entry.oldBuyingPrice)}
+                      </td>
+                      <td className="py-2 text-right">
+                        {entry.newBuyingPrice == null ? "-" : formatKes(entry.newBuyingPrice)}
+                      </td>
+                      <td className="py-2 text-right">
+                        {entry.oldSellingPrice == null ? "-" : formatKes(entry.oldSellingPrice)}
+                      </td>
+                      <td className="py-2 text-right font-medium">
+                        {entry.newSellingPrice == null ? "-" : formatKes(entry.newSellingPrice)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p className="mt-4 text-sm text-[var(--text-muted)]">
+                No price changes recorded yet.
+              </p>
+            )}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

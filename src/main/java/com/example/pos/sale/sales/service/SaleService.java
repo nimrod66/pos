@@ -84,6 +84,7 @@ public class SaleService {
     private final SyncService syncService;
     private final ObjectMapper objectMapper;
     private final EntityManager entityManager;
+    private final com.example.pos.core.systemsettings.service.SystemSettingsService settingsService;
 
     public SaleService(SalesRepository salesRepository,
                        CustomerRepository customerRepository,
@@ -98,7 +99,8 @@ public class SaleService {
                        SyncProperties syncProperties,
                        SyncService syncService,
                        ObjectMapper objectMapper,
-                       EntityManager entityManager) {
+                       EntityManager entityManager,
+                       com.example.pos.core.systemsettings.service.SystemSettingsService settingsService) {
         this.salesRepository = salesRepository;
         this.customerRepository = customerRepository;
         this.stockRepository = stockRepository;
@@ -113,6 +115,7 @@ public class SaleService {
         this.syncService = syncService;
         this.objectMapper = objectMapper;
         this.entityManager = entityManager;
+        this.settingsService = settingsService;
     }
 
     @Auditable(action = "CREATE_SALE", entity = "Sale")
@@ -170,14 +173,26 @@ public class SaleService {
         BigDecimal subtotal = money(BigDecimal.ZERO);
         BigDecimal taxTotal = money(BigDecimal.ZERO);
         BigDecimal grandTotal = money(BigDecimal.ZERO);
+        BigDecimal discountTotal = money(BigDecimal.ZERO);
 
         for (SaleRequestDto.SaleItemDto line : dto.getItems()) {
             if (!lineIds.add(line.getLineId())) {
                 throw new BadRequestException("Each sale line ID must be unique", "DUPLICATE_LINE_ID");
             }
-            if (line.getDiscountRequestId() != null) {
-                throw new BadRequestException("Discount approvals are not available in this release",
-                        "DISCOUNT_NOT_IMPLEMENTED");
+            BigDecimal discountPercent = line.getDiscountPercent() == null
+                    ? BigDecimal.ZERO : line.getDiscountPercent();
+            if (discountPercent.signum() < 0 || discountPercent.compareTo(HUNDRED) > 0) {
+                throw new BadRequestException(
+                        "Line discount must be between 0 and 100 percent", "INVALID_DISCOUNT_PERCENT");
+            }
+            if (discountPercent.signum() > 0) {
+                BigDecimal maxPercent = maxDiscountPercent();
+                if (discountPercent.compareTo(maxPercent) > 0) {
+                    throw new ConflictException(
+                            "Line discounts above " + maxPercent.toPlainString()
+                                    + "% are not allowed at this till",
+                            "DISCOUNT_LIMIT_EXCEEDED");
+                }
             }
 
             int requestedQuantity = exactQuantity(line.getQuantity());
@@ -205,7 +220,8 @@ public class SaleService {
                 MedicineBatches batch = stock.getMedicineBatches();
                 BigDecimal unitPrice = requiredPrice(medicine, line.getExpectedUnitPrice());
                 int allocatedQuantity = Math.min(available, remaining);
-                LineAmounts amounts = calculateLineAmounts(unitPrice, allocatedQuantity, medicine.getTax());
+                LineAmounts amounts = calculateLineAmounts(
+                        unitPrice, allocatedQuantity, medicine.getTax(), discountPercent);
 
                 SaleItems saleItem = SaleItems.builder()
                         .sales(sale)
@@ -213,7 +229,7 @@ public class SaleService {
                         .clientLineId(line.getLineId())
                         .quantity(allocatedQuantity)
                         .price(unitPrice)
-                        .discount(money(BigDecimal.ZERO))
+                        .discount(amounts.discount())
                         .taxRate(amounts.taxRate())
                         .taxableAmount(amounts.taxableAmount())
                         .tax(amounts.tax())
@@ -228,6 +244,7 @@ public class SaleService {
                 subtotal = subtotal.add(amounts.taxableAmount());
                 taxTotal = taxTotal.add(amounts.tax());
                 grandTotal = grandTotal.add(amounts.total());
+                discountTotal = discountTotal.add(amounts.discount());
             }
 
             if (remaining > 0) {
@@ -240,11 +257,12 @@ public class SaleService {
         subtotal = money(subtotal);
         taxTotal = money(taxTotal);
         grandTotal = money(grandTotal);
+        discountTotal = money(discountTotal);
         PaymentTotals paymentTotals = buildPayments(sale, dto, grandTotal, checkoutAt);
         boolean pendingOnlinePayment = paymentTotals.pendingOnlinePayment();
 
         sale.setSubtotal(subtotal);
-        sale.setDiscountTotal(money(BigDecimal.ZERO));
+        sale.setDiscountTotal(discountTotal);
         sale.setTax(taxTotal);
         sale.setTotal(grandTotal);
         sale.setPaidTotal(paymentTotals.paidTotal());
@@ -255,6 +273,16 @@ public class SaleService {
         sale.setPaymentStatus(pendingOnlinePayment
                 ? Sales.PaymentStatus.IN_PROGRESS : Sales.PaymentStatus.PAID);
         sale.setCompletedAt(pendingOnlinePayment ? null : checkoutAt);
+
+        // Simple loyalty accrual: one point per full KES 100 spent.
+        if (!pendingOnlinePayment && customer != null) {
+            int earned = grandTotal.movePointLeft(2).intValue();
+            if (earned > 0) {
+                customer.setLoyaltyPoints(
+                        (customer.getLoyaltyPoints() == null ? 0 : customer.getLoyaltyPoints())
+                                + earned);
+            }
+        }
 
         if (!pendingOnlinePayment) {
             sale.getReceipts().add(Receipts.builder()
@@ -620,17 +648,32 @@ public class SaleService {
         return currentPrice;
     }
 
-    private LineAmounts calculateLineAmounts(BigDecimal unitPrice, int quantity, Tax taxCategory) {
+    private LineAmounts calculateLineAmounts(BigDecimal unitPrice, int quantity,
+                                             Tax taxCategory, BigDecimal discountPercent) {
         BigDecimal taxRate = taxCategory == null || !taxCategory.isActive()
                 || taxCategory.getTaxRate() == null ? BigDecimal.ZERO : taxCategory.getTaxRate();
         if (taxRate.signum() < 0 || taxRate.compareTo(HUNDRED) > 0) {
             throw new ConflictException("The medicine has an invalid tax rate", "INVALID_TAX_RATE");
         }
-        BigDecimal total = money(unitPrice.multiply(BigDecimal.valueOf(quantity)));
+        BigDecimal gross = money(unitPrice.multiply(BigDecimal.valueOf(quantity)));
+        BigDecimal discount = money(gross.multiply(discountPercent).divide(HUNDRED, 2, RoundingMode.HALF_UP));
+        BigDecimal total = money(gross.subtract(discount));
         BigDecimal tax = taxRate.signum() == 0 ? money(BigDecimal.ZERO)
                 : total.multiply(taxRate)
                 .divide(HUNDRED.add(taxRate), 2, RoundingMode.HALF_UP);
-        return new LineAmounts(taxRate, money(total.subtract(tax)), money(tax), total);
+        return new LineAmounts(taxRate, money(total.subtract(tax)), money(tax), total, discount);
+    }
+
+    private BigDecimal maxDiscountPercent() {
+        String configured = settingsService.resolveSettingValue(
+                "sale.max_discount_percent", current.branchId(), current.pharmacyId(), "20");
+        try {
+            BigDecimal value = new BigDecimal(configured.trim());
+            if (value.signum() < 0) return BigDecimal.ZERO;
+            return value.min(HUNDRED);
+        } catch (NumberFormatException ex) {
+            return new BigDecimal("20");
+        }
     }
 
     private PaymentTotals buildPayments(Sales sale,
@@ -876,7 +919,8 @@ public class SaleService {
     private record LineAmounts(BigDecimal taxRate,
                                BigDecimal taxableAmount,
                                BigDecimal tax,
-                               BigDecimal total) {
+                               BigDecimal total,
+                               BigDecimal discount) {
     }
 
     private record PaymentTotals(BigDecimal paidTotal,

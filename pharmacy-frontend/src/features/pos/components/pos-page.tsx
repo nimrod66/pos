@@ -67,6 +67,7 @@ export function PosPage() {
   const addItem = useCartStore((state) => state.addItem);
   const removeItem = useCartStore((state) => state.removeItem);
   const setQuantity = useCartStore((state) => state.setQuantity);
+  const setLineDiscount = useCartStore((state) => state.setLineDiscount);
   const setPaymentMethod = useCartStore((state) => state.setPaymentMethod);
   const setMpesaMode = useCartStore((state) => state.setMpesaMode);
   const setMpesaPhone = useCartStore((state) => state.setMpesaPhone);
@@ -280,7 +281,28 @@ export function PosPage() {
     const medicine = medicines.find((item) => item.id === line.medicineId);
     return medicine ? [{ ...line, medicine, stock: stockForMedicine(batches, medicine.id) }] : [];
   });
-  const total = addMoney(...detailedLines.map((line) => multiplyMoney(line.medicine.sellingPrice, line.quantity)));
+  const lineGross = (line: (typeof detailedLines)[number]) =>
+    multiplyMoney(line.medicine.sellingPrice, line.quantity);
+  const total = addMoney(
+    ...detailedLines.map((line) => {
+      const gross = lineGross(line);
+      const discount = line.discountPercent ?? 0;
+      return discount > 0
+        ? centsToMoney(
+            Math.round(moneyToCents(gross) * (1 - discount / 100)),
+          )
+        : gross;
+    }),
+  );
+  const totalDiscount = addMoney(
+    ...detailedLines.map((line) => {
+      const discount = line.discountPercent ?? 0;
+      if (discount <= 0) return "0.00";
+      return centsToMoney(
+        Math.round(moneyToCents(lineGross(line)) * (discount / 100)),
+      );
+    }),
+  );
   const itemCount = detailedLines.reduce((sum, line) => sum + line.quantity, 0);
   const requiresApproval = detailedLines.some((line) => line.medicine.prescriptionRequired);
   const validCashTendered =
@@ -296,6 +318,9 @@ export function PosPage() {
   const validMpesaPhone = /^(?:\+?254|0)(?:7|1)\d{8}$/.test(
     mpesaPhone.replace(/[\s-]/g, ""),
   );
+  // The backend enforces the configured sale.max_discount_percent; the till
+  // caps input at the common default so cashiers get instant feedback.
+  const maxDiscountPercent = 20;
 
   function addMedicine(medicineId: string, availableStock?: number) {
     const medicine = medicines.find((item) => item.id === medicineId);
@@ -400,10 +425,11 @@ export function PosPage() {
       const saleId = await workspaceGateway.completeSale({
         idempotencyKey: prepareCheckoutKey(),
         customerId: customerId ?? undefined,
-        items: detailedLines.map(({ lineId, medicineId, quantity }) => ({
+        items: detailedLines.map(({ lineId, medicineId, quantity, discountPercent }) => ({
           lineId,
           medicineId,
           quantity,
+          discountPercent: discountPercent ?? 0,
         })),
         paymentMethod,
         mpesaMode,
@@ -506,10 +532,26 @@ export function PosPage() {
       <aside className={cn("min-h-[620px] flex-col bg-white xl:sticky xl:top-[6.25rem] xl:flex xl:h-[calc(100vh-6.25rem)]", mobileView === "cart" ? "flex" : "hidden")}>
         <div className="border-b border-[var(--border)] px-4 py-4 sm:px-5"><div className="flex items-center justify-between"><h2 className="text-base font-semibold">Current sale</h2><span className="text-xs text-[var(--text-muted)]">{itemCount} {itemCount === 1 ? "item" : "items"}</span></div></div>
         <div className="min-h-48 flex-1 overflow-y-auto">
-          {detailedLines.length ? <div className="divide-y divide-[var(--border)]">{detailedLines.map(({ medicine, quantity, stock }) => (
-            <div className="p-4" key={medicine.id}>
-              <div className="flex items-start gap-3"><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{medicine.brandName}</p><p className="mt-0.5 text-xs text-[var(--text-muted)]">{formatKes(medicine.sellingPrice)} each · {stock} available</p></div><p className="shrink-0 text-sm font-semibold">{formatKes(multiplyMoney(medicine.sellingPrice, quantity))}</p></div>
-              <div className="mt-3 flex items-center justify-between"><div className="flex h-9 items-center rounded-md border border-[var(--border-strong)]"><button type="button" title="Decrease quantity" aria-label={`Decrease ${medicine.brandName} quantity`} onClick={() => setQuantity(medicine.id, quantity - 1)} className="flex size-8 items-center justify-center hover:bg-[var(--surface-muted)]"><Minus aria-hidden="true" size={15} /></button><span className="w-10 text-center text-sm font-semibold">{quantity}</span><button type="button" title="Increase quantity" aria-label={`Increase ${medicine.brandName} quantity`} disabled={quantity >= stock} onClick={() => setQuantity(medicine.id, Math.min(stock, quantity + 1))} className="flex size-8 items-center justify-center hover:bg-[var(--surface-muted)] disabled:opacity-40"><Plus aria-hidden="true" size={15} /></button></div><button type="button" title="Remove item" aria-label={`Remove ${medicine.brandName}`} onClick={() => removeItem(medicine.id)} className="flex size-9 items-center justify-center rounded-md text-[var(--danger)] hover:bg-[var(--danger-soft)]"><Trash2 aria-hidden="true" size={17} /></button></div>
+          {detailedLines.length ? <div className="divide-y divide-[var(--border)]">{detailedLines.map(({ medicine, quantity, stock, discountPercent, lineId }) => (
+            <div className="p-4" key={lineId}>
+              <div className="flex items-start gap-3"><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{medicine.brandName}</p><p className="mt-0.5 text-xs text-[var(--text-muted)]">{formatKes(medicine.sellingPrice)} each · {stock} available</p></div><p className="shrink-0 text-sm font-semibold">{formatKes(centsToMoney(Math.round(moneyToCents(multiplyMoney(medicine.sellingPrice, quantity)) * (1 - (discountPercent ?? 0) / 100))))}</p></div>
+              <div className="mt-3 flex items-center justify-between"><div className="flex h-9 items-center rounded-md border border-[var(--border-strong)]"><button type="button" title="Decrease quantity" aria-label={`Decrease ${medicine.brandName} quantity`} onClick={() => setQuantity(medicine.id, quantity - 1)} className="flex size-8 items-center justify-center hover:bg-[var(--surface-muted)]"><Minus aria-hidden="true" size={15} /></button><span className="w-10 text-center text-sm font-semibold">{quantity}</span><button type="button" title="Increase quantity" aria-label={`Increase ${medicine.brandName} quantity`} disabled={quantity >= stock} onClick={() => setQuantity(medicine.id, Math.min(stock, quantity + 1))} className="flex size-8 items-center justify-center hover:bg-[var(--surface-muted)] disabled:opacity-40"><Plus aria-hidden="true" size={15} /></button></div>
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-1 text-xs text-[var(--text-muted)]" title={`Line discount % (max ${maxDiscountPercent})`}>
+                  Disc %
+                  <input
+                    inputMode="numeric"
+                    aria-label={`Discount percent for ${medicine.brandName}`}
+                    className="h-8 w-12 rounded-md border border-[var(--border-strong)] px-2 text-right text-sm"
+                    value={discountPercent ?? 0}
+                    onChange={(event) => {
+                      const value = Math.max(0, Math.min(maxDiscountPercent, Number(event.target.value) || 0));
+                      setLineDiscount(medicine.id, value);
+                    }}
+                  />
+                </label>
+                <button type="button" title="Remove item" aria-label={`Remove ${medicine.brandName}`} onClick={() => removeItem(medicine.id)} className="flex size-9 items-center justify-center rounded-md text-[var(--danger)] hover:bg-[var(--danger-soft)]"><Trash2 aria-hidden="true" size={17} /></button>
+              </div></div>
             </div>
           ))}</div> : <div className="flex h-full min-h-56 flex-col items-center justify-center px-5 text-center"><PackageSearch aria-hidden="true" className="text-[var(--text-subtle)]" size={30} /><p className="mt-3 text-sm font-semibold">Cart is empty</p><p className="mt-1 text-xs text-[var(--text-muted)]">Select a product to begin the sale.</p></div>}
         </div>
@@ -622,7 +664,13 @@ export function PosPage() {
           {paymentMethod === "CASH" ? <label className="mt-3 block"><span className="mb-1.5 block text-xs font-semibold">Cash tendered</span><Input inputMode="decimal" placeholder={total} value={cashTendered} onChange={(event) => setCashTendered(event.target.value)} />{cashTendered && validCashTendered && cashCoversTotal ? <span className="mt-1.5 block text-xs text-[var(--text-muted)]">Change due: {formatKes(changeDue)}</span> : null}</label> : null}
           {requiresApproval && canApprovePrescription ? <label className="mt-3 block rounded-md bg-[var(--accent-soft)] p-3 text-sm"><span className="mb-1.5 flex items-center gap-1.5 font-semibold"><ShieldCheck aria-hidden="true" size={16} /> Prescription</span><Select value={prescriptionReferenceId} onChange={(event) => setPrescriptionReferenceId(event.target.value)}><option value="">Select an active prescription</option>{prescriptionReferenceId && !prescriptions.some((item) => item.id === prescriptionReferenceId) ? <option value={prescriptionReferenceId}>Selected prescription</option> : null}{prescriptions.map((prescription) => <option key={prescription.id} value={prescription.id}>{prescription.prescriptionNumber} - {prescription.customerName}</option>)}</Select></label> : null}
           {requiresApproval && !canApprovePrescription ? <div className="mt-3 flex items-start gap-2.5 rounded-md bg-[var(--warning-soft)] p-3 text-sm text-[var(--warning)]"><ShieldCheck aria-hidden="true" className="mt-0.5 shrink-0" size={16} /><span><span className="block font-semibold">Pharmacist approval required</span><span className="mt-0.5 block text-xs">A staff member with prescription approval permission must complete this sale.</span></span></div> : null}
-          <div className="my-4 flex items-center justify-between"><span className="text-sm text-[var(--text-muted)]">Total due</span><span className="text-2xl font-semibold">{formatKes(total)}</span></div>
+                      {moneyToCents(totalDiscount) > 0 ? (
+              <div className="my-2 flex items-center justify-between text-xs text-[var(--success)]">
+                <span>Discount applied</span>
+                <span>-{formatKes(totalDiscount)}</span>
+              </div>
+            ) : null}
+            <div className="my-4 flex items-center justify-between"><span className="text-sm text-[var(--text-muted)]">Total due</span><span className="text-2xl font-semibold">{formatKes(total)}</span></div>
           <FormError message={checkoutError} />
           <PrimaryButton type="button" onClick={() => void handleCheckout()} disabled={submitting || !currentShiftId || detailedLines.length === 0 || (paymentMethod === "MPESA" && (mpesaMode === "STK" ? !paymentCapabilities?.mpesaStkConfigured || !validMpesaPhone : !mpesaReference.trim())) || (paymentMethod === "CASH" && (!validCashTendered || !cashCoversTotal)) || (requiresApproval && (!canApprovePrescription || !prescriptionReferenceId.trim()))} className="mt-3 h-12 w-full text-base">{submitting ? paymentMethod === "MPESA" && mpesaMode === "STK" ? "Waiting for M-Pesa..." : "Completing sale..." : paymentMethod === "MPESA" && mpesaMode === "STK" ? `Send STK Push - ${formatKes(total)}` : `Complete sale - ${formatKes(total)}`}</PrimaryButton>
         </div>
