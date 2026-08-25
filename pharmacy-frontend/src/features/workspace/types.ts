@@ -134,6 +134,8 @@ export interface Sale {
   taxTotal: string;
   total: string;
   refundTotal: string;
+  cashTendered: string | null;
+  changeDue: string | null;
   idempotencyKey: string;
 }
 

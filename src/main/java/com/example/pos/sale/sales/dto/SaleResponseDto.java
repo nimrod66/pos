@@ -32,6 +32,7 @@ public class SaleResponseDto {
     private BigDecimal total;
     private BigDecimal refundTotal;
     private BigDecimal paidTotal;
+    private BigDecimal cashTendered;
     private BigDecimal changeDue;
     private UUID shiftId;
     private UUID prescriptionReferenceId;
@@ -112,6 +113,7 @@ public class SaleResponseDto {
                 .taxTotal(sale.getTax())
                 .total(sale.getTotal())
                 .paidTotal(sale.getPaidTotal())
+                .cashTendered(sale.getCashTendered())
                 .changeDue(sale.getChangeDue())
                 .shiftId(sale.getShift() != null ? sale.getShift().getId() : null)
                 .branchId(sale.getBranch() != null ? sale.getBranch().getId() : null)

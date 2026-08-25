@@ -200,6 +200,9 @@ export interface BackendSale {
   taxTotal: number;
   total: number;
   refundTotal: number;
+  paidTotal: number;
+  cashTendered: number | null;
+  changeDue: number | null;
   shiftId: string;
   userName: string;
   items: BackendSaleItem[];

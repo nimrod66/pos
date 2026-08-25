@@ -1,4 +1,4 @@
-import type {
+﻿import type {
   Batch,
   Category,
   GoodsReceipt,
@@ -309,6 +309,8 @@ export function createSeedWorkspace(): WorkspaceSeed {
       taxTotal: "0.00",
       total: "24.00",
       refundTotal: "0.00",
+      cashTendered: "24.00",
+      changeDue: "0.00",
       idempotencyKey: "seed-checkout-1",
     },
     {
@@ -337,6 +339,8 @@ export function createSeedWorkspace(): WorkspaceSeed {
       taxTotal: "38.62",
       total: "280.00",
       refundTotal: "0.00",
+      cashTendered: null,
+      changeDue: null,
       idempotencyKey: "seed-checkout-2",
     },
   ];

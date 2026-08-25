@@ -287,6 +287,18 @@ export function SaleDetailPage() {
                 ) : null}
               </div>
             ))}
+            {sale.cashTendered != null && sale.changeDue != null ? (
+              <div className="mt-3 flex justify-between gap-4 text-xs text-[var(--text-muted)]">
+                <span>Cash tendered</span>
+                <span className="font-mono">{formatKes(sale.cashTendered)}</span>
+              </div>
+            ) : null}
+            {sale.cashTendered != null && sale.changeDue != null && Number(sale.changeDue) > 0 ? (
+              <div className="mt-1 flex justify-between gap-4 font-semibold">
+                <span>Change due</span>
+                <span>{formatKes(sale.changeDue)}</span>
+              </div>
+            ) : null}
           </div>
           <p className="mt-6 text-center text-xs text-[var(--text-muted)]">
             {settings.receiptFooter}

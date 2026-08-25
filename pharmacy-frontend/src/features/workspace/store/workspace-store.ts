@@ -608,6 +608,16 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           taxTotal: centsToMoney(taxCents),
           total,
           refundTotal: "0.00",
+          cashTendered:
+            input.paymentMethod === "CASH"
+              ? input.cashTendered ?? total
+              : null,
+          changeDue:
+            input.paymentMethod === "CASH" && input.cashTendered
+              ? centsToMoney(
+                  Math.max(0, moneyToCents(input.cashTendered) - totalCents),
+                )
+              : "0.00",
           idempotencyKey: input.idempotencyKey,
         };
         const updatedShift = {
