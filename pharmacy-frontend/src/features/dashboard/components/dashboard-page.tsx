@@ -12,7 +12,9 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { FormError } from "@/components/ui/form-controls";
+import { PERMISSIONS } from "@/features/auth/access-control";
 import { useAuthStore } from "@/features/auth/store/auth-store";
+import { usePermission } from "@/features/auth/hooks/use-permission";
 import { formatTime } from "@/lib/format";
 import { addMoney, formatKes } from "@/features/workspace/lib/money";
 import { todayIsoDate } from "@/features/workspace/lib/workspace-helpers";
@@ -27,6 +29,7 @@ const reportableSaleStatuses = new Set(["COMPLETED", "PARTIALLY_RETURNED", "RETU
 
 export function DashboardPage() {
   const session = useAuthStore((state) => state.session);
+  const canViewSales = usePermission(PERMISSIONS.REPORT_SALES_READ);
   const currentShiftId = useWorkspaceQuery((state) => state.currentShiftId);
   const sales = useWorkspaceQuery((state) => state.sales);
   const shifts = useWorkspaceQuery((state) => state.shifts);
@@ -66,24 +69,28 @@ export function DashboardPage() {
       sale.completedAt.slice(0, 10) === today,
   );
   const summary = [
-    {
-      detail: report?.pharmacyWide
-        ? "Across all active branches"
-        : `${report?.completedSalesCount ?? 0} completed sale${report?.completedSalesCount === 1 ? "" : "s"}`,
-      icon: Banknote,
-      label: "Today's sales",
-      tone: "var(--brand)",
-      value: report ? formatKes(report.netSales) : "-",
-    },
-    {
-      detail: report?.pharmacyWide
-        ? `${report.completedSalesCount} receipts across all branches`
-        : `${report?.completedSalesCount ?? 0} receipt${report?.completedSalesCount === 1 ? "" : "s"} issued`,
-      icon: ReceiptText,
-      label: "Transactions",
-      tone: "var(--accent)",
-      value: report ? String(report.completedSalesCount) : "-",
-    },
+    ...(canViewSales
+      ? [
+          {
+            detail: report?.pharmacyWide
+              ? "Across all active branches"
+              : `${report?.completedSalesCount ?? 0} completed sale${report?.completedSalesCount === 1 ? "" : "s"}`,
+            icon: Banknote,
+            label: "Today's sales",
+            tone: "var(--brand)",
+            value: report && report.netSales != null ? formatKes(report.netSales) : "-",
+          },
+          {
+            detail: report?.pharmacyWide
+              ? `${report.completedSalesCount ?? 0} receipts across all branches`
+              : `${report?.completedSalesCount ?? 0} receipt${report?.completedSalesCount === 1 ? "" : "s"} issued`,
+            icon: ReceiptText,
+            label: "Transactions",
+            tone: "var(--accent)",
+            value: report && report.completedSalesCount != null ? String(report.completedSalesCount) : "-",
+          },
+        ]
+      : []),
     {
       detail: "At or below reorder level",
       icon: CircleAlert,
@@ -144,7 +151,14 @@ export function DashboardPage() {
         ))}
       </section>
 
-      <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
+      <div
+        className={
+          canViewSales
+            ? "mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]"
+            : "mt-6 grid gap-6"
+        }
+      >
+        {canViewSales ? (
         <section className="overflow-hidden rounded-md border border-[var(--border)] bg-white">
           <div className="flex h-14 items-center justify-between border-b border-[var(--border)] px-4 sm:px-5">
             <div>
@@ -219,8 +233,9 @@ export function DashboardPage() {
             </table>
           </div>
         </section>
+        ) : null}
 
-        <aside className="space-y-4">
+        <aside className={canViewSales ? "space-y-4" : "space-y-6"}>
           <section className="rounded-md border border-[var(--border)] bg-white p-4">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold">Current shift</h2>

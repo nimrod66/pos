@@ -22,12 +22,14 @@ describe("access control", () => {
     expect(permissions).toContain(PERMISSIONS.POS_SELL);
   });
 
-  it("requires price permission when creating a medicine", () => {
+  it("lets store keepers create medicines with prices, cashiers cannot", () => {
     const storeKeeper = permissionsForRoles(["STORE_KEEPER"]);
+    const cashier = permissionsForRoles(["CASHIER"]);
     const owner = permissionsForRoles(["OWNER"]);
 
-    expect(canAccessPath("/medicines/new", storeKeeper)).toBe(false);
+    expect(canAccessPath("/medicines/new", storeKeeper)).toBe(true);
     expect(canAccessPath("/medicines/med-1", storeKeeper)).toBe(true);
+    expect(canAccessPath("/medicines/new", cashier)).toBe(false);
     expect(canAccessPath("/medicines/new", owner)).toBe(true);
   });
 
@@ -36,7 +38,7 @@ describe("access control", () => {
       "/pos",
     );
     expect(homePathForPermissions(permissionsForRoles(["STORE_KEEPER"]))).toBe(
-      "/inventory",
+      "/dashboard",
     );
   });
 

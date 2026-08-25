@@ -8,7 +8,7 @@ public record DashboardReportDto(
         UUID branchId,
         boolean pharmacyWide,
         LocalDate date,
-        int completedSalesCount,
+        Integer completedSalesCount,
         BigDecimal grossSales,
         BigDecimal refunds,
         BigDecimal netSales,

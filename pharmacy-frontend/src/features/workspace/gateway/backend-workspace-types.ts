@@ -298,10 +298,10 @@ export interface BackendDashboardReport {
   branchId: string | null;
   pharmacyWide: boolean;
   date: string;
-  completedSalesCount: number;
-  grossSales: number;
-  refunds: number;
-  netSales: number;
+  completedSalesCount: number | null;
+  grossSales: number | null;
+  refunds: number | null;
+  netSales: number | null;
   lowStockCount: number;
   totalStockItems: number;
   nearExpiryCount: number;

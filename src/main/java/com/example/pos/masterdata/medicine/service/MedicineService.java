@@ -60,9 +60,10 @@ public class MedicineService {
     @Auditable(action = "CREATE_MEDICINE", entity = "Medicine")
     public Medicine createMedicine(MedicineRequestDto dto) {
         UUID pharmacyId = current.pharmacy().getId();
-        String barcode = dto.getBarcode().trim();
+        String barcode = normalizeOptional(dto.getBarcode());
         String sku = normalizeSku(dto.getSku());
-        if (medicineRepository.existsByPharmacyIdAndBarcode(pharmacyId, barcode)) {
+        if (barcode != null
+                && medicineRepository.existsByPharmacyIdAndBarcode(pharmacyId, barcode)) {
             throw new ConflictException("Barcode " + dto.getBarcode() + " already exists");
         }
         if (sku != null && medicineRepository.existsByPharmacyIdAndSkuIgnoreCase(pharmacyId, sku)) {
@@ -121,10 +122,11 @@ public class MedicineService {
     public Medicine updateMedicine(UUID id, MedicineRequestDto dto) {
         Medicine medicine = getMedicineById(id);
         UUID pharmacyId = current.pharmacy().getId();
-        String barcode = dto.getBarcode().trim();
+        String barcode = normalizeOptional(dto.getBarcode());
         String sku = normalizeSku(dto.getSku());
 
-        if (medicineRepository.existsByPharmacyIdAndBarcodeAndIdNot(pharmacyId, barcode, id)) {
+        if (barcode != null
+                && medicineRepository.existsByPharmacyIdAndBarcodeAndIdNot(pharmacyId, barcode, id)) {
             throw new ConflictException("Barcode " + dto.getBarcode() + " already exists");
         }
         if (sku != null && medicineRepository.existsByPharmacyIdAndSkuIgnoreCaseAndIdNot(

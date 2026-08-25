@@ -35,6 +35,7 @@ import { AccessRestricted } from "@/features/auth/components/access-restricted";
 import {
   canAccess,
   canAccessPath,
+  homePathForPermissions,
   PERMISSIONS,
   roleLabel,
   type AccessRule,
@@ -538,7 +539,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </button>
             </div>
           ) : null}
-          {routeAllowed ? children : <AccessRestricted />}
+          {routeAllowed ? (
+            children
+          ) : (
+            <AccessRestricted
+              homePath={(() => {
+                const home = homePathForPermissions(session.user.permissions);
+                return canAccessPath(home, session.user.permissions) ? home : undefined;
+              })()}
+            />
+          )}
         </main>
       </div>
     </div>

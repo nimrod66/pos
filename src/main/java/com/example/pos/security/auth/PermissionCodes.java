@@ -31,7 +31,6 @@ public final class PermissionCodes {
     public static final String SHIFT_VARIANCE_APPROVE = "shift.variance.approve";
     public static final String REPORT_SALES_READ = "report.sales.read";
     public static final String REPORT_INVENTORY_READ = "report.inventory.read";
-    public static final String REPORT_PROFIT_READ = "report.profit.read";
     public static final String USER_MANAGE = "user.manage";
     public static final String SETTINGS_MANAGE = "settings.manage";
     public static final String AUDIT_READ = "audit.read";
@@ -67,7 +66,6 @@ public final class PermissionCodes {
             SHIFT_VARIANCE_APPROVE,
             REPORT_SALES_READ,
             REPORT_INVENTORY_READ,
-            REPORT_PROFIT_READ,
             USER_MANAGE,
             SETTINGS_MANAGE,
             AUDIT_READ,
@@ -80,7 +78,8 @@ public final class PermissionCodes {
             "OWNER", ALL.stream().filter(code -> !PRESCRIPTION_APPROVE.equals(code)).toList(),
             "BRANCH_MANAGER", List.of(
                     DASHBOARD_READ, POS_DISCOUNT_APPROVE, SALE_READ, SALE_RECEIPT_REPRINT,
-                    SALE_VOID, SALE_RETURN, MEDICINE_READ, INVENTORY_READ,
+                    SALE_VOID, SALE_RETURN, MEDICINE_READ, MEDICINE_WRITE,
+                    MEDICINE_PRICE_WRITE, INVENTORY_READ,
                     INVENTORY_ADJUST_APPROVE, SUPPLIER_READ, CUSTOMER_READ,
                     CUSTOMER_WRITE, PURCHASE_ORDER_READ, SHIFT_VARIANCE_APPROVE,
                     REPORT_SALES_READ, REPORT_INVENTORY_READ, TERMINAL_READ,
@@ -94,11 +93,12 @@ public final class PermissionCodes {
                     SALE_RETURN, MEDICINE_READ, CUSTOMER_READ, CUSTOMER_WRITE,
                     SHIFT_OPEN, SHIFT_CLOSE),
             "STORE_KEEPER", List.of(
-                    MEDICINE_READ, MEDICINE_WRITE, INVENTORY_READ, INVENTORY_RECEIVE,
+                    DASHBOARD_READ, MEDICINE_READ, MEDICINE_WRITE, MEDICINE_PRICE_WRITE,
+                    INVENTORY_READ, INVENTORY_RECEIVE,
                     INVENTORY_ADJUST_REQUEST, SUPPLIER_READ, SUPPLIER_WRITE,
                     PURCHASE_ORDER_READ, PURCHASE_ORDER_WRITE, REPORT_INVENTORY_READ),
             "PHARMACY_TECHNICIAN", List.of(
-                    POS_SELL, SALE_READ, SALE_RECEIPT_REPRINT, MEDICINE_READ,
+                    DASHBOARD_READ, POS_SELL, SALE_READ, SALE_RECEIPT_REPRINT, MEDICINE_READ,
                     INVENTORY_READ, INVENTORY_RECEIVE, SUPPLIER_READ,
                     CUSTOMER_READ, CUSTOMER_WRITE, PURCHASE_ORDER_READ,
                     SHIFT_OPEN, SHIFT_CLOSE, PRESCRIPTION_READ));

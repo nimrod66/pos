@@ -376,9 +376,14 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
     );
     return {
       ...response.data,
-      grossSales: amount(response.data.grossSales),
-      netSales: amount(response.data.netSales),
-      refunds: amount(response.data.refunds),
+      grossSales:
+        response.data.grossSales == null
+          ? null
+          : amount(response.data.grossSales),
+      netSales:
+        response.data.netSales == null ? null : amount(response.data.netSales),
+      refunds:
+        response.data.refunds == null ? null : amount(response.data.refunds),
     };
   }
 

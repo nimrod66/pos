@@ -264,10 +264,10 @@ export interface PosLookupItem {
 export interface DashboardReport {
   pharmacyWide: boolean;
   date: string;
-  completedSalesCount: number;
-  grossSales: string;
-  refunds: string;
-  netSales: string;
+  completedSalesCount: number | null;
+  grossSales: string | null;
+  refunds: string | null;
+  netSales: string | null;
   lowStockCount: number;
   totalStockItems: number;
   nearExpiryCount: number;

@@ -28,7 +28,7 @@ public class ReportingGraphQLController {
     }
 
     @QueryMapping
-    @PreAuthorize("hasAnyAuthority('dashboard.read', 'report.sales.read', 'report.inventory.read')")
+    @PreAuthorize("hasAuthority('dashboard.read')")
     public Map<String, Object> dashboard(@Argument UUID branchId) {
         return reportingService.getDashboard(branchId);
     }

@@ -145,7 +145,6 @@ Suggested navigation guards:
 | Return sale | `sale.return` |
 | Sales reports | `report.sales.read` |
 | Inventory reports | `report.inventory.read` |
-| Profit reports | `report.profit.read` |
 | Staff management | `user.manage` |
 | Settings | `settings.manage` |
 | Audit | `audit.read` |

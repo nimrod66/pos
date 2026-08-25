@@ -20,4 +20,7 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
     Page<Notification> findByBranchIdOrderByCreatedAtDesc(UUID branchId, Pageable pageable);
 
     Optional<Notification> findByIdAndBranchId(UUID id, UUID branchId);
+
+    boolean existsByBranchIdAndTypeAndReferenceIdAndStatus(
+            UUID branchId, Notification.Type type, UUID referenceId, Notification.Status status);
 }

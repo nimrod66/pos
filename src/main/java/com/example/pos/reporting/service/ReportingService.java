@@ -80,18 +80,21 @@ public class ReportingService {
                                            boolean pharmacyWide) {
         List<Branch> branches = resolveBranches(branchId, pharmacyWide);
         LocalDate reportDate = date == null ? LocalDate.now(clock) : date;
-        SalesReportDto sales = getSalesReportInternal(
-                branchId, branches, reportDate, reportDate, pharmacyWide);
+        boolean includeSales = current.hasAuthority("report.sales.read");
+        SalesReportDto sales = includeSales
+                ? getSalesReportInternal(
+                        branchId, branches, reportDate, reportDate, pharmacyWide)
+                : null;
         InventoryReportDto inventory = getInventoryReportInternal(
                 branchId, branches, reportDate, pharmacyWide);
         return new DashboardReportDto(
                 pharmacyWide ? null : branchId,
                 pharmacyWide,
                 reportDate,
-                sales.completedSalesCount(),
-                sales.grossSales(),
-                sales.refunds(),
-                sales.netSales(),
+                sales == null ? null : sales.completedSalesCount(),
+                sales == null ? null : sales.grossSales(),
+                sales == null ? null : sales.refunds(),
+                sales == null ? null : sales.netSales(),
                 inventory.lowStockCount(),
                 inventory.batchCount(),
                 inventory.nearExpiryCount(),
@@ -103,8 +106,10 @@ public class ReportingService {
     public Map<String, Object> getDashboard(UUID branchId) {
         DashboardReportDto report = getDashboard(branchId, null);
         Map<String, Object> dashboard = new HashMap<>();
-        dashboard.put("todaySalesCount", report.completedSalesCount());
-        dashboard.put("todaySalesTotal", report.netSales());
+        if (report.completedSalesCount() != null) {
+            dashboard.put("todaySalesCount", report.completedSalesCount());
+            dashboard.put("todaySalesTotal", report.netSales());
+        }
         dashboard.put("lowStockCount", report.lowStockCount());
         dashboard.put("totalStockItems", report.totalStockItems());
         return dashboard;

@@ -1,8 +1,12 @@
-import { ShieldX } from "lucide-react";
+"use client";
 
-import { SecondaryLink } from "@/components/ui/buttons";
+import { LogOut, ShieldX } from "lucide-react";
+
+import { SecondaryButton, SecondaryLink } from "@/components/ui/buttons";
+import { useAuthStore } from "@/features/auth/store/auth-store";
 
 export function AccessRestricted({ homePath }: { homePath?: string }) {
+  const signOut = useAuthStore((state) => state.signOut);
   return (
     <section className="rounded-md border border-[var(--border)] bg-white p-6">
       <ShieldX
@@ -14,11 +18,14 @@ export function AccessRestricted({ homePath }: { homePath?: string }) {
       <p className="mt-1 text-sm text-[var(--text-muted)]">
         Your active roles do not include permission for this workspace.
       </p>
-      {homePath ? (
-        <SecondaryLink href={homePath} className="mt-4">
-          Return to workspace
-        </SecondaryLink>
-      ) : null}
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        {homePath ? (
+          <SecondaryLink href={homePath}>Return to workspace</SecondaryLink>
+        ) : null}
+        <SecondaryButton type="button" onClick={() => void signOut()}>
+          <LogOut aria-hidden="true" size={15} /> Sign out
+        </SecondaryButton>
+      </div>
     </section>
   );
 }
