@@ -429,15 +429,18 @@ class PreviewTerminalGateway implements TerminalGateway {
     return terminal;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async pairByCode(_code: string): Promise<Terminal> {
-    throw new Error("Pairing requires the connected backend.");
+  async pairByCode(code: string): Promise<Terminal> {
+    throw new Error(
+      `Pairing requires the connected backend; code ${code} was not used.`,
+    );
   }
 
   async startPairing(
-    _terminalId: string,
+    terminalId: string,
   ): Promise<{ terminalId: string; code: string; expiresAt: string }> {
-    throw new Error("Pairing requires the connected backend.");
+    throw new Error(
+      `Pairing requires the connected backend; terminal ${terminalId} cannot generate a code in preview.`,
+    );
   }
 
   async blockTerminal(terminalId: string) {

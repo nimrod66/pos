@@ -159,6 +159,13 @@ export const appNavigation: NavigationItem[] = [
     section: "Management",
   },
   {
+    href: "/admin/branches",
+    icon: Building2,
+    label: "Branches",
+    access: { allOf: [PERMISSIONS.SETTINGS_MANAGE] },
+    section: "Management",
+  },
+  {
     href: "/admin/settings",
     icon: Settings2,
     label: "Settings",

@@ -296,6 +296,10 @@ const routeAccessRules: Array<{
     rule: { allOf: [PERMISSIONS.USER_MANAGE] },
   },
   {
+    path: "/admin/branches",
+    rule: { allOf: [PERMISSIONS.SETTINGS_MANAGE] },
+  },
+  {
     path: "/admin/terminals",
     rule: { allOf: [PERMISSIONS.TERMINAL_READ] },
   },
