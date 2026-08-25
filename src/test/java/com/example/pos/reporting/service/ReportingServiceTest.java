@@ -190,7 +190,7 @@ class ReportingServiceTest {
                 .thenReturn(List.of(nearExpiryStock, expiredStock));
         when(medicineRepository.findAllByPharmacyId(PHARMACY_ID))
                 .thenReturn(List.of(medicine));
-        when(settingsService.resolveSettingValue(
+        when(settingsService.resolvePharmacySettingValue(
                 "inventory.expiry_alert_days", BRANCH_ID, PHARMACY_ID, "90"))
                 .thenReturn("30");
 
