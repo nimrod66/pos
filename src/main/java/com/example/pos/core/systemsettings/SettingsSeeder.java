@@ -51,6 +51,16 @@ public class SettingsSeeder implements CommandLineRunner {
     private void ensureNewDefaults(UUID pharmacyId) {
         ensure(pharmacyId, SettingKeys.Hardware.CONNECTOR_URL,
                 "http://localhost:9100", "URL of the local hardware connector service");
+        ensure(pharmacyId, SettingKeys.Payment.MPESA_CONSUMER_KEY, "",
+                "Daraja app consumer key (per pharmacy)");
+        ensure(pharmacyId, SettingKeys.Payment.MPESA_CONSUMER_SECRET, "",
+                "Daraja app consumer secret (per pharmacy)");
+        ensure(pharmacyId, SettingKeys.Payment.MPESA_PASSKEY, "",
+                "Lipa na M-Pesa Online passkey (per pharmacy)");
+        ensure(pharmacyId, SettingKeys.Payment.MPESA_SHORTCODE, "174379",
+                "Business shortcode / paybill");
+        ensure(pharmacyId, SettingKeys.Payment.MPESA_ENVIRONMENT, "sandbox",
+                "Daraja environment: sandbox or production");
     }
 
     private void createDefaults(UUID pharmacyId, UUID branchId, String pharmacyName) {
@@ -109,6 +119,16 @@ public class SettingsSeeder implements CommandLineRunner {
                 "Card payments enabled");
         seed(pharmacyId, branchId, SettingKeys.Payment.CASH_ENABLED, "true",
                 "Cash payments enabled");
+        seed(pharmacyId, branchId, SettingKeys.Payment.MPESA_CONSUMER_KEY, "",
+                "Daraja app consumer key (per pharmacy)");
+        seed(pharmacyId, branchId, SettingKeys.Payment.MPESA_CONSUMER_SECRET, "",
+                "Daraja app consumer secret (per pharmacy)");
+        seed(pharmacyId, branchId, SettingKeys.Payment.MPESA_PASSKEY, "",
+                "Lipa na M-Pesa Online passkey (per pharmacy)");
+        seed(pharmacyId, branchId, SettingKeys.Payment.MPESA_SHORTCODE, "174379",
+                "Business shortcode / paybill");
+        seed(pharmacyId, branchId, SettingKeys.Payment.MPESA_ENVIRONMENT, "sandbox",
+                "Daraja environment: sandbox or production");
 
         seed(pharmacyId, branchId, SettingKeys.Shift.AUTO_CLOSE_HOUR, "23",
                 "Hour to auto-close shifts (24h format)");

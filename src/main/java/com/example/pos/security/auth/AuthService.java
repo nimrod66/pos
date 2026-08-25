@@ -6,6 +6,7 @@ import com.example.pos.common.exception.ConflictException;
 import com.example.pos.common.exception.ForbiddenException;
 import com.example.pos.common.exception.ResourceNotFoundException;
 import com.example.pos.core.branch.model.Branch;
+import com.example.pos.sale.payment.service.MpesaSettings;
 import com.example.pos.core.branch.repository.BranchRepository;
 import com.example.pos.user.staffshifts.model.StaffShifts;
 import com.example.pos.user.staffshifts.repository.StaffShiftsRepository;
@@ -55,18 +56,7 @@ public class AuthService {
     private final FindByIndexNameSessionRepository<? extends Session> sessionRepository;
     private final Duration inactivityTimeout;
     private final Duration absoluteSessionTimeout;
-
-    @Value("${mpesa.consumer-key:}")
-    private String mpesaConsumerKey;
-
-    @Value("${mpesa.consumer-secret:}")
-    private String mpesaConsumerSecret;
-
-    @Value("${mpesa.passkey:}")
-    private String mpesaPasskey;
-
-    @Value("${mpesa.callback-url:}")
-    private String mpesaCallbackUrl;
+    private final MpesaSettings mpesaSettings;
 
     public AuthService(AuthenticationManager authenticationManager,
                        UserRepository userRepository,
@@ -78,7 +68,8 @@ public class AuthService {
                        CsrfTokenRepository csrfTokenRepository,
                        FindByIndexNameSessionRepository<? extends Session> sessionRepository,
                        @Value("${spring.session.timeout:30m}") Duration inactivityTimeout,
-                       @Value("${pos.security.absolute-session-timeout:12h}") Duration absoluteSessionTimeout) {
+                       @Value("${pos.security.absolute-session-timeout:12h}") Duration absoluteSessionTimeout,
+                       MpesaSettings mpesaSettings) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.loginHistoryRepository = loginHistoryRepository;
@@ -90,6 +81,7 @@ public class AuthService {
         this.sessionRepository = sessionRepository;
         this.inactivityTimeout = inactivityTimeout;
         this.absoluteSessionTimeout = absoluteSessionTimeout;
+        this.mpesaSettings = mpesaSettings;
     }
 
     public MeResponse login(String email, String password, HttpServletRequest request,
@@ -249,9 +241,7 @@ public class AuthService {
 
         Map<String, Boolean> featureFlags = new LinkedHashMap<>();
         featureFlags.put("hybridSync", false);
-        featureFlags.put("mpesaStk", notBlank(mpesaConsumerKey)
-                && notBlank(mpesaConsumerSecret) && notBlank(mpesaPasskey)
-                && notBlank(mpesaCallbackUrl));
+        featureFlags.put("mpesaStk", mpesaSettings.resolve().stkReady());
         featureFlags.put("etimsDirect", false);
 
         String expiresAt = null;
@@ -316,9 +306,5 @@ public class AuthService {
         sessionRepository.findByPrincipalName(principalName)
                 .keySet()
                 .forEach(sessionRepository::deleteById);
-    }
-
-    private boolean notBlank(String value) {
-        return value != null && !value.isBlank();
     }
 }

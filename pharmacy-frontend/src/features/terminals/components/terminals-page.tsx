@@ -10,11 +10,14 @@ import {
   HardDrive,
   KeyRound,
   Laptop,
+  Link2,
+  MonitorSmartphone,
   Pencil,
   Plus,
   RefreshCw,
   Settings2,
   ShieldBan,
+  UserCheck,
   Wifi,
   WifiOff,
   X,
@@ -45,6 +48,9 @@ import {
   setLocalTerminalId,
   terminalGateway,
 } from "@/features/terminals/terminal-gateway";
+import {
+  useWorkspaceQuery,
+} from "@/features/workspace/gateway/workspace-gateway";
 import { ApiClientError } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/format";
 
@@ -91,6 +97,43 @@ function terminalStatusLabel(terminal: Terminal) {
   return terminal.status.charAt(0) + terminal.status.slice(1).toLowerCase();
 }
 
+function detectDevice() {
+  if (typeof navigator === "undefined") {
+    return { browser: "Unknown", os: "Unknown", screen: "", kind: "Desktop" };
+  }
+  const ua = navigator.userAgent;
+  const browser = /Edg\//.test(ua)
+    ? "Edge"
+    : /OPR\//.test(ua)
+      ? "Opera"
+      : /Chrome\//.test(ua)
+        ? "Chrome"
+        : /Firefox\//.test(ua)
+          ? "Firefox"
+          : /Safari\//.test(ua)
+            ? "Safari"
+            : "Browser";
+  const os = /Windows NT 10/.test(ua)
+    ? "Windows 10/11"
+    : /Windows/.test(ua)
+      ? "Windows"
+      : /Android/.test(ua)
+        ? "Android"
+        : /iPhone|iPad|iPod/.test(ua)
+          ? "iOS"
+          : /Mac OS X/.test(ua)
+            ? "macOS"
+            : /Linux/.test(ua)
+              ? "Linux"
+              : "Unknown OS";
+  const kind = /Mobi|Android|iPhone/.test(ua) ? "Mobile" : "Desktop";
+  const screen =
+    typeof window !== "undefined" && window.screen
+      ? `${window.screen.width}x${window.screen.height}`
+      : "";
+  return { browser, os, screen, kind };
+}
+
 export function TerminalsPage() {
   const session = useAuthStore((state) => state.session);
   const canRead = usePermission(PERMISSIONS.TERMINAL_READ);
@@ -117,6 +160,11 @@ export function TerminalsPage() {
   const [localTerminalId, setLocalTerminal] = useState<string | null>(null);
   const [registered, setRegistered] = useState<Terminal | null>(null);
   const [registeredApproved, setRegisteredApproved] = useState(false);
+  const staff = useWorkspaceQuery((state) => state.staff);
+  const [pairingTarget, setPairingTarget] = useState<Terminal | null>(null);
+  const [pairingCode, setPairingCode] = useState<string | null>(null);
+  const [pairingExpiresAt, setPairingExpiresAt] = useState<string | null>(null);
+  const device = useMemo(() => detectDevice(), []);
 
   const fallbackBranch = useMemo<BranchSummary | null>(
     () =>
@@ -375,6 +423,35 @@ export function TerminalsPage() {
     }
   }
 
+  async function startPairingFor(terminal: Terminal) {
+    if (busyId) return;
+    setBusyId(terminal.id);
+    setError(null);
+    try {
+      const result = await terminalGateway.startPairing(terminal.terminalId);
+      setPairingTarget(terminal);
+      setPairingCode(result.code);
+      setPairingExpiresAt(result.expiresAt);
+    } catch (caught) {
+      setError(errorMessage(caught, "A pairing code could not be generated."));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function assignStaffMember(terminal: Terminal, userId: string | null) {
+    if (busyId) return;
+    setBusyId(terminal.id);
+    try {
+      await terminalGateway.assignTerminalUser(terminal.terminalId, userId);
+      await loadTerminals();
+    } catch (caught) {
+      setError(errorMessage(caught, "The terminal assignment could not be saved."));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   if (!canRead) return <AccessRestricted />;
 
   return (
@@ -527,6 +604,32 @@ export function TerminalsPage() {
                             <p className="mt-0.5 font-mono text-xs text-[var(--text-muted)]">
                               {terminal.terminalId} - {terminal.terminalType.replaceAll("_", " ")}
                             </p>
+                            {canManage && staff.length ? (
+                              <Select
+                                aria-label={`Staff responsible for ${terminal.name}`}
+                                className="mt-1 h-8 w-full max-w-56 text-xs"
+                                disabled={busyId === terminal.id}
+                                value={terminal.assignedUserId ?? ""}
+                                onChange={(event) =>
+                                  void assignStaffMember(
+                                    terminal,
+                                    event.target.value || null,
+                                  )
+                                }
+                              >
+                                <option value="">Unassigned staff</option>
+                                {staff.map((user) => (
+                                  <option key={user.id} value={user.id}>
+                                    {user.displayName}
+                                  </option>
+                                ))}
+                              </Select>
+                            ) : !canManage && terminal.assignedUserName ? (
+                              <p className="mt-0.5 flex items-center gap-1 text-xs text-[var(--text-muted)]">
+                                <UserCheck aria-hidden="true" size={12} />
+                                {terminal.assignedUserName}
+                              </p>
+                            ) : null}
                           </div>
                         </div>
                       </td>
@@ -579,6 +682,20 @@ export function TerminalsPage() {
                           >
                             <Settings2 aria-hidden="true" size={16} />
                           </SecondaryLink>
+                          {canManage &&
+                          (terminal.status === "PENDING" ||
+                            terminal.status === "ACTIVE") ? (
+                            <button
+                              type="button"
+                              title="Pair another device to this terminal"
+                              aria-label={`Pair another device to ${terminal.name}`}
+                              disabled={busyId === terminal.id}
+                              onClick={() => void startPairingFor(terminal)}
+                              className="flex size-9 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-white hover:text-[var(--text)] disabled:opacity-40"
+                            >
+                              <Link2 aria-hidden="true" size={16} />
+                            </button>
+                          ) : null}
                           {canManage ? (
                             <button
                               type="button"
@@ -740,6 +857,16 @@ export function TerminalsPage() {
 
               {wizardStep === 1 ? (
                 <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="rounded-md border border-[var(--border)] bg-[var(--surface-muted)] p-3 text-xs sm:col-span-2">
+                    <p className="flex items-center gap-1.5 font-semibold">
+                      <MonitorSmartphone aria-hidden="true" size={14} className="text-[var(--brand)]" />
+                      Detected on this device
+                    </p>
+                    <p className="mt-1 text-[var(--text-muted)]">
+                      {device.kind} - {device.os} - {device.browser}
+                      {device.screen ? ` - ${device.screen}` : ""}
+                    </p>
+                  </div>
                   <Field label="Terminal name" required>
                     <Input
                       autoFocus
@@ -925,6 +1052,56 @@ export function TerminalsPage() {
         onCancel={() => setDeactivateTarget(null)}
         onConfirm={() => void deactivate()}
       />
+      {pairingTarget && pairingCode ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Pair another device"
+            className="w-full max-w-md rounded-md border border-[var(--border)] bg-white p-5 shadow-xl"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="flex items-center gap-2 text-base font-semibold">
+                  <MonitorSmartphone aria-hidden="true" size={18} className="text-[var(--brand)]" />
+                  Pair another device
+                </h2>
+                <p className="mt-1 text-xs text-[var(--text-muted)]">
+                  On the other device, sign in, open the Point of sale, and enter
+                  this code when prompted.
+                </p>
+              </div>
+              <button
+                type="button"
+                title="Close"
+                aria-label="Close pairing dialog"
+                onClick={() => {
+                  setPairingTarget(null);
+                  setPairingCode(null);
+                }}
+                className="flex size-9 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--surface-muted)]"
+              >
+                <X aria-hidden="true" size={18} />
+              </button>
+            </div>
+            <p className="mt-5 text-center font-mono text-4xl font-bold tracking-[0.35em]">
+              {pairingCode}
+            </p>
+            <p className="mt-3 text-center text-xs text-[var(--text-muted)]">
+              One-time code for {pairingTarget.name} ({pairingTarget.terminalId})
+              {pairingExpiresAt ? ` - expires ${formatDateTime(pairingExpiresAt)}` : ""}
+            </p>
+            <div className="mt-5 flex justify-end">
+              <PrimaryButton
+                type="button"
+                onClick={() => navigator.clipboard?.writeText(pairingCode).catch(() => undefined)}
+              >
+                Copy code
+              </PrimaryButton>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <ConfirmDialog
         open={Boolean(blockTarget)}
         busy={Boolean(blockTarget && busyId === blockTarget.id)}

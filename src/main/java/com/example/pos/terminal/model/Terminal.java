@@ -91,11 +91,26 @@ public class Terminal extends BaseEntity {
     @Builder.Default
     private boolean migratedFromTerminal = false;
 
+    @Column(name = "pairing_code", length = 8)
+    private String pairingCode;
+
+    @Column(name = "pairing_expires_at")
+    private LocalDateTime pairingExpiresAt;
+
+    @Column(name = "assigned_user_id")
+    private UUID assignedUserId;
+
     @PrePersist
     public void onRegister() {
         if (registeredAt == null) {
             registeredAt = LocalDateTime.now();
         }
+    }
+
+    public static String generatePairingCode() {
+        SecureRandom random = new SecureRandom();
+        int code = 100000 + random.nextInt(900000);
+        return String.valueOf(code);
     }
 
     public static String generateApiKey() {

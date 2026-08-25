@@ -3,8 +3,8 @@ package com.example.pos.payment.gateway.impl;
 import com.example.pos.payment.gateway.PaymentGateway;
 import com.example.pos.payment.gateway.PaymentGatewayRequest;
 import com.example.pos.payment.gateway.PaymentGatewayResponse;
+import com.example.pos.sale.payment.service.MpesaSettings;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
@@ -20,25 +20,16 @@ import java.util.Map;
 @Component
 public class MpesaPaymentGateway implements PaymentGateway {
 
-    @Value("${mpesa.consumer-key:}")
-    private String consumerKey;
-
-    @Value("${mpesa.consumer-secret:}")
-    private String consumerSecret;
-
-    @Value("${mpesa.passkey:}")
-    private String passkey;
-
-    @Value("${mpesa.shortcode:174379}")
-    private String shortcode;
-
-    @Value("${mpesa.environment:sandbox}")
-    private String environment;
-
-    @Value("${mpesa.callback-url:}")
-    private String callbackUrl;
-
+    private final MpesaSettings mpesaSettings;
     private final RestTemplate restTemplate = new RestTemplate();
+
+    public MpesaPaymentGateway(MpesaSettings mpesaSettings) {
+        this.mpesaSettings = mpesaSettings;
+    }
+
+    private MpesaSettings.Config config() {
+        return mpesaSettings.resolve();
+    }
 
     @Override
     public String getType() {
@@ -47,12 +38,13 @@ public class MpesaPaymentGateway implements PaymentGateway {
 
     @Override
     public PaymentGatewayResponse process(PaymentGatewayRequest request) {
-        if (!isConfigured()) {
+        MpesaSettings.Config cfg = config();
+        if (!cfg.stkReady()) {
             return PaymentGatewayResponse.builder()
                     .success(false)
                     .status(PaymentGatewayResponse.Status.FAILED.name())
                     .responseCode("CONFIG_ERROR")
-                    .responseDescription("M-Pesa not configured. Set mpesa.consumer-key and mpesa.consumer-secret")
+                    .responseDescription("M-Pesa is not configured for this pharmacy. Set the Daraja credentials in Settings.")
                     .build();
         }
 
@@ -62,25 +54,25 @@ public class MpesaPaymentGateway implements PaymentGateway {
                 return failResponse("INVALID_PHONE",
                         "Enter a valid Kenyan M-Pesa phone number");
             }
-            String accessToken = getAccessToken();
+            String accessToken = getAccessToken(cfg);
             if (accessToken == null) {
                 return failResponse("AUTH_ERROR", "Failed to get M-Pesa access token");
             }
 
             String timestamp = getTimestamp();
             String password = Base64.getEncoder().encodeToString(
-                    (shortcode + passkey + timestamp).getBytes(StandardCharsets.UTF_8));
+                    (cfg.shortcode() + cfg.passkey() + timestamp).getBytes(StandardCharsets.UTF_8));
 
             Map<String, Object> body = new HashMap<>();
-            body.put("BusinessShortCode", shortcode);
+            body.put("BusinessShortCode", cfg.shortcode());
             body.put("Password", password);
             body.put("Timestamp", timestamp);
             body.put("TransactionType", "CustomerPayBillOnline");
             body.put("Amount", request.getAmount().intValue());
             body.put("PartyA", phoneNumber);
-            body.put("PartyB", shortcode);
+            body.put("PartyB", cfg.shortcode());
             body.put("PhoneNumber", phoneNumber);
-            body.put("CallBackURL", callbackUrl);
+            body.put("CallBackURL", cfg.callbackUrl());
             body.put("AccountReference", request.getAccountReference() != null
                     ? request.getAccountReference() : request.getReference());
             body.put("TransactionDesc", request.getDescription() != null
@@ -90,7 +82,7 @@ public class MpesaPaymentGateway implements PaymentGateway {
             headers.setBearerAuth(accessToken);
             headers.setContentType(MediaType.APPLICATION_JSON);
 
-            String url = getBaseUrl() + "/mpesa/stkpush/v1/processrequest";
+            String url = getBaseUrl(cfg) + "/mpesa/stkpush/v1/processrequest";
             ResponseEntity<Map> response = restTemplate.exchange(
                     url, HttpMethod.POST,
                     new HttpEntity<>(body, headers),
@@ -124,21 +116,22 @@ public class MpesaPaymentGateway implements PaymentGateway {
 
     @Override
     public PaymentGatewayResponse queryStatus(String checkoutRequestId) {
-        if (!isConfigured()) {
-            return failResponse("CONFIG_ERROR", "M-Pesa not configured");
+        MpesaSettings.Config cfg = config();
+        if (!cfg.stkReady()) {
+            return failResponse("CONFIG_ERROR", "M-Pesa is not configured for this pharmacy");
         }
         try {
-            String accessToken = getAccessToken();
+            String accessToken = getAccessToken(cfg);
             if (accessToken == null) {
                 return failResponse("AUTH_ERROR", "Failed to get access token");
             }
 
             String timestamp = getTimestamp();
             String password = Base64.getEncoder().encodeToString(
-                    (shortcode + passkey + timestamp).getBytes(StandardCharsets.UTF_8));
+                    (cfg.shortcode() + cfg.passkey() + timestamp).getBytes(StandardCharsets.UTF_8));
 
             Map<String, Object> body = new HashMap<>();
-            body.put("BusinessShortCode", shortcode);
+            body.put("BusinessShortCode", cfg.shortcode());
             body.put("Password", password);
             body.put("Timestamp", timestamp);
             body.put("CheckoutRequestID", checkoutRequestId);
@@ -147,7 +140,7 @@ public class MpesaPaymentGateway implements PaymentGateway {
             headers.setBearerAuth(accessToken);
             headers.setContentType(MediaType.APPLICATION_JSON);
 
-            String url = getBaseUrl() + "/mpesa/stkpushquery/v1/query";
+            String url = getBaseUrl(cfg) + "/mpesa/stkpushquery/v1/query";
             ResponseEntity<Map> response = restTemplate.exchange(
                     url, HttpMethod.POST,
                     new HttpEntity<>(body, headers),
@@ -198,15 +191,15 @@ public class MpesaPaymentGateway implements PaymentGateway {
         return failResponse("NOT_SUPPORTED", "M-Pesa refunds must be processed manually via M-Pesa portal");
     }
 
-    private String getAccessToken() {
+    private String getAccessToken(MpesaSettings.Config cfg) {
         try {
-            String auth = consumerKey + ":" + consumerSecret;
+            String auth = cfg.consumerKey() + ":" + cfg.consumerSecret();
             String encoded = Base64.getEncoder().encodeToString(auth.getBytes(StandardCharsets.UTF_8));
 
             HttpHeaders headers = new HttpHeaders();
             headers.set("Authorization", "Basic " + encoded);
 
-            String url = getBaseUrl() + "/oauth/v1/generate?grant_type=client_credentials";
+            String url = getBaseUrl(cfg) + "/oauth/v1/generate?grant_type=client_credentials";
             ResponseEntity<Map> response = restTemplate.exchange(
                     url, HttpMethod.GET,
                     new HttpEntity<>(headers),
@@ -220,8 +213,8 @@ public class MpesaPaymentGateway implements PaymentGateway {
         }
     }
 
-    private String getBaseUrl() {
-        return "production".equalsIgnoreCase(environment)
+    private String getBaseUrl(MpesaSettings.Config cfg) {
+        return "production".equalsIgnoreCase(cfg.environment())
                 ? "https://api.safaricom.co.ke"
                 : "https://sandbox.safaricom.co.ke";
     }
@@ -242,10 +235,7 @@ public class MpesaPaymentGateway implements PaymentGateway {
     }
 
     private boolean isConfigured() {
-        return consumerKey != null && !consumerKey.isBlank()
-                && consumerSecret != null && !consumerSecret.isBlank()
-                && passkey != null && !passkey.isBlank()
-                && callbackUrl != null && !callbackUrl.isBlank();
+        return config().stkReady();
     }
 
     private PaymentGatewayResponse failResponse(String code, String desc) {

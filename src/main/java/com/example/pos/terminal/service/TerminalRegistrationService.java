@@ -34,6 +34,7 @@ public class TerminalRegistrationService {
     private final HardwarePeripheralRepository hardwarePeripheralRepository;
     private final TerminalConfigurationRepository configurationRepository;
     private final BranchRepository branchRepository;
+    private final com.example.pos.user.users.repository.UserRepository userRepository;
     private final AuthenticatedUserContext current;
 
     public TerminalResponseDto registerTerminal(TerminalRegisterRequestDto request) {
@@ -116,6 +117,68 @@ public class TerminalRegistrationService {
         terminal.setLastUpdate(LocalDateTime.now());
         terminal = terminalRepository.save(terminal);
         log.info("Terminal approved: {}", terminal.getTerminalId());
+        return toDto(terminal);
+    }
+
+    /**
+     * Generates a short one-time pairing code so the terminal can be
+     * activated from ANOTHER device (e.g. the cashier's PC): that device
+     * signs in, opens the POS, and enters this code.
+     */
+    public java.util.Map<String, Object> startPairing(String terminalId) {
+        Terminal terminal = scopedTerminal(terminalId);
+        if (terminal.getStatus() != TerminalStatus.ACTIVE
+                && terminal.getStatus() != TerminalStatus.PENDING) {
+            throw new BadRequestException(
+                    "Only pending or active terminals can issue a pairing code",
+                    "TERMINAL_NOT_PAIRABLE");
+        }
+        LocalDateTime expires = LocalDateTime.now().plusMinutes(15);
+        String code = Terminal.generatePairingCode();
+        terminal.setPairingCode(code);
+        terminal.setPairingExpiresAt(expires);
+        terminalRepository.save(terminal);
+        return java.util.Map.of(
+                "terminalId", terminal.getTerminalId(),
+                "code", code,
+                "expiresAt", expires.toString());
+    }
+
+    /** Activates this device against a pairing code (any signed-in staff). */
+    @Transactional(readOnly = true)
+    public TerminalResponseDto pairByCode(String code) {
+        String normalized = code == null ? "" : code.trim();
+        Terminal terminal = terminalRepository.findAll().stream()
+                .filter(item -> normalized.equals(item.getPairingCode()))
+                .filter(item -> item.getPairingExpiresAt() != null
+                        && item.getPairingExpiresAt().isAfter(LocalDateTime.now()))
+                .findFirst()
+                .orElseThrow(() -> new BadRequestException(
+                        "This pairing code is invalid or has expired. Generate a new one.",
+                        "INVALID_PAIRING_CODE"));
+        if (!current.branchId().equals(terminal.getBranchId())) {
+            throw new ForbiddenException(
+                    "This pairing code belongs to another branch");
+        }
+        terminal.setPairingCode(null);
+        terminal.setPairingExpiresAt(null);
+        terminalRepository.save(terminal);
+        return toDto(terminal);
+    }
+
+    /** Assigns (or clears) the staff member responsible for a terminal. */
+    public TerminalResponseDto assignUser(String terminalId, UUID userId) {
+        Terminal terminal = scopedTerminal(terminalId);
+        if (userId != null) {
+            com.example.pos.user.users.model.User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new ResourceNotFoundException("User", userId));
+            if (user.getBranch() == null || user.getBranch().getPharmacy() == null
+                    || !current.pharmacyId().equals(user.getBranch().getPharmacy().getId())) {
+                throw new ForbiddenException("That user belongs to a different pharmacy");
+            }
+        }
+        terminal.setAssignedUserId(userId);
+        terminal = terminalRepository.save(terminal);
         return toDto(terminal);
     }
 
@@ -333,10 +396,19 @@ public class TerminalRegistrationService {
                 .lastUpdate(terminal.getLastUpdate())
                 .minimumBackendVersion(terminal.getMinimumBackendVersion())
                 .migratedFromTerminal(terminal.isMigratedFromTerminal())
+                .assignedUserId(terminal.getAssignedUserId())
+                .assignedUserName(resolveUserName(terminal.getAssignedUserId()))
                 .peripherals(peripherals)
                 .createdAt(terminal.getCreatedAt())
                 .updatedAt(terminal.getUpdatedAt())
                 .build();
+    }
+
+    private String resolveUserName(UUID userId) {
+        if (userId == null) return null;
+        return userRepository.findById(userId)
+                .map(user -> user.getFirstName() + " " + user.getLastName())
+                .orElse(null);
     }
 
     private HardwarePeripheralDto toPeripheralDto(HardwarePeripheral p) {

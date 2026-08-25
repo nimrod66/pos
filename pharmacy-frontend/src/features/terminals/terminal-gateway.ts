@@ -71,6 +71,8 @@ export interface Terminal {
   supportedApiVersion: string | null;
   lastUpdate: string | null;
   minimumBackendVersion: string | null;
+  assignedUserId: string | null;
+  assignedUserName: string | null;
   peripherals: HardwarePeripheral[];
   registerConfig?: CashRegisterConfig;
 }
@@ -136,6 +138,7 @@ export interface SystemStatusSnapshot {
 interface TerminalGateway {
   addPeripheral(terminalId: string, input: PeripheralInput): Promise<HardwarePeripheral>;
   approveTerminal(terminalId: string): Promise<Terminal>;
+  assignTerminalUser(terminalId: string, userId: string | null): Promise<Terminal>;
   blockTerminal(terminalId: string): Promise<Terminal>;
   deactivateTerminal(terminalId: string): Promise<Terminal>;
   getHardwareConfig(): Promise<HardwareBridgeConfig>;
@@ -146,9 +149,11 @@ interface TerminalGateway {
   heartbeat(terminalId: string): Promise<void>;
   listBranches(pharmacyId: string): Promise<BranchSummary[]>;
   listTerminals(): Promise<Terminal[]>;
+  pairByCode(code: string): Promise<Terminal>;
   registerTerminal(input: TerminalInput): Promise<Terminal>;
   regenerateApiKey(terminalId: string): Promise<Terminal>;
   removePeripheral(peripheralId: string): Promise<void>;
+  startPairing(terminalId: string): Promise<{ terminalId: string; code: string; expiresAt: string }>;
   updateCashRegisterConfig(terminalId: string, input: CashRegisterConfig): Promise<CashRegisterConfig>;
   updatePeripheralStatus(peripheralId: string, status: PeripheralStatus): Promise<HardwarePeripheral>;
   updateTerminal(terminalId: string, input: TerminalInput): Promise<Terminal>;
@@ -172,6 +177,31 @@ class LiveTerminalGateway implements TerminalGateway {
       path(`/terminals/${terminalId}/approve`),
       { method: "POST" },
     );
+    return response.data;
+  }
+
+  async assignTerminalUser(terminalId: string, userId: string | null) {
+    const response = await apiRequest<Terminal>(
+      path(`/terminals/${terminalId}/assign-user`),
+      { body: { userId }, method: "POST" },
+    );
+    return response.data;
+  }
+
+  async pairByCode(code: string) {
+    const response = await apiRequest<Terminal>(path("/terminals/pair"), {
+      body: { code },
+      method: "POST",
+    });
+    return response.data;
+  }
+
+  async startPairing(terminalId: string) {
+    const response = await apiRequest<{
+      terminalId: string;
+      code: string;
+      expiresAt: string;
+    }>(path(`/terminals/${terminalId}/pairing-code`), { method: "POST" });
     return response.data;
   }
 
@@ -348,6 +378,8 @@ function previewState(): PreviewTerminalState {
         supportedApiVersion: "v1",
         terminalId: "T-PREVIEW",
         terminalType: "WEB",
+        assignedUserId: null,
+        assignedUserName: null,
       },
     ],
   };
@@ -384,6 +416,28 @@ class PreviewTerminalGateway implements TerminalGateway {
 
   async approveTerminal(terminalId: string) {
     return this.changeStatus(terminalId, "ACTIVE");
+  }
+
+  async assignTerminalUser(terminalId: string, userId: string | null) {
+    const state = previewState();
+    const terminal = state.terminals.find(
+      (candidate) => candidate.terminalId === terminalId,
+    );
+    if (!terminal) throw new Error("Terminal not found.");
+    terminal.assignedUserId = userId;
+    savePreview(state);
+    return terminal;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async pairByCode(_code: string): Promise<Terminal> {
+    throw new Error("Pairing requires the connected backend.");
+  }
+
+  async startPairing(
+    _terminalId: string,
+  ): Promise<{ terminalId: string; code: string; expiresAt: string }> {
+    throw new Error("Pairing requires the connected backend.");
   }
 
   async blockTerminal(terminalId: string) {
@@ -483,6 +537,8 @@ class PreviewTerminalGateway implements TerminalGateway {
       status: "PENDING",
       supportedApiVersion: "v1",
       terminalId: `T-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
+      assignedUserId: null,
+      assignedUserName: null,
     };
     state.terminals.push(terminal);
     savePreview(state);

@@ -1,6 +1,7 @@
 import { BookOpenText } from "lucide-react";
 import type { Metadata } from "next";
 
+import { PaymentSettingsPanel } from "@/features/system/components/payment-settings-panel";
 import { SystemStatusPanel } from "@/features/system/components/system-status-panel";
 import { API_BASE_URL, DEMO_AUTH_ENABLED } from "@/lib/api-config";
 
@@ -28,6 +29,10 @@ export default function SystemPage() {
           </a>
         ) : null}
       </header>
+
+      <div className="mb-6">
+        <PaymentSettingsPanel />
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
         <SystemStatusPanel />

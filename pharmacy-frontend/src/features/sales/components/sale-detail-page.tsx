@@ -49,6 +49,7 @@ export function SaleDetailPage() {
   const [refundReference, setRefundReference] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [printedAt, setPrintedAt] = useState<string | null>(null);
   const [returnIdempotencyKey, setReturnIdempotencyKey] = useState(() =>
     crypto.randomUUID(),
   );
@@ -70,9 +71,17 @@ export function SaleDetailPage() {
       return;
     }
     autoPrintStarted.current = true;
-    const timer = window.setTimeout(() => window.print(), 350);
+    const timer = window.setTimeout(() => {
+      window.print();
+      setPrintedAt(new Date().toISOString());
+    }, 350);
     return () => window.clearTimeout(timer);
   }, [sale, searchParams]);
+
+  function printReceipt() {
+    window.print();
+    setPrintedAt(new Date().toISOString());
+  }
 
   if (!sale && (loadStatus === "idle" || loadStatus === "loading")) {
     return (
@@ -148,9 +157,9 @@ export function SaleDetailPage() {
           actions={
             <>
               {canPrintReceipt ? (
-                <SecondaryButton type="button" onClick={() => window.print()}>
+                <SecondaryButton type="button" onClick={printReceipt}>
                   <Printer aria-hidden="true" size={17} />
-                  Print
+                  {printedAt ? "Print again" : "Print receipt"}
                 </SecondaryButton>
               ) : null}
               {returnableItems.length > 0 && canReturnSale ? (
@@ -171,6 +180,17 @@ export function SaleDetailPage() {
             <span>
               <strong>Sale completed.</strong> Stock and shift totals have been
               updated.
+              {canPrintReceipt ? (
+                printedAt ? (
+                  <span className="block text-xs text-[var(--text-muted)]">
+                    Receipt printed at {formatDateTime(printedAt)}.
+                  </span>
+                ) : (
+                  <span className="block text-xs text-[var(--text-muted)]">
+                    Receipt not printed yet — use the print button above.
+                  </span>
+                )
+              ) : null}
             </span>
           </div>
         ) : null}

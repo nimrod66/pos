@@ -42,6 +42,12 @@ public final class SettingKeys {
         public static final String M_PESA_ENABLED = "payment.mpesa_enabled";
         public static final String CARD_ENABLED = "payment.card_enabled";
         public static final String CASH_ENABLED = "payment.cash_enabled";
+        public static final String MPESA_CONSUMER_KEY = "payment.mpesa_consumer_key";
+        public static final String MPESA_CONSUMER_SECRET = "payment.mpesa_consumer_secret";
+        public static final String MPESA_PASSKEY = "payment.mpesa_passkey";
+        public static final String MPESA_SHORTCODE = "payment.mpesa_shortcode";
+        public static final String MPESA_ENVIRONMENT = "payment.mpesa_environment";
+        public static final String MPESA_CALLBACK_URL = "payment.mpesa_callback_url";
     }
 
     public static final class Shift {

@@ -23,6 +23,7 @@ import {
 import {
   type CashRegisterConfig,
   getLocalTerminalId,
+  setLocalTerminalId,
   terminalGateway,
 } from "@/features/terminals/terminal-gateway";
 import { getLastConnectorBarcode } from "@/features/terminals/local-hardware-connector";
@@ -164,6 +165,37 @@ export function PosPage() {
       active = false;
     };
   }, []);
+
+  const [pairCode, setPairCode] = useState("");
+  const [pairing, setPairing] = useState(false);
+  const [pairError, setPairError] = useState<string | null>(null);
+  const [assignedTerminalName, setAssignedTerminalName] = useState<string | null>(null);
+
+  async function activateRegister() {
+    if (!pairCode.trim() || pairing) return;
+    setPairing(true);
+    setPairError(null);
+    try {
+      const terminal = await terminalGateway.pairByCode(pairCode.trim());
+      setLocalTerminalId(terminal.terminalId);
+      setAssignedTerminalName(terminal.name);
+      setPairCode("");
+      try {
+        setRegisterConfig(
+          await terminalGateway.getCashRegisterConfig(terminal.terminalId),
+        );
+      } catch {
+        setRegisterConfig(null);
+      }
+    } catch (caught) {
+      setPairError(
+        caught instanceof Error ? caught.message : "This code could not be activated.",
+      );
+    } finally {
+      setPairing(false);
+    }
+  }
+
 
   useEffect(() => {
     if (!registerConfig) return;
@@ -483,6 +515,40 @@ export function PosPage() {
         </div>
 
         <div className="border-t border-[var(--border)] p-4 sm:p-5">
+          {assignedTerminalName ? (
+            <div className="mb-4 rounded-md border border-[var(--success)]/30 bg-[var(--success-soft)] p-3 text-sm text-[var(--success)]">
+              This device is now assigned to <strong>{assignedTerminalName}</strong>.
+            </div>
+          ) : null}
+          {!getLocalTerminalId() && !assignedTerminalName ? (
+            <form
+              className="mb-4 rounded-md border border-[var(--border)] bg-white p-3"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void activateRegister();
+              }}
+            >
+              <p className="text-sm font-semibold">Activate this register</p>
+              <p className="mt-0.5 text-xs text-[var(--text-muted)]">
+                Enter the one-time pairing code from the terminals page.
+              </p>
+              <div className="mt-2 flex gap-2">
+                <Input
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="e.g. 481902"
+                  value={pairCode}
+                  onChange={(event) => setPairCode(event.target.value)}
+                />
+                <PrimaryButton type="submit" disabled={pairing || pairCode.trim().length === 0}>
+                  {pairing ? "Activating..." : "Activate"}
+                </PrimaryButton>
+              </div>
+              {pairError ? (
+                <p className="mt-2 text-xs text-[var(--danger)]">{pairError}</p>
+              ) : null}
+            </form>
+          ) : null}
           {!currentShiftId ? <div className="mb-4 rounded-md border border-[var(--border)] bg-[var(--warning-soft)] p-3 text-sm text-[var(--warning)]">Checkout is locked. <Link href="/shifts/current" className="font-semibold underline">Open a shift</Link> to continue.</div> : null}
           <label className="mb-3 block">
             <span className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold">

@@ -52,10 +52,13 @@ class PaymentServiceTest {
     @Mock
     private PaymentGateway paymentGateway;
 
+    @Mock
+    private MpesaSettings mpesaSettings;
+
     @Test
     void shouldKeepReservationWhenMpesaStatusIsTemporarilyUnavailable() {
         PaymentService paymentService = new PaymentService(paymentRepository, salesRepository, gatewayFactory,
-                syncService, terminalConfig, current, saleService);
+                syncService, terminalConfig, current, saleService, mpesaSettings);
         UUID branchId = UUID.randomUUID();
         UUID saleId = UUID.randomUUID();
         UUID paymentId = UUID.randomUUID();
@@ -96,7 +99,7 @@ class PaymentServiceTest {
     @Test
     void shouldProcessSuccessfulMpesaCallback() {
         PaymentService paymentService = new PaymentService(paymentRepository, salesRepository, gatewayFactory,
-                syncService, terminalConfig, current, saleService);
+                syncService, terminalConfig, current, saleService, mpesaSettings);
         when(terminalConfig.getTerminalId()).thenReturn("TERM-A");
 
         Sales sale = Sales.builder().build();
@@ -149,7 +152,7 @@ class PaymentServiceTest {
     @Test
     void shouldHandleFailedMpesaCallback() {
         PaymentService paymentService = new PaymentService(paymentRepository, salesRepository, gatewayFactory,
-                syncService, terminalConfig, current, saleService);
+                syncService, terminalConfig, current, saleService, mpesaSettings);
 
         Sales sale = Sales.builder().build();
         sale.setTotal(new BigDecimal("50.00"));
@@ -184,7 +187,7 @@ class PaymentServiceTest {
     @Test
     void shouldIgnoreAlreadyFinalizedPayment() {
         PaymentService paymentService = new PaymentService(paymentRepository, salesRepository, gatewayFactory,
-                syncService, terminalConfig, current, saleService);
+                syncService, terminalConfig, current, saleService, mpesaSettings);
 
         Payment payment = Payment.builder().build();
         payment.setPaymentStatus("COMPLETED");

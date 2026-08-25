@@ -46,6 +46,7 @@ public class PaymentService {
     private final TerminalConfig terminalConfig;
     private final AuthenticatedUserContext current;
     private final SaleService saleService;
+    private final MpesaSettings mpesaSettings;
 
     @Value("${mpesa.callback-hmac-key:}")
     private String callbackHmacKey;
@@ -54,22 +55,7 @@ public class PaymentService {
     private int replayWindowSeconds;
 
     @Value("${stripe.webhook-secret:}")
-    private String stripeWebhookSecret; 
-
-    @Value("${mpesa.consumer-key:}")
-    private String mpesaConsumerKey;
-
-    @Value("${mpesa.consumer-secret:}")
-    private String mpesaConsumerSecret;
-
-    @Value("${mpesa.passkey:}")
-    private String mpesaPasskey;
-
-    @Value("${mpesa.callback-url:}")
-    private String mpesaCallbackUrl;
-
-    @Value("${mpesa.environment:sandbox}")
-    private String mpesaEnvironment;
+    private String stripeWebhookSecret;
 
     public PaymentService(PaymentRepository paymentRepository,
                           SalesRepository salesRepository,
@@ -77,7 +63,8 @@ public class PaymentService {
                           SyncService syncService,
                           TerminalConfig terminalConfig,
                           AuthenticatedUserContext current,
-                          SaleService saleService) {
+                          SaleService saleService,
+                          MpesaSettings mpesaSettings) {
         this.paymentRepository = paymentRepository;
         this.salesRepository = salesRepository;
         this.gatewayFactory = gatewayFactory;
@@ -85,6 +72,7 @@ public class PaymentService {
         this.terminalConfig = terminalConfig;
         this.current = current;
         this.saleService = saleService;
+        this.mpesaSettings = mpesaSettings;
     }
 
     public Payment addPayment(PaymentRequestDto dto) {
@@ -412,13 +400,10 @@ public class PaymentService {
 
     @Transactional(readOnly = true)
     public Map<String, Object> capabilities() {
-        boolean configured = notBlank(mpesaConsumerKey)
-                && notBlank(mpesaConsumerSecret)
-                && notBlank(mpesaPasskey)
-                && notBlank(mpesaCallbackUrl);
+        MpesaSettings.Config cfg = mpesaSettings.resolve();
         return Map.of(
-                "mpesaStkConfigured", configured,
-                "mpesaEnvironment", mpesaEnvironment,
+                "mpesaStkConfigured", cfg.stkReady(),
+                "mpesaEnvironment", cfg.environment(),
                 "pollingSupported", true);
     }
 
@@ -434,10 +419,6 @@ public class PaymentService {
                 .responseDescription(payment.getDescription())
                 .timestamp(LocalDateTime.now())
                 .build();
-    }
-
-    private boolean notBlank(String value) {
-        return value != null && !value.isBlank();
     }
 
     @SuppressWarnings("unchecked")

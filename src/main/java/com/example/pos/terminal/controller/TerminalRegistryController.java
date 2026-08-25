@@ -66,6 +66,31 @@ public class TerminalRegistryController {
         return ResponseEntity.ok(ApiResponse.ok(registrationService.approve(terminalId), "Terminal approved"));
     }
 
+    @PostMapping("/{terminalId}/pairing-code")
+    @PreAuthorize("hasAuthority('terminal.manage') or hasRole('PLATFORM_ADMIN')")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> startPairing(@PathVariable String terminalId) {
+        return ResponseEntity.ok(ApiResponse.ok(registrationService.startPairing(terminalId)));
+    }
+
+    @PostMapping("/pair")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<TerminalResponseDto>> pairByCode(
+            @RequestBody java.util.Map<String, String> body) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                registrationService.pairByCode(body.getOrDefault("code", "")),
+                "This device is now assigned to the terminal"));
+    }
+
+    @PostMapping("/{terminalId}/assign-user")
+    @PreAuthorize("hasAuthority('terminal.manage') or hasRole('PLATFORM_ADMIN')")
+    public ResponseEntity<ApiResponse<TerminalResponseDto>> assignUser(
+            @PathVariable String terminalId,
+            @RequestBody java.util.Map<String, UUID> body) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                registrationService.assignUser(terminalId, body.get("userId")),
+                "Terminal assignment updated"));
+    }
+
     @PostMapping("/{terminalId}/deactivate")
     @PreAuthorize("hasAuthority('terminal.manage') or hasRole('PLATFORM_ADMIN')")
     public ResponseEntity<ApiResponse<TerminalResponseDto>> deactivate(@PathVariable String terminalId) {

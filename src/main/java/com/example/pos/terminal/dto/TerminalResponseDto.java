@@ -38,6 +38,8 @@ public class TerminalResponseDto {
     private LocalDateTime lastUpdate;
     private String minimumBackendVersion;
     private boolean migratedFromTerminal;
+    private UUID assignedUserId;
+    private String assignedUserName;
     private List<HardwarePeripheralDto> peripherals;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
