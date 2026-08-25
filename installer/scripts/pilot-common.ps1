@@ -74,10 +74,12 @@ function Ensure-PilotEnvironment {
 
     @(
         "POSTGRES_PASSWORD=$password"
-        "POS_SEED_DEMO_ENABLED=true"
-        "SHOW_DEMO_ACCOUNTS=true"
+        "POS_SEED_DEMO_ENABLED=false"
+        "SHOW_DEMO_ACCOUNTS=false"
         "FRONTEND_PORT=3000"
         "API_PORT=9090"
+        "POS_BOOTSTRAP_ADMIN_EMAIL="
+        "POS_BOOTSTRAP_ADMIN_PASSWORD="
         "MPESA_CONSUMER_KEY="
         "MPESA_CONSUMER_SECRET="
         "MPESA_PASSKEY="

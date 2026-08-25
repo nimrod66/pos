@@ -6,6 +6,7 @@ import com.example.pos.common.exception.ConflictException;
 import com.example.pos.common.exception.ForbiddenException;
 import com.example.pos.common.exception.ResourceNotFoundException;
 import com.example.pos.core.branch.model.Branch;
+import com.example.pos.notification.model.Notification;
 import com.example.pos.core.branch.repository.BranchRepository;
 import com.example.pos.finance.cashdrawers.model.CashDrawers;
 import com.example.pos.finance.cashdrawers.repository.CashDrawersRepository;
@@ -38,6 +39,7 @@ public class StaffShiftsService {
     private final PaymentRepository paymentRepository;
     private final CashTransactionsRepository cashTransactionsRepository;
     private final BranchRepository branchRepository;
+    private final com.example.pos.notification.repository.NotificationRepository notificationRepository;
     private final AuthenticatedUserContext current;
 
     public StaffShiftsService(StaffShiftsRepository shiftRepository,
@@ -45,12 +47,14 @@ public class StaffShiftsService {
                               PaymentRepository paymentRepository,
                               CashTransactionsRepository cashTransactionsRepository,
                               BranchRepository branchRepository,
+                              com.example.pos.notification.repository.NotificationRepository notificationRepository,
                               AuthenticatedUserContext current) {
         this.shiftRepository = shiftRepository;
         this.drawerRepository = drawerRepository;
         this.paymentRepository = paymentRepository;
         this.cashTransactionsRepository = cashTransactionsRepository;
         this.branchRepository = branchRepository;
+        this.notificationRepository = notificationRepository;
         this.current = current;
     }
 
@@ -90,6 +94,11 @@ public class StaffShiftsService {
                     .openingTime(LocalTime.now())
                     .status("OPEN")
                     .build());
+            notifyBranch(branch.getId(), Notification.Type.SHIFT_REMINDER,
+                    "Shift opened",
+                    user.getFirstName() + " " + user.getLastName()
+                            + " opened a till at " + branch.getBranchName()
+                            + " (float KES " + openingFloat.toPlainString() + ").");
             return shift;
         } catch (DataIntegrityViolationException exception) {
             throw new ConflictException("User already has an active shift", "SHIFT_ALREADY_OPEN");
@@ -125,7 +134,20 @@ public class StaffShiftsService {
         shift.setStatus(StaffShifts.Status.CLOSED);
         shift.setShiftEndTime(now);
         appendRemarks(shift, dto.getRemarks());
-        return shiftRepository.save(shift);
+        StaffShifts saved = shiftRepository.save(shift);
+
+        BigDecimal variance = drawer.getVariance() == null ? BigDecimal.ZERO : drawer.getVariance();
+        boolean hasVariance = variance.abs().compareTo(BigDecimal.valueOf(0.01)) > 0;
+        notifyBranch(shift.getBranch().getId(),
+                hasVariance ? Notification.Type.SYSTEM_ALERT : Notification.Type.SHIFT_REMINDER,
+                hasVariance ? "Shift closed with cash variance" : "Shift closed",
+                shift.getUser().getFirstName() + " " + shift.getUser().getLastName()
+                        + " closed their till at " + shift.getBranch().getBranchName()
+                        + ". Expected KES " + expected.toPlainString()
+                        + ", counted KES " + dto.getActualCash().toPlainString()
+                        + (hasVariance ? ", variance KES " + variance.toPlainString() + "."
+                                       : " - reconciled."));
+        return saved;
     }
 
     @Auditable(action = "CANCEL_SHIFT", entity = "StaffShift")
@@ -309,6 +331,22 @@ public class StaffShiftsService {
         String clean = trimToNull(remarks);
         if (clean == null) return;
         shift.setRemarks(shift.getRemarks() == null ? clean : shift.getRemarks() + "; " + clean);
+    }
+
+    private void notifyBranch(UUID branchId, Notification.Type type,
+                              String title, String message) {
+        try {
+            notificationRepository.save(Notification.builder()
+                    .title(title)
+                    .message(message)
+                    .type(type)
+                    .status(Notification.Status.UNREAD)
+                    .branchId(branchId)
+                    .referenceType("STAFF_SHIFT")
+                    .build());
+        } catch (Exception ignored) {
+            // A failed bell notification must never block shift operations.
+        }
     }
 
     private String trimToNull(String value) {

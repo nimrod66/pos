@@ -57,6 +57,8 @@ public class AuthService {
     private final Duration inactivityTimeout;
     private final Duration absoluteSessionTimeout;
     private final MpesaSettings mpesaSettings;
+    private final LoginLockoutService lockoutService;
+    private final AuthFailedLoginRepository failedLoginRepository;
 
     public AuthService(AuthenticationManager authenticationManager,
                        UserRepository userRepository,
@@ -69,7 +71,9 @@ public class AuthService {
                        FindByIndexNameSessionRepository<? extends Session> sessionRepository,
                        @Value("${spring.session.timeout:30m}") Duration inactivityTimeout,
                        @Value("${pos.security.absolute-session-timeout:12h}") Duration absoluteSessionTimeout,
-                       MpesaSettings mpesaSettings) {
+                       MpesaSettings mpesaSettings,
+                       LoginLockoutService lockoutService,
+                       AuthFailedLoginRepository failedLoginRepository) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.loginHistoryRepository = loginHistoryRepository;
@@ -82,13 +86,26 @@ public class AuthService {
         this.inactivityTimeout = inactivityTimeout;
         this.absoluteSessionTimeout = absoluteSessionTimeout;
         this.mpesaSettings = mpesaSettings;
+        this.lockoutService = lockoutService;
+        this.failedLoginRepository = failedLoginRepository;
     }
+
+    private static final int MAX_FAILED_LOGINS = 5;
+    private static final int LOCKOUT_MINUTES = 15;
 
     public MeResponse login(String email, String password, HttpServletRequest request,
                             HttpServletResponse response) {
         String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
-        Authentication auth = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(normalizedEmail, password));
+        enforceLockout(normalizedEmail);
+        Authentication auth;
+        try {
+            auth = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(normalizedEmail, password));
+            lockoutService.clearFailures(normalizedEmail);
+        } catch (BadCredentialsException ex) {
+            recordFailedLogin(normalizedEmail);
+            throw ex;
+        }
 
         revokePrincipalSessions(normalizedEmail);
 
@@ -141,6 +158,14 @@ public class AuthService {
 
     public CsrfToken getCsrfToken(HttpServletRequest request) {
         return (CsrfToken) request.getAttribute(CsrfToken.class.getName());
+    }
+
+    private void enforceLockout(String normalizedEmail) {
+        lockoutService.enforceLockout(normalizedEmail);
+    }
+
+    private void recordFailedLogin(String normalizedEmail) {
+        lockoutService.recordFailure(normalizedEmail);
     }
 
     public MeResponse switchBranch(UUID userId, UUID branchId,

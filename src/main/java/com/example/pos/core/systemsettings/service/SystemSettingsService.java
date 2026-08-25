@@ -8,6 +8,7 @@ import com.example.pos.core.branch.repository.BranchRepository;
 import com.example.pos.core.pharmacy.model.Pharmacy;
 import com.example.pos.core.pharmacy.repository.PharmacyRepository;
 import com.example.pos.core.systemsettings.dto.SystemSettingsRequestDto;
+import com.example.pos.core.systemsettings.dto.SystemSettingsResponseDto;
 import com.example.pos.core.systemsettings.model.SystemSettings;
 import com.example.pos.core.systemsettings.repository.SystemSettingsRepository;
 import com.example.pos.security.auth.AuthenticatedUserContext;
@@ -125,6 +126,15 @@ public class SystemSettingsService {
 
     public SystemSettings updateSetting(UUID id, SystemSettingsRequestDto dto) {
         SystemSettings settings = getSettingById(id);
+
+        // Secret-classified values: the API never returns them, so a masked
+        // or blank submission means "keep what is stored".
+        if (SystemSettingsResponseDto.isSecretKey(dto.getSettingKey())
+                && (dto.getSettingValue() == null
+                    || dto.getSettingValue().isBlank()
+                    || dto.getSettingValue().equals(SystemSettingsResponseDto.MASK))) {
+            dto.setSettingValue(settings.getSettingValue());
+        }
 
         if (dto.getBranchId() != null) {
             if (settings.getBranch() == null || !settings.getBranch().getId().equals(dto.getBranchId())) {

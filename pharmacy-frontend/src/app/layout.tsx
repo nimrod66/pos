@@ -31,12 +31,26 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Runtime backend URL: set POS_API_BASE_URL on the container to repoint
+  // an existing build at a different API host without rebuilding.
+  const runtimeApiBaseUrl =
+    process.env.POS_API_BASE_URL ??
+    process.env.NEXT_PUBLIC_API_BASE_URL ??
+    "http://localhost:9090/api/v1";
+  const bootstrapConfig = `window.__POS_CONFIG=${JSON.stringify({
+    apiBaseUrl: runtimeApiBaseUrl,
+  })};`;
+
   return (
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full">
+        <script
+          id="pos-runtime-config"
+          dangerouslySetInnerHTML={{ __html: bootstrapConfig }}
+        />
         <AuthBootstrap />
         <CartBootstrap />
         <TerminalHeartbeat />

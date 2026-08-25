@@ -45,3 +45,6 @@ __pycache__/
 *.py[cod]
 .venv*/
 /connectors/dist/
+
+# Database backups
+backups/

@@ -1,6 +1,26 @@
-export const API_BASE_URL = (
+declare global {
+  interface Window {
+    __POS_CONFIG?: { apiBaseUrl?: string };
+  }
+}
+
+const BUILD_TIME_API_BASE_URL = (
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:9090/api/v1"
 ).replace(/\/$/, "");
+
+/**
+ * Resolved at request time so a container started with POS_API_BASE_URL
+ * (injected into window.__POS_CONFIG by the root layout) can point the
+ * same build at any backend without rebuilding.
+ */
+export function getApiBaseUrl(): string {
+  if (typeof window !== "undefined" && window.__POS_CONFIG?.apiBaseUrl) {
+    return window.__POS_CONFIG.apiBaseUrl.replace(/\/$/, "");
+  }
+  return BUILD_TIME_API_BASE_URL;
+}
+
+export const API_BASE_URL = BUILD_TIME_API_BASE_URL;
 
 export const CSRF_HEADER_NAMES = ["X-XSRF-TOKEN", "X-CSRF-TOKEN"] as const;
 

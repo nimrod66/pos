@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.Set;
 import java.util.UUID;
 
 import java.time.LocalDateTime;
@@ -14,6 +15,14 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 public class SystemSettingsResponseDto {
+
+    /** Values with these keys are never returned to any client. */
+    public static final Set<String> SECRET_KEYS = Set.of(
+            "payment.mpesa_consumer_secret",
+            "payment.mpesa_passkey",
+            "etims.signing_key");
+
+    public static final String MASK = "********";
 
     private UUID id;
     private String settingKey;
@@ -26,11 +35,15 @@ public class SystemSettingsResponseDto {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    public static boolean isSecretKey(String settingKey) {
+        return settingKey != null && SECRET_KEYS.contains(settingKey);
+    }
+
     public static SystemSettingsResponseDto from(SystemSettings settings) {
         return SystemSettingsResponseDto.builder()
                 .id(settings.getId())
                 .settingKey(settings.getSettingKey())
-                .settingValue(settings.getSettingValue())
+                .settingValue(isSecretKey(settings.getSettingKey()) ? MASK : settings.getSettingValue())
                 .description(settings.getDescription())
                 .branchId(settings.getBranch() != null ? settings.getBranch().getId() : null)
                 .branchName(settings.getBranch() != null ? settings.getBranch().getBranchName() : null)
@@ -41,4 +54,3 @@ public class SystemSettingsResponseDto {
                 .build();
     }
 }
-

@@ -1,5 +1,5 @@
 import {
-  API_BASE_URL,
+  getApiBaseUrl,
   CSRF_HEADER_NAME,
 } from "@/lib/api-config";
 import { getCsrfHeaderName, getCsrfToken } from "@/lib/csrf-token";
@@ -123,7 +123,7 @@ export async function apiRequest<T>(
 
   let response: Response;
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
+    response = await fetch(`${getApiBaseUrl()}${path}`, {
       ...requestInit,
       body: body === undefined ? undefined : JSON.stringify(body),
       credentials: "include",
