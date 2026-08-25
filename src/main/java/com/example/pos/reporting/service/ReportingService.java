@@ -331,7 +331,7 @@ public class ReportingService {
     }
 
     private int expiryAlertDays(UUID branchId) {
-        String configured = settingsService.resolveSettingValue(
+        String configured = settingsService.resolvePharmacySettingValue(
                 "inventory.expiry_alert_days", branchId, current.pharmacyId(), "90");
         try {
             return Math.max(1, Math.min(365, Integer.parseInt(configured)));

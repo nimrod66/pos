@@ -1,6 +1,7 @@
 package com.example.pos.core.systemsettings.service;
 
 import com.example.pos.common.exception.ConflictException;
+import com.example.pos.common.exception.ForbiddenException;
 import com.example.pos.common.exception.ResourceNotFoundException;
 import com.example.pos.core.branch.model.Branch;
 import com.example.pos.core.branch.repository.BranchRepository;
@@ -100,6 +101,26 @@ public class SystemSettingsService {
     public String resolveSettingValue(String key, UUID branchId, UUID pharmacyId, String defaultValue) {
         SystemSettings setting = resolveSetting(key, branchId, pharmacyId);
         return setting != null ? setting.getSettingValue() : defaultValue;
+    }
+
+    /**
+     * Resolves a setting for any branch of the given pharmacy without
+     * requiring the caller to be signed into that branch. Used by
+     * pharmacy-wide reporting, which reads per-branch reference values for
+     * branches other than the active session branch.
+     */
+    @Transactional(readOnly = true)
+    public String resolvePharmacySettingValue(String key, UUID branchId, UUID pharmacyId,
+                                              String defaultValue) {
+        if (branchId != null && branchRepository.findByIdAndPharmacyId(branchId, pharmacyId)
+                .isEmpty()) {
+            throw new ForbiddenException("That branch belongs to another pharmacy");
+        }
+        return settingsRepository.findSetting(key, branchId, pharmacyId)
+                .or(() -> settingsRepository.findSetting(key, null, pharmacyId))
+                .map(SystemSettings::getSettingValue)
+                .filter(value -> value != null && !value.isBlank())
+                .orElse(defaultValue);
     }
 
     public SystemSettings updateSetting(UUID id, SystemSettingsRequestDto dto) {
