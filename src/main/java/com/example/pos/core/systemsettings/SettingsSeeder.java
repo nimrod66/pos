@@ -32,10 +32,6 @@ public class SettingsSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        if (settingsRepository.count() > 0) {
-            return;
-        }
-
         List<Pharmacy> pharmacies = pharmacyRepository.findAll();
         if (pharmacies.isEmpty()) {
             log.info("No pharmacies found; skipping settings seed");
@@ -43,9 +39,18 @@ public class SettingsSeeder implements CommandLineRunner {
         }
 
         for (Pharmacy pharmacy : pharmacies) {
-            createDefaults(pharmacy.getId(), null, pharmacy.getName());
-            log.info("Seeded default settings for pharmacy: {}", pharmacy.getName());
+            if (settingsRepository.findByPharmacyId(pharmacy.getId()).isEmpty()) {
+                createDefaults(pharmacy.getId(), null, pharmacy.getName());
+                log.info("Seeded default settings for pharmacy: {}", pharmacy.getName());
+            } else {
+                ensureNewDefaults(pharmacy.getId());
+            }
         }
+    }
+
+    private void ensureNewDefaults(UUID pharmacyId) {
+        ensure(pharmacyId, SettingKeys.Hardware.CONNECTOR_URL,
+                "http://localhost:9100", "URL of the local hardware connector service");
     }
 
     private void createDefaults(UUID pharmacyId, UUID branchId, String pharmacyName) {
@@ -133,5 +138,18 @@ public class SettingsSeeder implements CommandLineRunner {
             settings.setBranch(branchRepository.getReferenceById(branchId));
         }
         settingsRepository.save(settings);
+    }
+
+    private void ensure(UUID pharmacyId, String key, String value, String description) {
+        if (settingsRepository.findSetting(key, null, pharmacyId).isPresent()) {
+            return;
+        }
+        Pharmacy pharmacy = pharmacyRepository.getReferenceById(pharmacyId);
+        settingsRepository.save(SystemSettings.builder()
+                .settingKey(key)
+                .settingValue(value)
+                .description(description)
+                .pharmacy(pharmacy)
+                .build());
     }
 }

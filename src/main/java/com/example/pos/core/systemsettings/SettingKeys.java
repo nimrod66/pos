@@ -56,6 +56,10 @@ public final class SettingKeys {
         public static final String SIGNING_KEY = "etims.signing_key";
     }
 
+    public static final class Hardware {
+        public static final String CONNECTOR_URL = "hardware.connector_url";
+    }
+
     public static final class Backup {
         public static final String AUTO_BACKUP = "backup.auto_backup";
         public static final String FREQUENCY_HOURS = "backup.frequency_hours";

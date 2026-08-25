@@ -605,10 +605,18 @@ export function HardwareSetupPage() {
                     <option value="ENTER">Enter</option><option value="TAB">Tab</option>
                   </Select>
                 </Field>
+                {registerConfig.scannerMode === "LOCAL_CONNECTOR" ? (
+                  <p className={bridgeState === "online" ? "text-xs text-[var(--success)] md:col-span-2" : "text-xs text-[var(--danger)] md:col-span-2"}>
+                    {bridgeState === "online"
+                      ? `Barcode scans are read from the local connector at ${bridgeConfig?.connectorUrl ?? "the connector URL"}.`
+                      : `Scanner mode is set to the local connector, but no connector responded at ${bridgeConfig?.connectorUrl ?? "the configured URL"}. Start the connector or switch to keyboard wedge.`}
+                  </p>
+                ) : null}
                 <div className="grid gap-2 sm:grid-cols-2 md:col-span-2">
                   {([
                     ["cashEnabled", "Cash payments"],
                     ["mpesaEnabled", "M-Pesa payments"],
+                    ["requireOpenShift", "Require open shift for checkout"],
                     ["autoPrintReceipt", "Print receipt automatically"],
                     ["openDrawerOnCashSale", "Open drawer after cash sale"],
                   ] as const).map(([key, label]) => (
