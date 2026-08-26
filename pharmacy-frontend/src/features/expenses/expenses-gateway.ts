@@ -10,10 +10,10 @@ import type {
 } from "./types";
 
 async function getAll<T>(url: `/${string}`): Promise<T[]> {
-  const response = await apiRequest<{ data: T[]; pagination: { totalElements: number } }>(url, {
+  const response = await apiRequest<{ content: T[]; totalElements: number }>(url, {
     cache: "no-store",
   });
-  return response.data.data ?? [];
+  return response.data.content ?? [];
 }
 
 export const expensesGateway = {
