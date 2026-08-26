@@ -77,7 +77,11 @@ public class TerminalRegistryController {
     public ResponseEntity<ApiResponse<TerminalResponseDto>> pairByCode(
             @RequestBody java.util.Map<String, String> body) {
         return ResponseEntity.ok(ApiResponse.ok(
-                registrationService.pairByCode(body.getOrDefault("code", "")),
+                registrationService.pairByCode(
+                        body.getOrDefault("code", ""),
+                        body.getOrDefault("platform", null),
+                        body.getOrDefault("osVersion", null),
+                        body.getOrDefault("browser", null)),
                 "This device is now assigned to the terminal"));
     }
 

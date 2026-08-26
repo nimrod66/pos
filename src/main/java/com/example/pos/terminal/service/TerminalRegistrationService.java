@@ -144,9 +144,17 @@ public class TerminalRegistrationService {
                 "expiresAt", expires.toString());
     }
 
-    /** Activates this device against a pairing code (any signed-in staff). */
-    @Transactional(readOnly = true)
-    public TerminalResponseDto pairByCode(String code) {
+    /**
+     * Activates this device against a pairing code (any signed-in staff).
+     * The pairing device self-reports its actual platform, OS version,
+     * and browser so the terminal record reflects the real hardware —
+     * replacing whatever placeholder the owner typed at registration.
+     */
+    @Transactional
+    public TerminalResponseDto pairByCode(String code,
+                                           String platform,
+                                           String osVersion,
+                                           String browser) {
         String normalized = code == null ? "" : code.trim();
         Terminal terminal = terminalRepository.findAll().stream()
                 .filter(item -> normalized.equals(item.getPairingCode()))
@@ -160,8 +168,19 @@ public class TerminalRegistrationService {
             throw new ForbiddenException(
                     "This pairing code belongs to another branch");
         }
+        // Device self-reports: overwrite registration placeholders with real data.
+        if (platform != null && !platform.isBlank()) {
+            terminal.setPlatform(platform.trim());
+        }
+        if (osVersion != null && !osVersion.isBlank()) {
+            terminal.setOsVersion(osVersion.trim());
+        }
+        if (browser != null && !browser.isBlank()) {
+            terminal.setFirmwareVersion("Browser: " + browser.trim());
+        }
         terminal.setPairingCode(null);
         terminal.setPairingExpiresAt(null);
+        terminal.setLastSeenAt(LocalDateTime.now());
         terminalRepository.save(terminal);
         return toDto(terminal);
     }
