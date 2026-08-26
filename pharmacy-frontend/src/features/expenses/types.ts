@@ -26,6 +26,7 @@ export interface CreateExpenseInput {
   description?: string;
   userId: string;
   cashDrawersId?: string;
+  expenseDate?: string;
 }
 
 export interface UpdateExpenseInput {
@@ -33,6 +34,7 @@ export interface UpdateExpenseInput {
   amount?: number;
   description?: string;
   userId?: string;
+  expenseDate?: string;
 }
 
 export interface CreateCategoryInput {

@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.util.UUID;
+import java.time.LocalDate;
 
 import java.math.BigDecimal;
 
@@ -26,5 +27,7 @@ public class ExpensesRequestDto {
     private BigDecimal amount;
 
     private String description;
+
+    private LocalDate expenseDate;
 }
 

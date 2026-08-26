@@ -58,6 +58,7 @@ services:
     volumes:
       - pos_data:/app/pos-data
       - connectors_data:/connectors
+      - backup_data:/app/backups
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:9090/actuator/health"]
       interval: 15s
@@ -94,3 +95,4 @@ volumes:
   postgres_data:
   pos_data:
   connectors_data:
+  backup_data:

@@ -126,6 +126,7 @@ export function ExpensesPage() {
           amount: parsed,
           description: description || undefined,
           userId,
+          expenseDate: expenseDate || undefined,
         });
       } else {
         await expensesGateway.createExpense({
@@ -134,6 +135,7 @@ export function ExpensesPage() {
           description: description || undefined,
           userId,
           cashDrawersId: undefined,
+          expenseDate: expenseDate || undefined,
         });
       }
       resetForm();

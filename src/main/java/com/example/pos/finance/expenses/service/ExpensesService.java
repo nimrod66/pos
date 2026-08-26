@@ -49,7 +49,11 @@ public class ExpensesService {
         expense.setUser(user);
         expense.setAmount(dto.getAmount());
         expense.setDescription(dto.getDescription());
-        expense.setExpenseDate(LocalDateTime.now());
+        if (dto.getExpenseDate() != null) {
+            expense.setExpenseDate(dto.getExpenseDate().atStartOfDay());
+        } else {
+            expense.setExpenseDate(LocalDateTime.now());
+        }
 
         if (dto.getCashDrawersId() != null) {
             CashDrawers drawer = drawerRepo.findById(dto.getCashDrawersId())
@@ -76,6 +80,9 @@ public class ExpensesService {
         expense.setExpenseCategory(category);
         expense.setAmount(dto.getAmount());
         expense.setDescription(dto.getDescription());
+        if (dto.getExpenseDate() != null) {
+            expense.setExpenseDate(dto.getExpenseDate().atStartOfDay());
+        }
         if (dto.getCashDrawersId() != null) {
             CashDrawers drawer = drawerRepo.findById(dto.getCashDrawersId())
                     .orElseThrow(() -> new ResourceNotFoundException("CashDrawer", dto.getCashDrawersId()));

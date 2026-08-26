@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 
 import { PaymentSettingsPanel } from "@/features/system/components/payment-settings-panel";
 import { SystemStatusPanel } from "@/features/system/components/system-status-panel";
+import { BackupRestorePanel } from "@/features/system/components/backup-restore-panel";
 import { API_BASE_URL, DEMO_AUTH_ENABLED } from "@/lib/api-config";
 
 export const metadata: Metadata = {
@@ -32,6 +33,10 @@ export default function SystemPage() {
 
       <div className="mb-6">
         <PaymentSettingsPanel />
+      </div>
+
+      <div className="mb-6">
+        <BackupRestorePanel />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
