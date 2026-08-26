@@ -5,6 +5,7 @@ import {
   BarChart3,
   Boxes,
   CreditCard,
+  ListOrdered,
   ReceiptText,
   RotateCcw,
   Smartphone,
@@ -26,6 +27,7 @@ import { addMoney, formatKes, moneyToCents } from "@/features/workspace/lib/mone
 import { todayIsoDate } from "@/features/workspace/lib/workspace-helpers";
 import type {
   InventoryReport,
+  PluRow,
   SalesReport,
 } from "@/features/workspace/types";
 import { cn } from "@/lib/cn";
@@ -41,6 +43,7 @@ export function ReportsPage() {
   const [salesReport, setSalesReport] = useState<SalesReport | null>(null);
   const [inventoryReport, setInventoryReport] =
     useState<InventoryReport | null>(null);
+  const [pluRows, setPluRows] = useState<PluRow[]>([]);
   const [salesError, setSalesError] = useState<string | null>(null);
   const [inventoryError, setInventoryError] = useState<string | null>(null);
 
@@ -88,6 +91,23 @@ export function ReportsPage() {
       active = false;
     };
   }, [branchId, canViewInventory]);
+
+  useEffect(() => {
+    if (!branchId || !canViewSales || !from || !to || to < from) return;
+    let active = true;
+    void workspaceGateway
+      .getPluReport(from, to)
+      .then((rows) => {
+        if (!active) return;
+        setPluRows(rows);
+      })
+      .catch(() => {
+        /* PLU is best-effort */
+      });
+    return () => {
+      active = false;
+    };
+  }, [branchId, canViewSales, from, to]);
 
   const paymentRows = useMemo(() => {
     if (!salesReport) return [];
@@ -381,6 +401,63 @@ export function ReportsPage() {
               All active medicines are above their reorder levels.
             </p>
           )}
+        </section>
+      ) : null}
+
+      {canViewSales && pluRows.length > 0 ? (
+        <section className="mt-6 rounded-md border border-[var(--border)] bg-white">
+          <div className="border-b border-[var(--border)] px-4 py-3.5">
+            <h2 className="flex items-center gap-2 text-sm font-semibold">
+              <ListOrdered aria-hidden="true" size={16} /> PLU report — sold
+              quantity vs remaining stock
+            </h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[600px] text-left text-sm">
+              <thead className="bg-[var(--surface-muted)] text-xs uppercase text-[var(--text-muted)]">
+                <tr>
+                  <th className="px-4 py-3 font-semibold">Medicine</th>
+                  <th className="px-4 py-3 font-semibold">SKU</th>
+                  <th className="px-4 py-3 text-right font-semibold">
+                    Unit price
+                  </th>
+                  <th className="px-4 py-3 text-right font-semibold">
+                    Qty sold
+                  </th>
+                  <th className="px-4 py-3 text-right font-semibold">
+                    Revenue
+                  </th>
+                  <th className="px-4 py-3 text-right font-semibold">
+                    Remaining
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border)]">
+                {pluRows.map((row) => (
+                  <tr key={row.medicineId}>
+                    <td className="px-4 py-3.5 font-medium">
+                      {row.medicineName}
+                    </td>
+                    <td className="px-4 py-3.5 text-[var(--text-muted)]">
+                      {row.sku}
+                    </td>
+                    <td className="px-4 py-3.5 text-right">
+                      {formatKes(row.unitPrice)}
+                    </td>
+                    <td className="px-4 py-3.5 text-right font-semibold">
+                      {row.quantitySold}
+                    </td>
+                    <td className="px-4 py-3.5 text-right">
+                      {formatKes(row.revenue)}
+                    </td>
+                    <td className="px-4 py-3.5 text-right">
+                      {row.remainingStock}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
       ) : null}
     </div>

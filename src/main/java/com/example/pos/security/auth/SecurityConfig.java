@@ -91,7 +91,7 @@ public class SecurityConfig {
     public FilterRegistrationBean<AbsoluteSessionTimeoutFilter> absoluteSessionFilterRegistration(
             AbsoluteSessionTimeoutFilter filter) {
         FilterRegistrationBean<AbsoluteSessionTimeoutFilter> registration = new FilterRegistrationBean<>(filter);
-        registration.setEnabled(false);
+        registration.setEnabled(true);
         return registration;
     }
 
@@ -117,7 +117,7 @@ public class SecurityConfig {
                             "/api/v1/payments/mpesa/callback",
                             "/api/v1/payments/paystack/callback",
                             "/api/v1/payments/stripe/callback",
-                            "/api/v1/sync/**");
+                            "/api/v1/sync/health");
                 } else {
                     csrf.disable();
                 }
@@ -228,8 +228,6 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/cash-drawers/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "CASHIER")
                 .requestMatchers("/api/v1/shifts/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "PHARMACIST", "CASHIER", "PHARMACY_TECHNICIAN")
                 .requestMatchers("/api/v1/expiry-logs/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "STORE_KEEPER")
-                .requestMatchers("/api/v1/etims/**").hasAnyRole("OWNER", "BRANCH_MANAGER")
-                .requestMatchers("/api/v1/compliance/**").hasAnyRole("OWNER", "BRANCH_MANAGER")
                 .requestMatchers("/api/v1/controlled-drugs/**").hasAnyRole("OWNER", "PHARMACIST")
                 .requestMatchers("/api/v1/categories/**").hasAuthority(PermissionCodes.MEDICINE_READ)
                 .requestMatchers("/api/v1/dosage-forms/**").hasAuthority(PermissionCodes.MEDICINE_READ)
@@ -260,7 +258,6 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/sync/**").authenticated()
                 .requestMatchers("/api/v1/system/**").authenticated()
                 .requestMatchers("/api/v1/catalog/**").authenticated()
-                .requestMatchers("/api/v1/insurance/**").authenticated()
                 .anyRequest().authenticated());
 
         return http.build();

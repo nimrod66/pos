@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  ChevronDown,
+  ChevronRight,
   Download,
   FileClock,
   RefreshCw,
@@ -53,6 +55,64 @@ function actionTone(action: string) {
 
 function csvCell(value: string | null) {
   return `"${(value ?? "").replace(/"/g, '""')}"`;
+}
+
+function parseJsonSafe(text: string | null): Record<string, unknown> | null {
+  if (!text) return null;
+  try {
+    const parsed = JSON.parse(text) as unknown;
+    return typeof parsed === "object" && parsed !== null
+      ? (parsed as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function DiffView({ entry }: { entry: AuditLogEntry }) {
+  const [open, setOpen] = useState(false);
+  const oldObj = parseJsonSafe(entry.oldValue);
+  const newObj = parseJsonSafe(entry.newValue);
+  const hasChanges = oldObj || newObj;
+  if (!hasChanges) return <span className="text-[var(--text-subtle)]">-</span>;
+
+  const allKeys = [
+    ...new Set([
+      ...Object.keys(oldObj ?? {}),
+      ...Object.keys(newObj ?? {}),
+    ]),
+  ].sort();
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1 text-xs text-[var(--brand)] hover:underline"
+      >
+        {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        {allKeys.length} field{allKeys.length !== 1 ? "s" : ""} changed
+      </button>
+      {open ? (
+        <div className="mt-2 space-y-1 rounded bg-[var(--surface-muted)] p-2 text-xs">
+          {allKeys.map((key) => (
+            <div key={key} className="flex gap-2">
+              <span className="w-28 shrink-0 truncate font-medium text-[var(--text-muted)]">
+                {key}
+              </span>
+              <span className="text-[var(--danger)] line-through">
+                {String(oldObj?.[key] ?? "")}
+              </span>
+              <span className="text-[var(--text-subtle)]">→</span>
+              <span className="text-[var(--success)]">
+                {String(newObj?.[key] ?? "")}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 export function AuditLogPage() {
@@ -138,13 +198,15 @@ export function AuditLogPage() {
   }, [action, entries, entity, from, query, to]);
 
   function exportCsv() {
-    const header = ["Time", "User", "Action", "Entity", "Record ID"];
+    const header = ["Time", "User", "Action", "Entity", "Record ID", "Old", "New"];
     const rows = filtered.map((entry) => [
       entry.createdAt,
-      entry.userName,
+      entry.userName ?? "",
       entry.action,
       entry.tableName,
-      entry.recordId,
+      entry.recordId ?? "",
+      entry.oldValue ?? "",
+      entry.newValue ?? "",
     ]);
     const csv = [header, ...rows]
       .map((row) => row.map((cell) => csvCell(cell)).join(","))
@@ -255,7 +317,7 @@ export function AuditLogPage() {
       <section className="overflow-hidden rounded-md border border-[var(--border)] bg-white">
         {filtered.length ? (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] text-left text-sm">
+            <table className="w-full min-w-[1000px] text-left text-sm">
               <thead className="border-b border-[var(--border)] bg-[var(--surface-muted)] text-xs text-[var(--text-muted)]">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Time</th>
@@ -263,6 +325,7 @@ export function AuditLogPage() {
                   <th className="px-4 py-3 font-semibold">Action</th>
                   <th className="px-4 py-3 font-semibold">Entity</th>
                   <th className="px-4 py-3 font-semibold">Record ID</th>
+                  <th className="px-4 py-3 font-semibold">Changes</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border)]">
@@ -289,6 +352,9 @@ export function AuditLogPage() {
                     <td className="px-4 py-3 font-medium">{entry.tableName}</td>
                     <td className="max-w-72 truncate px-4 py-3 font-mono text-xs text-[var(--text-muted)]">
                       {entry.recordId || "-"}
+                    </td>
+                    <td className="px-4 py-3">
+                      <DiffView entry={entry} />
                     </td>
                   </tr>
                 ))}

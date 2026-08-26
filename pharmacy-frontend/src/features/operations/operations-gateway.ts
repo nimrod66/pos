@@ -113,6 +113,8 @@ export interface AuditLogEntry {
   tableName: string;
   recordId: string | null;
   action: string;
+  oldValue: string | null;
+  newValue: string | null;
   createdAt: string;
 }
 
@@ -269,11 +271,13 @@ function previewSeed(): PreviewOperationsState {
         branchId: "preview-main",
         createdAt,
         id: "audit-preview-1",
+        oldValue: null,
         pharmacyId: "preview-pharmacy",
         recordId: null,
         tableName: "Authentication",
         userId: "owner-preview",
         userName: "Pharmacy Owner",
+        newValue: null,
       },
     ],
     customers: [
@@ -323,11 +327,13 @@ function appendPreviewAudit(
     branchId: "preview-main",
     createdAt: new Date().toISOString(),
     id: uuid(),
+    oldValue: null,
     pharmacyId: "preview-pharmacy",
     recordId,
     tableName,
     userId: "owner-preview",
     userName: "Pharmacy Owner",
+    newValue: null,
   });
 }
 

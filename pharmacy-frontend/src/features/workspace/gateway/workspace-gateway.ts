@@ -15,6 +15,7 @@ import type {
   MedicineInput,
   PaymentCapabilities,
   PharmacySettings,
+  PluRow,
   PosLookupItem,
   ReceiveStockInput,
   ReturnInput,
@@ -116,6 +117,7 @@ export interface WorkspaceGateway {
   getDashboardReport(date?: string): Promise<DashboardReport>;
   getInventoryReport(asOf?: string): Promise<InventoryReport>;
   getPaymentCapabilities(): Promise<PaymentCapabilities>;
+  getPluReport(from?: string, to?: string): Promise<PluRow[]>;
   getSalesReport(from: string, to: string): Promise<SalesReport>;
   hydrate(): Promise<void>;
   lookupPos(query: string): Promise<PosLookupItem[]>;
@@ -217,6 +219,10 @@ class PreviewWorkspaceGateway implements WorkspaceGateway {
       mpesaStkConfigured: true,
       pollingSupported: true,
     };
+  }
+
+  async getPluReport() {
+    return [];
   }
 
   async getSalesReport(from: string, to: string) {

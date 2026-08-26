@@ -324,3 +324,13 @@ export interface InventoryReport {
     reorderLevel: number;
   }>;
 }
+
+export interface PluRow {
+  medicineId: string;
+  medicineName: string;
+  sku: string;
+  unitPrice: string;
+  quantitySold: number;
+  revenue: string;
+  remainingStock: number;
+}

@@ -45,6 +45,7 @@ import type {
   PaymentMethod,
   PaymentCapabilities,
   PharmacySettings,
+  PluRow,
   PosLookupItem,
   ReceiveStockInput,
   ReturnInput,
@@ -410,6 +411,21 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
     return (await apiRequest<PaymentCapabilities>("/payments/capabilities", {
       cache: "no-store",
     })).data;
+  }
+
+  async getPluReport(from?: string, to?: string): Promise<PluRow[]> {
+    const session = this.requireSession();
+    const params = new URLSearchParams({ branchId: session.user.activeBranch.id });
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+    const response = await apiRequest<PluRow[]>(path(`/reports/plu?${params.toString()}`), {
+      cache: "no-store",
+    });
+    return response.data.map((row) => ({
+      ...row,
+      unitPrice: amount(row.unitPrice),
+      revenue: amount(row.revenue),
+    }));
   }
 
   async getSalesReport(from: string, to: string): Promise<SalesReport> {

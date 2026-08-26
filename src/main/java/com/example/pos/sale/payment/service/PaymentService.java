@@ -265,8 +265,9 @@ public class PaymentService {
             SecretKeySpec spec = new SecretKeySpec(callbackHmacKey.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
             mac.init(spec);
             byte[] hash = mac.doFinal(body.getBytes(StandardCharsets.UTF_8));
-            String computed = Base64.getEncoder().encodeToString(hash);
-            return computed.equals(providedSignature);
+            byte[] expected = Base64.getEncoder().encode(hash);
+            byte[] actual = providedSignature.getBytes(StandardCharsets.UTF_8);
+            return java.security.MessageDigest.isEqual(expected, actual);
         } catch (Exception e) {
             log.error("HMAC validation failed", e);
             return false;

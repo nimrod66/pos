@@ -23,6 +23,8 @@ public class AuditLogResponseDto {
     private String tableName;
     private String recordId;
     private String action;
+    private String oldValue;
+    private String newValue;
     private LocalDateTime createdAt;
 
     public static AuditLogResponseDto from(AuditLog log) {
@@ -35,6 +37,8 @@ public class AuditLogResponseDto {
                 .tableName(log.getTableName())
                 .recordId(log.getRecordId())
                 .action(log.getAction())
+                .oldValue(log.getOldValue())
+                .newValue(log.getNewValue())
                 .createdAt(log.getCreatedAt()).build();
     }
 }
