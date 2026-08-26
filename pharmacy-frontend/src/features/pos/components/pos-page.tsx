@@ -1,6 +1,6 @@
 "use client";
 
-import { Banknote, Minus, PackageSearch, Plus, Search, ShieldCheck, Smartphone, Trash2, UserRound } from "lucide-react";
+import { Banknote, Minus, PackageSearch, Plus, ScanLine, Search, ShieldCheck, Smartphone, Trash2, UserRound } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -16,6 +16,7 @@ import {
 } from "@/features/operations/operations-gateway";
 import { useCartStore } from "@/features/pos/store/cart-store";
 import { medicineImage } from "@/features/medicines/lib/medicine-image";
+import { BarcodeScanner } from "@/features/pos/components/barcode-scanner";
 import {
   type Prescription,
   prescriptionGateway,
@@ -94,6 +95,7 @@ export function PosPage() {
   const [lookupResults, setLookupResults] = useState<PosLookupItem[]>([]);
   const [searching, setSearching] = useState(false);
   const [scanStatus, setScanStatus] = useState("");
+  const [showScanner, setShowScanner] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -339,6 +341,29 @@ export function PosPage() {
     return false;
   }
 
+  async function handleCameraBarcode(barcode: string) {
+    setShowScanner(false);
+    setSearching(true);
+    setLookupError(null);
+    try {
+      const matches = await workspaceGateway.lookupPos(barcode);
+      const exact = matches.find(
+        (item) =>
+          item.barcode === barcode ||
+          item.sku.toLowerCase() === barcode.toLowerCase(),
+      );
+      if (exact) {
+        addMedicine(exact.id, exact.stockAvailable);
+      } else {
+        setScanStatus(`No product found for barcode ${barcode}.`);
+      }
+    } catch (error) {
+      setLookupError(getWorkspaceErrorMessage(error, "Product lookup failed."));
+    } finally {
+      setSearching(false);
+    }
+  }
+
   async function handleSearchKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
     const submitKey = registerConfig?.barcodeSubmitKey === "TAB" ? "Tab" : "Enter";
     if (event.key !== submitKey) return;
@@ -497,11 +522,16 @@ export function PosPage() {
       </div>
       <section className={cn("min-w-0 border-r border-[var(--border)] p-4 sm:p-5 xl:block", mobileView !== "products" && "hidden")}>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-          <label className="relative min-w-0 flex-1">
-            <span className="sr-only">Search or scan a product</span>
-            <Search aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-subtle)]" size={18} />
-            <Input ref={searchInputRef} autoFocus className="h-12 pl-10 text-base" placeholder="Search medicine, SKU, or scan barcode" value={query} onChange={(event) => { const value = event.target.value; setQuery(value); setScanStatus(""); if (!value.trim()) { setLookupResults([]); setLookupError(null); setSearching(false); } }} onKeyDown={(event) => void handleSearchKeyDown(event)} />
-          </label>
+          <div className="flex items-center gap-2">
+            <label className="relative min-w-0 flex-1">
+              <span className="sr-only">Search or scan a product</span>
+              <Search aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-subtle)]" size={18} />
+              <Input ref={searchInputRef} autoFocus className="h-12 pl-10 pr-12 text-base" placeholder="Search medicine, SKU, or scan barcode" value={query} onChange={(event) => { const value = event.target.value; setQuery(value); setScanStatus(""); if (!value.trim()) { setLookupResults([]); setLookupError(null); setSearching(false); } }} onKeyDown={(event) => void handleSearchKeyDown(event)} />
+              <button type="button" aria-label="Scan barcode with camera" title="Scan barcode" onClick={() => setShowScanner(true)} className="absolute right-2 top-1/2 -translate-y-1/2 flex size-9 items-center justify-center rounded-md text-[var(--brand)] hover:bg-[var(--brand-soft)]">
+                <ScanLine aria-hidden="true" size={20} />
+              </button>
+            </label>
+          </div>
           <div className="no-scrollbar flex max-w-full gap-1 overflow-x-auto" role="tablist" aria-label="Product categories">
             <button type="button" onClick={() => setCategoryId("ALL")} className={cn("h-10 shrink-0 rounded-md px-3 text-sm font-medium", categoryId === "ALL" ? "bg-[var(--brand)] text-white" : "bg-white text-[var(--text-muted)] hover:bg-[var(--surface-muted)]")}>All</button>
             {categories.map((category) => <button type="button" key={category.id} onClick={() => setCategoryId(category.id)} className={cn("h-10 shrink-0 rounded-md px-3 text-sm font-medium", categoryId === category.id ? "bg-[var(--brand)] text-white" : "bg-white text-[var(--text-muted)] hover:bg-[var(--surface-muted)]")}>{category.name}</button>)}
@@ -675,6 +705,13 @@ export function PosPage() {
           <PrimaryButton type="button" onClick={() => void handleCheckout()} disabled={submitting || !currentShiftId || detailedLines.length === 0 || (paymentMethod === "MPESA" && (mpesaMode === "STK" ? !paymentCapabilities?.mpesaStkConfigured || !validMpesaPhone : !mpesaReference.trim())) || (paymentMethod === "CASH" && (!validCashTendered || !cashCoversTotal)) || (requiresApproval && (!canApprovePrescription || !prescriptionReferenceId.trim()))} className="mt-3 h-12 w-full text-base">{submitting ? paymentMethod === "MPESA" && mpesaMode === "STK" ? "Waiting for M-Pesa..." : "Completing sale..." : paymentMethod === "MPESA" && mpesaMode === "STK" ? `Send STK Push - ${formatKes(total)}` : `Complete sale - ${formatKes(total)}`}</PrimaryButton>
         </div>
       </aside>
+
+      {showScanner ? (
+        <BarcodeScanner
+          onDetected={(barcode) => void handleCameraBarcode(barcode)}
+          onClose={() => setShowScanner(false)}
+        />
+      ) : null}
     </div>
   );
 }
