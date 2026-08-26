@@ -156,7 +156,6 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/auth/me", "/api/v1/auth/logout").authenticated()
                 // Deferred modules stay unreachable until their tenant and accounting workflows are complete.
                 .requestMatchers(
-                    "/api/v1/insurance/**",
                     "/api/v1/etims/**",
                     "/api/v1/compliance/**",
                     "/api/v1/invoices/**",
@@ -165,6 +164,7 @@ public class SecurityConfig {
                     "/api/v1/receipts/fiscal/**",
                     "/api/v1/supplier-invoices/**",
                     "/api/v1/supplier-payments/**").denyAll()
+                .requestMatchers("/api/v1/insurance/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "PHARMACIST", "CASHIER")
                 // Shared reference dictionaries are read-only in the pharmacy-facing MVP.
                 .requestMatchers(HttpMethod.POST,
                     "/api/v1/categories/**", "/api/v1/dosage-forms/**",

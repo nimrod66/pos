@@ -34,6 +34,8 @@ export const PERMISSIONS = {
   PRESCRIPTION_APPROVE: "prescription.approve",
   EXPENSE_READ: "expense.read",
   EXPENSE_WRITE: "expense.write",
+  INSURANCE_READ: "insurance.read",
+  INSURANCE_WRITE: "insurance.write",
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -103,6 +105,8 @@ export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
       PERMISSIONS.PRESCRIPTION_READ,
       PERMISSIONS.EXPENSE_READ,
       PERMISSIONS.EXPENSE_WRITE,
+      PERMISSIONS.INSURANCE_READ,
+      PERMISSIONS.INSURANCE_WRITE,
     ],
   },
   {

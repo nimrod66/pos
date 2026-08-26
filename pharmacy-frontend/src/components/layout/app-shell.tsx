@@ -152,6 +152,13 @@ export const appNavigation: NavigationItem[] = [
     section: "Operations",
   },
   {
+    href: "/insurance",
+    icon: ClipboardCheck,
+    label: "Insurance",
+    access: { allOf: [PERMISSIONS.INSURANCE_READ] },
+    section: "Operations",
+  },
+  {
     href: "/reports",
     icon: BarChart3,
     label: "Reports",
