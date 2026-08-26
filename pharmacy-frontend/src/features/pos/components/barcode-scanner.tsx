@@ -77,7 +77,9 @@ export function BarcodeScanner({ onDetected, onClose }: BarcodeScannerProps) {
     if (!streamRef.current) return;
     const track = streamRef.current.getVideoTracks()[0];
     try {
-      await track.applyConstraints({ advanced: [{ torch: !torchOn }] });
+      await track.applyConstraints({
+        advanced: [{ torch: !torchOn }],
+      } as unknown as MediaTrackConstraints);
       setTorchOn((prev) => !prev);
     } catch {
       /* torch not supported after all */
