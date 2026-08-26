@@ -9,13 +9,26 @@ const BUILD_TIME_API_BASE_URL = (
 ).replace(/\/$/, "");
 
 /**
- * Resolved at request time so a container started with POS_API_BASE_URL
- * (injected into window.__POS_CONFIG by the root layout) can point the
- * same build at any backend without rebuilding.
+ * Resolved at request time, in priority order:
+ *
+ * 1. window.__POS_CONFIG.apiBaseUrl  (explicit server-side override via
+ *    POS_API_BASE_URL env on the frontend container)
+ * 2. Auto-derived from the browser's hostname — whoever served the page
+ *    also hosts the API. Works from localhost AND from any LAN device
+ *    (phone/handheld) with zero configuration.
+ * 3. Build-time NEXT_PUBLIC_API_BASE_URL fallback.
  */
 export function getApiBaseUrl(): string {
-  if (typeof window !== "undefined" && window.__POS_CONFIG?.apiBaseUrl) {
-    return window.__POS_CONFIG.apiBaseUrl.replace(/\/$/, "");
+  if (typeof window !== "undefined") {
+    if (window.__POS_CONFIG?.apiBaseUrl) {
+      return window.__POS_CONFIG.apiBaseUrl.replace(/\/$/, "");
+    }
+    // Auto-derive: same host that served this page also runs the API.
+    const proto = window.location.protocol;
+    const host = window.location.hostname;
+    if (host && host !== "localhost" && host !== "127.0.0.1") {
+      return `${proto}//${host}:9090/api/v1`;
+    }
   }
   return BUILD_TIME_API_BASE_URL;
 }

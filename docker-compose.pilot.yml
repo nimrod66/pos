@@ -26,7 +26,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/pharmacy_pos
       SPRING_DATASOURCE_USERNAME: pharmacy_pos
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
-      POS_ALLOWED_ORIGINS: http://localhost:${FRONTEND_PORT:-3000},http://127.0.0.1:${FRONTEND_PORT:-3000}
+      POS_ALLOWED_ORIGINS: ${POS_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
       POS_SESSION_COOKIE_SECURE: "false"
       POS_SESSION_COOKIE_SAME_SITE: strict
       POS_SESSION_IDLE_TIMEOUT: 30m
@@ -72,7 +72,6 @@ services:
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_BASE_URL: http://localhost:${API_PORT:-9090}/api/v1
-        POS_API_BASE_URL: ${POS_API_BASE_URL:-}
         NEXT_PUBLIC_CSRF_HEADER_NAME: X-XSRF-TOKEN
         NEXT_PUBLIC_DEMO_AUTH: "false"
         NEXT_PUBLIC_SHOW_DEMO_ACCOUNTS: ${SHOW_DEMO_ACCOUNTS:-true}
