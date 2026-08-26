@@ -174,7 +174,7 @@ class PosApplicationTests {
                 .andReturn();
         JsonNode response = objectMapper.readTree(result.getResponse().getContentAsByteArray());
         String branchId = response.at("/data/user/activeBranch/id").asText();
-        Cookie sessionCookie = Objects.requireNonNull(result.getResponse().getCookie("pos_session"));
+        Cookie sessionCookie = Objects.requireNonNull(result.getResponse().getCookie("SESSION"));
         return new AuthenticatedSession(sessionCookie, branchId);
     }
 
