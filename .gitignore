@@ -48,3 +48,8 @@ __pycache__/
 
 # Database backups
 backups/
+
+# Local maven mirror workarounds + test output
+.mvn/maven.config
+.mvn/settings.xml
+scripts/last-run.txt
