@@ -38,6 +38,10 @@ public final class PermissionCodes {
     public static final String TERMINAL_MANAGE = "terminal.manage";
     public static final String PRESCRIPTION_READ = "prescription.read";
     public static final String PRESCRIPTION_APPROVE = "prescription.approve";
+    public static final String EXPENSE_READ = "expense.read";
+    public static final String EXPENSE_WRITE = "expense.write";
+    public static final String INSURANCE_READ = "insurance.read";
+    public static final String INSURANCE_WRITE = "insurance.write";
 
     public static final List<String> ALL = List.of(
             DASHBOARD_READ,
@@ -72,7 +76,11 @@ public final class PermissionCodes {
             TERMINAL_READ,
             TERMINAL_MANAGE,
             PRESCRIPTION_READ,
-            PRESCRIPTION_APPROVE);
+            PRESCRIPTION_APPROVE,
+            EXPENSE_READ,
+            EXPENSE_WRITE,
+            INSURANCE_READ,
+            INSURANCE_WRITE);
 
     public static final Map<String, List<String>> ROLE_BUNDLES = Map.of(
             "OWNER", ALL.stream().filter(code -> !PRESCRIPTION_APPROVE.equals(code)).toList(),
@@ -83,7 +91,8 @@ public final class PermissionCodes {
                     INVENTORY_ADJUST_APPROVE, SUPPLIER_READ, CUSTOMER_READ,
                     CUSTOMER_WRITE, PURCHASE_ORDER_READ, SHIFT_VARIANCE_APPROVE,
                     REPORT_SALES_READ, REPORT_INVENTORY_READ, TERMINAL_READ,
-                    TERMINAL_MANAGE, PRESCRIPTION_READ),
+                    TERMINAL_MANAGE, PRESCRIPTION_READ,
+                    EXPENSE_READ, EXPENSE_WRITE, INSURANCE_READ, INSURANCE_WRITE),
             "PHARMACIST", List.of(
                     DASHBOARD_READ, POS_SELL, SALE_READ, MEDICINE_READ, INVENTORY_READ,
                     CUSTOMER_READ, CUSTOMER_WRITE,

@@ -23,7 +23,10 @@ function New-Login($email, $pass) {
 
 function Call($method, $path, $ctx, $body) {
     $params = @{ Uri = "$ApiBase/api/v1$path"; Method = $method; WebSession = $ctx.session; Headers = $ctx.headers }
-    if ($body) { $params.ContentType = "application/json"; $params.Body = $body | ConvertTo-Json -Depth 10 }
+    if ($body) {
+        $params.ContentType = "application/json"
+        if ($body -is [string]) { $params.Body = $body } else { $params.Body = $body | ConvertTo-Json -Depth 10 }
+    }
     try { $resp = Invoke-RestMethod @params; return @{ ok = $true; data = $resp.data } }
     catch {
         $msg = ""
@@ -233,6 +236,39 @@ $actions = @($audit.data.content | ForEach-Object { $_.action })
 $needed = @("OPEN_SHIFT","CLOSE_SHIFT","CREATE_PURCHASE_ORDER","APPROVE_PURCHASE_ORDER","CREATE_SALE")
 $missingAudit = $needed | Where-Object { $actions -notcontains $_ }
 if (-not $missingAudit) { Ok "audit covers shifts/POs/sales" } else { Bad "audit coverage" ("missing: " + ($missingAudit -join ",")) }
+
+Write-Host "== L. Medicine SKU & barcode lookup =="
+$lOwner = New-Login "admin@demo.com" "admin123"
+$skuLookup = Call "GET" "/medicines?size=100&sort=brandName,asc" $lOwner
+$skuMatch = $skuLookup.data.content | Where-Object { $_.sku -eq $paracetamol.sku } | Select-Object -First 1
+if ($skuMatch) { Ok ("SKU lookup finds " + $paracetamol.sku) } else { Bad "SKU lookup" "sku not in results" }
+$barcodeMatch = $skuLookup.data.content | Where-Object { $_.barcode -eq $paracetamol.barcode } | Select-Object -First 1
+if ($barcodeMatch) { Ok ("barcode lookup finds " + $paracetamol.barcode) } else { Bad "barcode lookup" "barcode not in results" }
+$posLookup = Call "GET" "/pos/lookup?name=$($paracetamol.brandName)" $lOwner
+if ($posLookup.ok -and @($posLookup.data).Count -ge 1) { Ok "POS name lookup" } else { Bad "POS name lookup" $posLookup.error }
+
+Write-Host "== M. Expenses =="
+$mOwner = New-Login "admin@demo.com" "admin123"
+$expCat = Call "POST" "/expense-categories" $mOwner @{ categoryName = ("Smoke Cat " + $runTag); categoryDescription = "Test category" }
+if ($expCat.ok) { Ok "expense category created"; $firstCat = $expCat.data } else { Bad "expense category" $expCat.error }
+$expCats = Call "GET" "/expense-categories?size=50" $mOwner
+if ($expCats.ok) { Ok ("expense categories (" + @($expCats.data.content).Count + ")") } else { Bad "expense categories" $expCats.error }
+if ($firstCat) {
+    $exp = Call "POST" "/expenses" $mOwner @{ expenseCategoryId = $firstCat.id; description = ("Smoke expense " + $runTag); amount = 500.00; userId = $me.data.user.id }
+    if ($exp.ok) { Ok "expense created" } else { Bad "expense created" $exp.error }
+    $expList = Call "GET" "/expenses?size=10" $mOwner
+    if ($expList.ok -and @($expList.data.content).Count -ge 1) { Ok "expenses listed" } else { Bad "expenses listed" $expList.error }
+} else { Bad "expense test" "no categories" }
+
+Write-Host "== N. Insurance =="
+$nOwner = New-Login "admin@demo.com" "admin123"
+$insurerBody = '{"name":"Smoke Insurer ' + $runTag + '","code":"INS-' + $runTag + '","insurerType":"PRIVATE","contactPerson":"Test Contact","phoneNumber":"+254700111222","email":"ins-' + $runTag + '@test.com","status":"ACTIVE","requiresPreauth":false}'
+$insurer = Call "POST" "/insurance/insurers" $nOwner $insurerBody
+if ($insurer.ok) { Ok "insurer created"; $insurerId = $insurer.data.id } else { Bad "insurer created" $insurer.error }
+$insList = Call "GET" "/insurance/insurers?size=50" $nOwner
+if ($insList.ok -and @($insList.data.content).Count -ge 1) { Ok "insurers listed" } else { Bad "insurers listed" $insList.error }
+$claimList = Call "GET" "/insurance/claims?size=10" $nOwner
+if ($claimList.ok) { Ok "claims list accessible" } else { Bad "claims list" $claimList.error }
 
 Write-Host ""
 Write-Host ("RESULT: {0} passed, {1} failed" -f $script:pass, $script:fail)
