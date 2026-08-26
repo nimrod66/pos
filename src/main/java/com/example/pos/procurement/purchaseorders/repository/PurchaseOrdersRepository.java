@@ -17,18 +17,18 @@ import java.util.List;
 public interface PurchaseOrdersRepository extends JpaRepository<PurchaseOrders, UUID> {
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select distinct po from PurchaseOrders po left join fetch po.purchaseOrderItems where po.id = :id")
+    @Query("select distinct po from PurchaseOrders po left join fetch po.purchaseOrderItems left join fetch po.supplier left join fetch po.branch where po.id = :id")
     java.util.Optional<PurchaseOrders> findForUpdateById(@Param("id") UUID id);
 
     @EntityGraph(attributePaths = {"supplier", "branch", "orderedBy", "approvedBy",
             "purchaseOrderItems", "purchaseOrderItems.medicine"})
     java.util.Optional<PurchaseOrders> findDetailedByIdAndBranchId(UUID id, UUID branchId);
 
-    @Query("SELECT DISTINCT po FROM PurchaseOrders po LEFT JOIN FETCH po.purchaseOrderItems i LEFT JOIN FETCH i.medicine "
+    @Query("SELECT DISTINCT po FROM PurchaseOrders po LEFT JOIN FETCH po.purchaseOrderItems i LEFT JOIN FETCH i.medicine LEFT JOIN FETCH po.supplier LEFT JOIN FETCH po.branch "
             + "WHERE po.branch.id = :branchId")
     Page<PurchaseOrders> findByBranchIdWithItems(@Param("branchId") UUID branchId, Pageable pageable);
 
-    @Query("SELECT DISTINCT po FROM PurchaseOrders po LEFT JOIN FETCH po.purchaseOrderItems i LEFT JOIN FETCH i.medicine "
+    @Query("SELECT DISTINCT po FROM PurchaseOrders po LEFT JOIN FETCH po.purchaseOrderItems i LEFT JOIN FETCH i.medicine LEFT JOIN FETCH po.supplier LEFT JOIN FETCH po.branch "
             + "WHERE po.supplier.id = :supplierId AND po.branch.id = :branchId")
     Page<PurchaseOrders> findBySupplierIdAndBranchIdWithItems(@Param("supplierId") UUID supplierId,
                                                               @Param("branchId") UUID branchId,
