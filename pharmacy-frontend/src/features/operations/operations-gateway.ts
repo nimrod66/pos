@@ -1,5 +1,6 @@
 import { apiRequest } from "@/lib/api-client";
 import { DEMO_AUTH_ENABLED } from "@/lib/api-config";
+import { uuid } from "../../lib/uuid";
 
 type ApiPath = `/${string}`;
 
@@ -321,7 +322,7 @@ function appendPreviewAudit(
     action,
     branchId: "preview-main",
     createdAt: new Date().toISOString(),
-    id: crypto.randomUUID(),
+    id: uuid(),
     pharmacyId: "preview-pharmacy",
     recordId,
     tableName,
@@ -349,7 +350,7 @@ class PreviewOperationsGateway implements OperationsGateway {
     const customer: Customer = {
       ...input,
       createdAt: now,
-      id: crypto.randomUUID(),
+      id: uuid(),
       loyaltyPoints: 0,
       pharmacyId: "preview-pharmacy",
       updatedAt: now,
@@ -370,10 +371,10 @@ class PreviewOperationsGateway implements OperationsGateway {
       createdAt: now,
       deliveryDate: null,
       expectedDeliveryDate: input.expectedDeliveryDate,
-      id: crypto.randomUUID(),
+      id: uuid(),
       items: input.items.map((item) => ({
         ...item,
-        id: crypto.randomUUID(),
+        id: uuid(),
         medicineName: "Medicine",
         total:
           item.buyingPrice * item.quantity - item.discount + item.tax,
@@ -458,7 +459,7 @@ class PreviewOperationsGateway implements OperationsGateway {
       id: idempotencyKey,
       lines: input.lines.map((line) => ({
         ...line,
-        id: crypto.randomUUID(),
+        id: uuid(),
         medicineName: "Medicine",
       })),
       purchaseOrderId: input.purchaseOrdersId,

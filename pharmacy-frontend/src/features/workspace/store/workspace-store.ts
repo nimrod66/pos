@@ -27,6 +27,7 @@ import type {
   SupplierInput,
 } from "@/features/workspace/types";
 import { DEMO_AUTH_ENABLED } from "@/lib/api-config";
+import { uuid } from "../../../lib/uuid";
 
 export class WorkspaceError extends Error {
   constructor(
@@ -100,7 +101,7 @@ const legacyJobTitleMap: Record<LegacyStaffRole, string> = {
 };
 
 function id(prefix: string) {
-  return `${prefix}-${crypto.randomUUID()}`;
+  return `${prefix}-${uuid()}`;
 }
 
 function now() {

@@ -33,6 +33,7 @@ import { formatKes } from "@/features/workspace/lib/money";
 import { useWorkspaceQuery } from "@/features/workspace/gateway/workspace-gateway";
 import { ApiClientError } from "@/lib/api-client";
 import { formatDate, formatDateTime } from "@/lib/format";
+import { uuid } from "../../../lib/uuid";
 
 interface DraftLine {
   key: string;
@@ -53,7 +54,7 @@ function newLine(medicineId = "", buyingPrice = "0.00"): DraftLine {
   return {
     buyingPrice,
     discount: "0.00",
-    key: crypto.randomUUID(),
+    key: uuid(),
     medicineId,
     quantity: 1,
     tax: "0.00",

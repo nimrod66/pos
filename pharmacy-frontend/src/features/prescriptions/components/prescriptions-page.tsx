@@ -27,6 +27,7 @@ import {
 import { useWorkspaceQuery } from "@/features/workspace/gateway/workspace-gateway";
 import { ApiClientError } from "@/lib/api-client";
 import { cn } from "@/lib/cn";
+import { uuid } from "../../../lib/uuid";
 
 interface DraftItem {
   id: string;
@@ -36,7 +37,7 @@ interface DraftItem {
 }
 
 function newItem(): DraftItem {
-  return { dosage: "", id: crypto.randomUUID(), medicineId: "", quantity: 1 };
+  return { dosage: "", id: uuid(), medicineId: "", quantity: 1 };
 }
 
 function today() {

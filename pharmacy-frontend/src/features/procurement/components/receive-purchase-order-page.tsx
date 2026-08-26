@@ -27,6 +27,7 @@ import {
 import { formatKes } from "@/features/workspace/lib/money";
 import { ApiClientError } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/format";
+import { uuid } from "../../../lib/uuid";
 
 interface ReceiveLineDraft {
   batchNumber: string;
@@ -97,7 +98,7 @@ export function ReceivePurchaseOrderPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [idempotencyKey, setIdempotencyKey] = useState(() =>
-    crypto.randomUUID(),
+    uuid(),
   );
   const [minimumExpiryDate] = useState(() =>
     new Date(Date.now() + 86_400_000).toISOString().slice(0, 10),
@@ -194,13 +195,13 @@ export function ReceivePurchaseOrderPage() {
         idempotencyKey,
       );
       await workspaceGateway.hydrate();
-      setIdempotencyKey(crypto.randomUUID());
+      setIdempotencyKey(uuid());
       router.push(
         `/procurement/purchase-orders?received=${encodeURIComponent(receipt.id)}`,
       );
     } catch (caught) {
       if (!(caught instanceof ApiClientError) || caught.status !== 0) {
-        setIdempotencyKey(crypto.randomUUID());
+        setIdempotencyKey(uuid());
       }
       setError(errorMessage(caught, "The delivery could not be received."));
     } finally {

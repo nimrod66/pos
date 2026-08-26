@@ -3,6 +3,7 @@ import {
   CSRF_HEADER_NAME,
 } from "@/lib/api-config";
 import { getCsrfHeaderName, getCsrfToken } from "@/lib/csrf-token";
+import { uuid } from "./uuid";
 import type {
   ApiErrorResponse,
   ApiFieldError,
@@ -99,7 +100,7 @@ export async function apiRequest<T>(
   const headers = new Headers(suppliedHeaders);
   const method = (requestInit.method ?? "GET").toUpperCase();
   const csrfToken = getCsrfToken();
-  const requestId = crypto.randomUUID();
+  const requestId = uuid();
 
   headers.set("Accept", "application/json");
   headers.set("X-Request-ID", requestId);

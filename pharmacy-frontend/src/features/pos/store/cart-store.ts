@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
 import type { PaymentMethod } from "@/features/workspace/types";
+import { uuid } from "../../../lib/uuid";
 
 export interface CartLine {
   lineId: string;
@@ -64,7 +65,7 @@ export const useCartStore = create<CartStore>()(
               )
             : [
                 ...get().lines,
-                { lineId: crypto.randomUUID(), medicineId, quantity: 1 },
+                { lineId: uuid(), medicineId, quantity: 1 },
               ],
         });
       },
@@ -87,7 +88,7 @@ export const useCartStore = create<CartStore>()(
         if (current) {
           return current;
         }
-        const next = crypto.randomUUID();
+        const next = uuid();
         set({ checkoutKey: next });
         return next;
       },
@@ -171,7 +172,7 @@ export const useCartStore = create<CartStore>()(
           customerId: state.customerId ?? null,
           lines: (state.lines ?? []).map((line) => ({
             ...line,
-            lineId: line.lineId ?? crypto.randomUUID(),
+            lineId: line.lineId ?? uuid(),
           })),
         } as CartStore;
       },

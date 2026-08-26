@@ -1,5 +1,6 @@
 import { apiRequest } from "@/lib/api-client";
 import { DEMO_AUTH_ENABLED } from "@/lib/api-config";
+import { uuid } from "../../lib/uuid";
 
 type ApiPath = `/${string}`;
 
@@ -118,10 +119,10 @@ class PreviewPrescriptionGateway implements PrescriptionGateway {
       branchId: "preview-main",
       createdAt: now,
       dispensedAt: null,
-      id: crypto.randomUUID(),
+      id: uuid(),
       items: input.items.map((item) => ({
         ...item,
-        id: crypto.randomUUID(),
+        id: uuid(),
         medicineName: "Prescription medicine",
       })),
       status: "ACTIVE",

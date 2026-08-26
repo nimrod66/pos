@@ -1,6 +1,7 @@
 import type { SystemStatus } from "@/types/api";
 import { apiRequest } from "@/lib/api-client";
 import { DEMO_AUTH_ENABLED } from "@/lib/api-config";
+import { uuid } from "../../lib/uuid";
 
 type ApiPath = `/${string}`;
 
@@ -406,7 +407,7 @@ class PreviewTerminalGateway implements TerminalGateway {
     if (!terminal) throw new Error("Terminal not found.");
     const peripheral: HardwarePeripheral = {
       ...input,
-      id: crypto.randomUUID(),
+      id: uuid(),
       status: "UNKNOWN",
     };
     terminal.peripherals.push(peripheral);
@@ -530,7 +531,7 @@ class PreviewTerminalGateway implements TerminalGateway {
       ...input,
       appVersion: null,
       branchName: input.branchId === "preview-main" ? "Main branch" : null,
-      id: crypto.randomUUID(),
+      id: uuid(),
       lastSeenAt: null,
       lastUpdate: null,
       minimumBackendVersion: "0.0.1",
@@ -539,7 +540,7 @@ class PreviewTerminalGateway implements TerminalGateway {
       registeredBy: "owner@preview.local",
       status: "PENDING",
       supportedApiVersion: "v1",
-      terminalId: `T-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
+      terminalId: `T-${uuid().slice(0, 8).toUpperCase()}`,
       assignedUserId: null,
       assignedUserName: null,
     };

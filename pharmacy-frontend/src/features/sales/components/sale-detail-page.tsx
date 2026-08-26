@@ -25,6 +25,7 @@ import type { PaymentMethod } from "@/features/workspace/types";
 import { cn } from "@/lib/cn";
 import { formatDateTime } from "@/lib/format";
 import { ApiClientError } from "@/lib/api-client";
+import { uuid } from "../../../lib/uuid";
 
 export function SaleDetailPage() {
   const params = useParams<{ id: string }>();
@@ -51,7 +52,7 @@ export function SaleDetailPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [printedAt, setPrintedAt] = useState<string | null>(null);
   const [returnIdempotencyKey, setReturnIdempotencyKey] = useState(() =>
-    crypto.randomUUID(),
+    uuid(),
   );
   const selectedSaleItemId = returnableItems.some((item) => item.id === saleItemId)
     ? saleItemId
@@ -128,7 +129,7 @@ export function SaleDetailPage() {
         saleId: params.id,
         saleItemId: selectedSaleItemId,
       });
-      setReturnIdempotencyKey(crypto.randomUUID());
+      setReturnIdempotencyKey(uuid());
       setSuccess(
         `${quantity} item${quantity === 1 ? "" : "s"} returned. Refund due: ${formatKes(
           multiplyMoney(selectedItem?.unitPrice ?? "0.00", quantity),
@@ -139,7 +140,7 @@ export function SaleDetailPage() {
       setRefundReference("");
     } catch (caught) {
       if (!(caught instanceof ApiClientError) || caught.status !== 0) {
-        setReturnIdempotencyKey(crypto.randomUUID());
+        setReturnIdempotencyKey(uuid());
       }
       setError(
         getWorkspaceErrorMessage(caught, "The return could not be recorded."),
