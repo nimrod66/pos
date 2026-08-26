@@ -18,6 +18,7 @@ import com.example.pos.user.users.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -38,6 +39,7 @@ import java.util.Optional;
 @Slf4j
 @Component
 @Order(0)
+@ConditionalOnProperty(name = "pos.seed.demo-enabled", havingValue = "false", matchIfMissing = true)
 public class BootstrapInitializer implements CommandLineRunner {
 
     private static final String DEFAULT_BRANCH_CODE = "MAIN";
