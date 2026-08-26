@@ -99,7 +99,8 @@ function terminalStatusLabel(terminal: Terminal) {
 
 function detectDevice() {
   if (typeof navigator === "undefined") {
-    return { browser: "Unknown", os: "Unknown", screen: "", kind: "Desktop" };
+    return { browser: "Unknown", os: "Unknown", screen: "", kind: "Desktop",
+             terminalType: "WEB" as TerminalType, platform: "Browser", osVersion: "" };
   }
   const ua = navigator.userAgent;
   const browser = /Edg\//.test(ua)
@@ -126,12 +127,29 @@ function detectDevice() {
             : /Linux/.test(ua)
               ? "Linux"
               : "Unknown OS";
-  const kind = /Mobi|Android|iPhone/.test(ua) ? "Mobile" : "Desktop";
+  const isMobile = /Mobi|Android.*Mobile|iPhone/.test(ua);
+  const isTablet = /iPad|Tablet|Android(?!.*Mobile)/.test(ua);
+  const kind = isMobile && !isTablet ? "Handheld" : isTablet ? "Tablet" : "Desktop";
+
+  // Map to the closest terminal type the backend understands.
+  let terminalType: TerminalType = "WEB";
+  if (/Android/.test(ua)) {
+    terminalType = isTablet ? "ANDROID_TABLET" : "ANDROID_HANDHELD";
+  } else if (/iPhone|iPad|iPod/.test(ua)) {
+    terminalType = "IOS";
+  } else if (/Windows NT/.test(ua)) {
+    terminalType = "WINDOWS";
+  }
+
+  const platform = `${os} · ${browser}`;
+  const osVersionMatch = ua.match(/OS ([\d_]+)/) || ua.match(/Android (\d+)/) ||
+      ua.match(/Windows NT ([\d.]+)/) || ua.match(/(?:Chrome|Firefox|Safari)\/(\d+)/);
+  const osVersion = osVersionMatch ? osVersionMatch[1].replace(/_/g, ".") : "";
   const screen =
     typeof window !== "undefined" && window.screen
       ? `${window.screen.width}x${window.screen.height}`
       : "";
-  return { browser, os, screen, kind };
+  return { browser, os, screen, kind, terminalType, platform, osVersion };
 }
 
 export function TerminalsPage() {
@@ -252,7 +270,12 @@ export function TerminalsPage() {
   function openCreate() {
     setEditing(null);
     setRegistered(null);
-    setDraft(emptyDraft(session?.user.activeBranch.id ?? ""));
+    setDraft({
+      ...emptyDraft(session?.user.activeBranch.id ?? ""),
+      terminalType: device.terminalType,
+      platform: device.platform,
+      osVersion: device.osVersion || null,
+    });
     setAssignLocally(true);
     setWizardStep(1);
     setError(null);
@@ -857,14 +880,14 @@ export function TerminalsPage() {
 
               {wizardStep === 1 ? (
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-md border border-[var(--border)] bg-[var(--surface-muted)] p-3 text-xs sm:col-span-2">
-                    <p className="flex items-center gap-1.5 font-semibold">
-                      <MonitorSmartphone aria-hidden="true" size={14} className="text-[var(--brand)]" />
-                      Detected on this device
+                  <div className="rounded-md border border-[var(--brand)]/30 bg-[var(--brand-soft)] p-3 text-xs sm:col-span-2">
+                    <p className="flex items-center gap-1.5 font-semibold text-[var(--brand-strong)]">
+                      <MonitorSmartphone aria-hidden="true" size={14} />
+                      Auto-detected: {device.kind} · {device.os} · {device.browser}
+                      {device.screen ? ` · ${device.screen}` : ""}
                     </p>
-                    <p className="mt-1 text-[var(--text-muted)]">
-                      {device.kind} - {device.os} - {device.browser}
-                      {device.screen ? ` - ${device.screen}` : ""}
+                    <p className="mt-0.5 text-[var(--text-muted)]">
+                      Terminal type pre-selected to match. Change it below if this is not the device you are registering.
                     </p>
                   </div>
                   <Field label="Terminal name" required>
