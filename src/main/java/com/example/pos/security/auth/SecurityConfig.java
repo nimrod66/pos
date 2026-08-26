@@ -163,8 +163,6 @@ public class SecurityConfig {
                     "/api/v1/credit-notes/**",
                     "/api/v1/debit-notes/**",
                     "/api/v1/receipts/fiscal/**",
-                    "/api/v1/expenses/**",
-                    "/api/v1/expense-categories/**",
                     "/api/v1/supplier-invoices/**",
                     "/api/v1/supplier-payments/**").denyAll()
                 // Shared reference dictionaries are read-only in the pharmacy-facing MVP.

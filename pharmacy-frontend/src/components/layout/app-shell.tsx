@@ -25,6 +25,7 @@ import {
   ShoppingCart,
   Truck,
   Users,
+  Wallet,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -141,6 +142,13 @@ export const appNavigation: NavigationItem[] = [
     icon: ReceiptText,
     label: "Sales & receipts",
     access: { allOf: [PERMISSIONS.SALE_READ] },
+    section: "Operations",
+  },
+  {
+    href: "/expenses",
+    icon: Wallet,
+    label: "Expenses",
+    access: { allOf: [PERMISSIONS.EXPENSE_READ] },
     section: "Operations",
   },
   {

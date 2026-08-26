@@ -32,6 +32,8 @@ export const PERMISSIONS = {
   TERMINAL_MANAGE: "terminal.manage",
   PRESCRIPTION_READ: "prescription.read",
   PRESCRIPTION_APPROVE: "prescription.approve",
+  EXPENSE_READ: "expense.read",
+  EXPENSE_WRITE: "expense.write",
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -99,6 +101,8 @@ export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
       PERMISSIONS.TERMINAL_READ,
       PERMISSIONS.TERMINAL_MANAGE,
       PERMISSIONS.PRESCRIPTION_READ,
+      PERMISSIONS.EXPENSE_READ,
+      PERMISSIONS.EXPENSE_WRITE,
     ],
   },
   {
