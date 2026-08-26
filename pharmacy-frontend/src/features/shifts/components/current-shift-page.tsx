@@ -42,6 +42,7 @@ export function CurrentShiftPage() {
   const [cashAmount, setCashAmount] = useState("");
   const [cashReason, setCashReason] = useState("");
   const [cashBusy, setCashBusy] = useState(false);
+  const [xReport, setXReport] = useState<Record<string, string | number> | null>(null);
 
   const loadDrawerTransactions = useCallback(async () => {
     if (!currentShiftId) return;
@@ -182,6 +183,29 @@ export function CurrentShiftPage() {
               <div className="mt-5 flex flex-wrap gap-2">
                 <SecondaryButton
                   type="button"
+                  onClick={() => void loadDrawerTransactions()}
+                  title="Refresh drawer movements"
+                >
+                  <ArrowDownToLine aria-hidden="true" size={15} /> Refresh
+                </SecondaryButton>
+                <SecondaryButton
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const response = await apiRequest<Record<string, unknown>>(
+                        `/reports/shift-z/${currentShiftId}`,
+                        { cache: "no-store" },
+                      );
+                      setXReport(response.data as Record<string, string | number>);
+                    } catch (caught) {
+                      setError(caught instanceof Error ? caught.message : "X report failed.");
+                    }
+                  }}
+                >
+                  <ArrowUpFromLine aria-hidden="true" size={15} /> Print X report
+                </SecondaryButton>
+                <SecondaryButton
+                  type="button"
                   onClick={() => { setCashDialog("CASH_IN"); setCashAmount(""); setCashReason(""); }}
                 >
                   <ArrowDownToLine aria-hidden="true" size={15} /> Cash deposit
@@ -275,6 +299,28 @@ export function CurrentShiftPage() {
         </section>
       )}
 
+      {xReport ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4 print:static print:bg-white print:p-0">
+          <div className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-md border border-[var(--border)] bg-white p-5 shadow-xl print:border-0 print:shadow-none">
+            <div className="flex items-start justify-between gap-3 print:hidden">
+              <h2 className="text-base font-semibold">X report</h2>
+              <button type="button" aria-label="Close" onClick={() => setXReport(null)} className="text-sm text-[var(--text-muted)]">Close</button>
+            </div>
+            <dl className="mt-4 space-y-2 text-sm">
+              <p className="text-center text-sm font-bold uppercase">X daily report</p>
+              <div className="flex justify-between"><dt className="text-[var(--text-muted)]">Sales receipts</dt><dd>{String(xReport.salesCount ?? "-")}</dd></div>
+              <div className="flex justify-between"><dt>Total sales</dt><dd className="font-semibold">{formatKes(String(xReport.totalSales ?? "0"))}</dd></div>
+              <div className="flex justify-between"><dt>Cash payments</dt><dd>{formatKes(String(xReport.totalCashPayments ?? "0"))}</dd></div>
+              <div className="flex justify-between"><dt>M-Pesa payments</dt><dd>{formatKes(String(xReport.totalMpesaPayments ?? "0"))}</dd></div>
+              <div className="flex justify-between"><dt>Opening float</dt><dd>{formatKes(String(xReport.openingBalance ?? "0"))}</dd></div>
+              <div className="flex justify-between"><dt>Expected in drawer</dt><dd>{formatKes(String(xReport.expectedClosingBalance ?? "0"))}</dd></div>
+            </dl>
+            <div className="mt-5 flex justify-end print:hidden">
+              <PrimaryButton type="button" onClick={() => window.print()}>Print X report</PrimaryButton>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <section className="mt-6 rounded-md border border-[var(--border)] bg-white">
         <div className="border-b border-[var(--border)] px-4 py-3.5"><h2 className="text-sm font-semibold">Shift history</h2></div>
         <div className="overflow-x-auto">

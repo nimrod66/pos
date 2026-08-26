@@ -204,6 +204,7 @@ export interface BackendSale {
   cashTendered: number | null;
   changeDue: number | null;
   shiftId: string;
+  customerKraPin: string | null;
   userName: string;
   items: BackendSaleItem[];
   payments: BackendPayment[];

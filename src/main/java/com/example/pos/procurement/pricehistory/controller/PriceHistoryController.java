@@ -24,6 +24,7 @@ public class PriceHistoryController {
     }
 
     @GetMapping
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyAuthority('medicine.read', 'report.sales.read')")
     public ResponseEntity<ApiResponse<PagedResponse<PriceHistoryResponseDto>>> getByMedicine(
             @PageableDefault(size = 20) Pageable pageable,
             @RequestParam(required = false) UUID medicineId,

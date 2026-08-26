@@ -23,6 +23,7 @@ public class CustomerResponseDto {
     private String email;
     private String address;
     private Integer loyaltyPoints;
+    private String kraPin;
     private String notes;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -32,7 +33,8 @@ public class CustomerResponseDto {
                 .id(c.getId()).firstName(c.getFirstName()).lastName(c.getLastName())
                 .pharmacyId(c.getPharmacy() != null ? c.getPharmacy().getId() : null)
                 .phoneNumber(c.getPhoneNumber()).email(c.getEmail()).address(c.getAddress())
-                .loyaltyPoints(c.getLoyaltyPoints()).notes(c.getNotes())
+                .loyaltyPoints(c.getLoyaltyPoints())
+                .kraPin(c.getKraPin()).notes(c.getNotes())
                 .createdAt(c.getCreatedAt()).updatedAt(c.getUpdatedAt()).build();
     }
 }

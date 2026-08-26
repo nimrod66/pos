@@ -16,4 +16,6 @@ public interface IdempotencyKeyRepository extends JpaRepository<IdempotencyKey, 
     boolean existsByIdempotencyKey(String key);
 
     boolean existsByPharmacyIdAndIdempotencyKey(UUID pharmacyId, String key);
+
+    long deleteByStatusAndCreatedAtBefore(IdempotencyKey.Status status, java.time.LocalDateTime cutoff);
 }

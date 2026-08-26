@@ -48,6 +48,7 @@ public class ReportingService {
     private final SalesRepository salesRepository;
     private final SaleReturnsRepository returnsRepository;
     private final StockRepository stockRepository;
+    private final com.example.pos.sale.saleitems.repository.SaleItemsRepository saleItemsRepository;
     private final MedicineRepository medicineRepository;
     private final BranchRepository branchRepository;
     private final SystemSettingsService settingsService;
@@ -57,6 +58,7 @@ public class ReportingService {
     public ReportingService(SalesRepository salesRepository,
                             SaleReturnsRepository returnsRepository,
                             StockRepository stockRepository,
+                            com.example.pos.sale.saleitems.repository.SaleItemsRepository saleItemsRepository,
                             MedicineRepository medicineRepository,
                             BranchRepository branchRepository,
                             SystemSettingsService settingsService,
@@ -65,6 +67,7 @@ public class ReportingService {
         this.salesRepository = salesRepository;
         this.returnsRepository = returnsRepository;
         this.stockRepository = stockRepository;
+        this.saleItemsRepository = saleItemsRepository;
         this.medicineRepository = medicineRepository;
         this.branchRepository = branchRepository;
         this.settingsService = settingsService;
@@ -135,6 +138,36 @@ public class ReportingService {
         List<Branch> branches = resolveBranches(branchId, pharmacyWide);
         return getInventoryReportInternal(
                 branchId, branches, asOf == null ? LocalDate.now(clock) : asOf, pharmacyWide);
+    }
+
+    /** PLU report: per-medicine sold quantity and revenue vs remaining stock. */
+    public List<com.example.pos.reporting.dto.PluRowDto> getPluReport(UUID branchId,
+                                                                      LocalDate from,
+                                                                      LocalDate to) {
+        current.requireBranch(branchId);
+        LocalDateTime start = from.atStartOfDay();
+        LocalDateTime end = to.plusDays(1).atStartOfDay();
+        List<com.example.pos.sale.saleitems.repository.SaleItemsRepository.PluProjection> rows = saleItemsRepository.aggregatePlu(branchId, COMPLETED_SALE_STATUSES, start, end);
+
+        Map<UUID, Integer> remaining = new HashMap<>();
+        for (Stock stock : stockRepository.findByBranchIdIn(List.of(branchId))) {
+            var medicine = stock.getMedicineBatches() == null
+                    ? null : stock.getMedicineBatches().getMedicine();
+            if (medicine == null) continue;
+            int qty = stock.getQuantityAvailable() == null ? 0 : stock.getQuantityAvailable();
+            remaining.merge(medicine.getId(), qty, Integer::sum);
+        }
+
+        return rows.stream()
+                .map(row -> new com.example.pos.reporting.dto.PluRowDto(
+                        row.getMedicineId(),
+                        row.getMedicineName(),
+                        row.getSku(),
+                        row.getUnitPrice(),
+                        row.getQuantitySold() == null ? 0 : row.getQuantitySold(),
+                        row.getRevenue(),
+                        remaining.getOrDefault(row.getMedicineId(), 0)))
+                .toList();
     }
 
     private SalesReportDto getSalesReportInternal(UUID branchId, List<Branch> branches,

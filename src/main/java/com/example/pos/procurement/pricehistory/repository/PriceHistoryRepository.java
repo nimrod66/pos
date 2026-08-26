@@ -9,6 +9,8 @@ import java.util.List;
 
 public interface PriceHistoryRepository extends JpaRepository<PriceHistory, UUID> {
 
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"medicine", "user", "medicineBatches"})
     List<PriceHistory> findByMedicineId(UUID medicineId);
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"medicine", "user", "medicineBatches"})
     List<PriceHistory> findByMedicineBatchesId(UUID batchId);
 }

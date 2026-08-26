@@ -53,6 +53,8 @@ class ReportingServiceTest {
     @Mock
     private StockRepository stockRepository;
     @Mock
+    private com.example.pos.sale.saleitems.repository.SaleItemsRepository saleItemsRepository;
+    @Mock
     private MedicineRepository medicineRepository;
     @Mock
     private BranchRepository branchRepository;
@@ -73,6 +75,7 @@ class ReportingServiceTest {
                 salesRepository,
                 returnsRepository,
                 stockRepository,
+                saleItemsRepository,
                 medicineRepository,
                 branchRepository,
                 settingsService,

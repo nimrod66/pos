@@ -1081,6 +1081,7 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
       receiptNumber:
         sale.receipt?.receiptNumber ?? sale.invoiceNumber ?? sale.saleNumber ?? id.slice(0, 8),
       refundTotal: amount(sale.refundTotal),
+      customerKraPin: sale.customerKraPin ?? null,
       cashTendered:
         sale.cashTendered == null ? null : amount(sale.cashTendered),
       changeDue: sale.changeDue == null ? null : amount(sale.changeDue),

@@ -40,6 +40,7 @@ public class CustomerService {
                 .pharmacy(current.pharmacy())
                 .firstName(dto.getFirstName().trim()).lastName(trimToNull(dto.getLastName()))
                 .phoneNumber(trimToNull(dto.getPhoneNumber())).email(normalizeEmail(dto.getEmail()))
+                .kraPin(trimToNull(dto.getKraPin()))
                 .address(dto.getAddress()).notes(dto.getNotes()).build();
         return repo.save(c);
     }
@@ -71,7 +72,8 @@ public class CustomerService {
         Customer c = getById(id);
         validateUnique(dto, id);
         c.setFirstName(dto.getFirstName().trim()); c.setLastName(trimToNull(dto.getLastName()));
-        c.setPhoneNumber(trimToNull(dto.getPhoneNumber())); c.setEmail(normalizeEmail(dto.getEmail()));
+        c.setPhoneNumber(trimToNull(dto.getPhoneNumber())); c.setKraPin(trimToNull(dto.getKraPin()));
+        c.setEmail(normalizeEmail(dto.getEmail()));
         c.setAddress(dto.getAddress()); c.setNotes(dto.getNotes());
         return repo.save(c);
     }

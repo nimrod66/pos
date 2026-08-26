@@ -70,20 +70,28 @@ export function AuditLogPage() {
     await Promise.resolve();
     setLoading(true);
     try {
-      setEntries(await operationsGateway.listAuditLogs());
+      setEntries(
+        await operationsGateway.listAuditLogs({
+          fromDate: from || undefined,
+          toDate: to || undefined,
+        }),
+      );
       setError(null);
     } catch (caught) {
       setError(errorMessage(caught, "Audit history could not be loaded."));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [from, to]);
 
   useEffect(() => {
     if (!canRead) return;
     let active = true;
     void operationsGateway
-      .listAuditLogs()
+      .listAuditLogs({
+        fromDate: from || undefined,
+        toDate: to || undefined,
+      })
       .then((rows) => {
         if (!active) return;
         setEntries(rows);
@@ -99,7 +107,7 @@ export function AuditLogPage() {
     return () => {
       active = false;
     };
-  }, [canRead]);
+  }, [canRead, from, to]);
 
   const entities = useMemo(
     () => [...new Set(entries.map((entry) => entry.tableName))].sort(),

@@ -41,6 +41,7 @@ const emptyInput: CustomerInput = {
   lastName: null,
   notes: null,
   phoneNumber: null,
+  kraPin: null,
 };
 
 function errorMessage(error: unknown, fallback: string) {
@@ -101,6 +102,7 @@ export function CustomersPage() {
       email: customer.email,
       firstName: customer.firstName,
       lastName: customer.lastName,
+      kraPin: customer.kraPin,
       notes: customer.notes,
       phoneNumber: customer.phoneNumber,
     });
@@ -134,6 +136,7 @@ export function CustomersPage() {
       address: draft.address?.trim() || null,
       email: draft.email?.trim() || null,
       firstName,
+      kraPin: draft.kraPin?.trim() || null,
       lastName: draft.lastName?.trim() || null,
       notes: draft.notes?.trim() || null,
       phoneNumber: draft.phoneNumber?.trim() || null,
@@ -245,6 +248,9 @@ export function CustomersPage() {
                 onChange={(event) => update("address", event.target.value)}
               />
             </Field>
+              <Field label="KRA PIN (B2B)">
+                <Input value={draft.kraPin ?? ""} onChange={(event) => update("kraPin", event.target.value)} />
+              </Field>
             <Field label="Notes">
               <Textarea
                 className="min-h-10"

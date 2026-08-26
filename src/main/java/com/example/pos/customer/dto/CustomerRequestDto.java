@@ -16,4 +16,5 @@ public class CustomerRequestDto {
     private String email;
     private String address;
     private String notes;
+    private String kraPin;
 }

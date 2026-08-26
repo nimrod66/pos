@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -54,5 +55,15 @@ public class ReportingController {
             @RequestParam(defaultValue = "false") boolean pharmacyWide) {
         return ResponseEntity.ok(ApiResponse.ok(
                 service.getInventoryReport(branchId, asOf, pharmacyWide)));
+    }
+
+    /** PLU report: per-medicine sold quantity and revenue vs remaining stock. */
+    @GetMapping("/plu")
+    @PreAuthorize("hasAuthority('report.sales.read')")
+    public ResponseEntity<ApiResponse<List<com.example.pos.reporting.dto.PluRowDto>>> getPluReport(
+            @RequestParam UUID branchId,
+            @RequestParam LocalDate from,
+            @RequestParam LocalDate to) {
+        return ResponseEntity.ok(ApiResponse.ok(service.getPluReport(branchId, from, to)));
     }
 }

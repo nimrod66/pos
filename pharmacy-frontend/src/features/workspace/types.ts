@@ -136,6 +136,7 @@ export interface Sale {
   refundTotal: string;
   cashTendered: string | null;
   changeDue: string | null;
+  customerKraPin?: string | null;
   idempotencyKey: string;
 }
 

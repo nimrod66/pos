@@ -30,6 +30,7 @@ public class Customer extends BaseEntity {
 
     @Builder.Default
     private Integer loyaltyPoints = 0;
+    private String kraPin;
 
     private String notes;
 }

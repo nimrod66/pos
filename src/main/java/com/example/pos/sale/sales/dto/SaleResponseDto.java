@@ -42,6 +42,7 @@ public class SaleResponseDto {
     private String userName;
     private UUID customerId;
     private String customerName;
+    private String customerKraPin;
     private List<SaleItemResponse> items;
     private List<PaymentResponse> payments;
     private LocalDateTime createdAt;

@@ -16,6 +16,7 @@ export interface Customer {
   phoneNumber: string | null;
   email: string | null;
   address: string | null;
+  kraPin: string | null;
   loyaltyPoints: number;
   notes: string | null;
   createdAt: string;
@@ -24,7 +25,7 @@ export interface Customer {
 
 export type CustomerInput = Pick<
   Customer,
-  "firstName" | "lastName" | "phoneNumber" | "email" | "address" | "notes"
+  "firstName" | "lastName" | "phoneNumber" | "email" | "address" | "notes" | "kraPin"
 >;
 
 export interface PurchaseOrderItem {
@@ -118,6 +119,8 @@ export interface AuditLogFilters {
   tableName?: string;
   recordId?: string;
   userId?: string;
+  fromDate?: string;
+  toDate?: string;
 }
 
 interface OperationsGateway {
@@ -199,7 +202,9 @@ class LiveOperationsGateway implements OperationsGateway {
     if (filters.tableName) params.set("tableName", filters.tableName);
     if (filters.recordId) params.set("recordId", filters.recordId);
     if (filters.userId) params.set("userId", filters.userId);
-    const query = params.size ? `?${params.toString()}` : "";
+    if (filters.fromDate) params.set("fromDate", filters.fromDate);
+    if (filters.toDate) params.set("toDate", filters.toDate);
+    const query = params.toString() ? `?${params.toString()}` : "";
     return getAllPages<AuditLogEntry>(`/audit-logs${query}`);
   }
 
@@ -279,6 +284,7 @@ function previewSeed(): PreviewOperationsState {
         id: "customer-preview-1",
         lastName: "Wanjiku",
         loyaltyPoints: 40,
+        kraPin: null,
         notes: null,
         pharmacyId: "preview-pharmacy",
         phoneNumber: "0712345678",

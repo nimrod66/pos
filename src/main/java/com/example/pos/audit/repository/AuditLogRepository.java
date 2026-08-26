@@ -31,6 +31,7 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
     List<AuditLog> findByTableNameAndRecordId(String tableName, String recordId);
 
     @org.springframework.data.jpa.repository.Query("select a from AuditLog a where a.pharmacy.id = :pharmacyId and a.createdAt >= :from and a.createdAt < :to order by a.createdAt desc")
+    @EntityGraph(attributePaths = {"user", "branch", "pharmacy"})
     Page<AuditLog> findByPharmacyIdAndCreatedAtBetween(
             @Param("pharmacyId") UUID pharmacyId, @Param("from") java.time.LocalDateTime from,
             @Param("to") java.time.LocalDateTime to, Pageable pageable);

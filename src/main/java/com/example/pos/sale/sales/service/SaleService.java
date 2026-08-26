@@ -471,6 +471,7 @@ public class SaleService {
                 ? null : detailed.getPrescription().getId());
         dto.setCustomerId(detailed.getCustomer() == null ? null : detailed.getCustomer().getId());
         dto.setCustomerName(customerName(detailed.getCustomer()));
+        dto.setCustomerKraPin(detailed.getCustomer() == null ? null : detailed.getCustomer().getKraPin());
 
         Map<UUID, SaleResponseDto.SaleItemResponse> lines = new LinkedHashMap<>();
         BigDecimal refundTotal = BigDecimal.ZERO;

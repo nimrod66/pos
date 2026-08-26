@@ -268,6 +268,12 @@ export function SaleDetailPage() {
               <span>Cashier</span>
               <span>{sale.cashierName}</span>
             </div>
+            {sale.customerKraPin ? (
+              <div className="mt-1 flex justify-between gap-4">
+                <span>Buyer PIN</span>
+                <span>{sale.customerKraPin}</span>
+              </div>
+            ) : null}
           </div>
           <table className="relative w-full text-sm">
             <thead className="border-b border-[var(--border)] text-left text-xs text-[var(--text-muted)]">
