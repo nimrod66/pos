@@ -53,6 +53,13 @@ public class Medicine extends BaseEntity {
     private Unit unit;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "buying_unit_id")
+    private Unit buyingUnit;
+
+    @Column(name = "pack_size")
+    private Integer packSize;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tax_category_id")
     private Tax tax;
 

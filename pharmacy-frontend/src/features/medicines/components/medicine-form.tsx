@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { Resolver } from "react-hook-form";
 import { ArrowLeft, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -37,6 +38,8 @@ const medicineSchema = z.object({
   genericName: z.string().trim().min(2, "Enter the generic name."),
   categoryId: z.string().min(1, "Choose a category."),
   unitId: z.string().min(1, "Choose a dispensing unit."),
+  buyingUnitId: z.string().nullable().default(null),
+  packSize: z.number().int().min(1).nullable().default(null),
   manufacturer: z.string().trim().min(2, "Enter the manufacturer."),
   taxCategory: z.enum(["EXEMPT", "VAT_16", "ZERO_RATED"]),
   prescriptionRequired: z.boolean(),
@@ -74,7 +77,7 @@ export function MedicineForm({ medicineId }: { medicineId?: string }) {
     getValues,
     setValue,
   } = useForm<MedicineFormValues>({
-    resolver: zodResolver(medicineSchema),
+    resolver: zodResolver(medicineSchema) as Resolver<MedicineFormValues>,
     defaultValues: medicine
       ? {
           sku: medicine.sku,
@@ -83,6 +86,8 @@ export function MedicineForm({ medicineId }: { medicineId?: string }) {
           genericName: medicine.genericName,
           categoryId: medicine.categoryId,
           unitId: medicine.unitId,
+          buyingUnitId: medicine.buyingUnitId ?? null,
+          packSize: medicine.packSize ?? null,
           manufacturer: medicine.manufacturer,
           taxCategory: medicine.taxCategory,
           prescriptionRequired: medicine.prescriptionRequired,
@@ -98,6 +103,8 @@ export function MedicineForm({ medicineId }: { medicineId?: string }) {
           genericName: "",
           categoryId: categories[0]?.id ?? "",
           unitId: units[0]?.id ?? "",
+          buyingUnitId: null,
+          packSize: null,
           manufacturer: manufacturers[0]?.name ?? "",
           taxCategory: "EXEMPT",
           prescriptionRequired: false,
@@ -244,6 +251,33 @@ export function MedicineForm({ medicineId }: { medicineId?: string }) {
                   </option>
                 ))}
               </Select>
+            </Field>
+            <Field
+              label="Buying unit"
+              hint="Unit used by suppliers (e.g. Box, Strip). Leave blank if same as dispensing."
+              error={errors.buyingUnitId?.message}
+            >
+              <Select {...register("buyingUnitId")}>
+                <option value="">Same as dispensing unit</option>
+                {units.map((unit) => (
+                  <option key={unit.id} value={unit.id}>
+                    {unit.name} ({unit.symbol})
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field
+              label="Pack size"
+              hint="How many dispensing units in one buying unit (e.g. 100 for a box of 100 tablets)."
+              error={errors.packSize?.message}
+            >
+              <Input
+                type="number"
+                min={1}
+                step={1}
+                placeholder="e.g. 100"
+                {...register("packSize", { valueAsNumber: true })}
+              />
             </Field>
             <Field label="Tax category" required error={errors.taxCategory?.message}>
               <Select {...register("taxCategory")}>

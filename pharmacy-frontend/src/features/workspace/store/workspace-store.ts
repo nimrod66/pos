@@ -145,7 +145,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         const medicineId = id("med");
         set({
           medicines: [
-            { ...input, id: medicineId, createdAt: now() },
+            { ...input, id: medicineId, buyingUnitName: null, createdAt: now() },
             ...state.medicines,
           ],
         });

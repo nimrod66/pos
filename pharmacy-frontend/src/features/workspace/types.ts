@@ -47,6 +47,9 @@ export interface Medicine {
   genericName: string;
   categoryId: string;
   unitId: string;
+  buyingUnitId: string | null;
+  buyingUnitName: string | null;
+  packSize: number | null;
   manufacturer: string;
   taxCategory: "EXEMPT" | "VAT_16" | "ZERO_RATED";
   prescriptionRequired: boolean;
@@ -199,8 +202,10 @@ export interface MedicineInput {
   genericName: string;
   categoryId: string;
   unitId: string;
+  buyingUnitId: string | null;
+  packSize: number | null;
   manufacturer: string;
-  taxCategory: Medicine["taxCategory"];
+  taxCategory: "EXEMPT" | "VAT_16" | "ZERO_RATED";
   prescriptionRequired: boolean;
   buyingPrice: string;
   sellingPrice: string;

@@ -46,6 +46,9 @@ public class MedicineResponseDto {
     private String dosageFormName;
     private UUID unitId;
     private String unitName;
+    private UUID buyingUnitId;
+    private String buyingUnitName;
+    private Integer packSize;
     private UUID taxId;
     private String taxName;
     private boolean requiresPrescription;
@@ -89,6 +92,9 @@ public class MedicineResponseDto {
                 .dosageFormName(medicine.getDosageForm() != null ? medicine.getDosageForm().getFormName() : null)
                 .unitId(medicine.getUnit() != null ? medicine.getUnit().getId() : null)
                 .unitName(medicine.getUnit() != null ? medicine.getUnit().getUnitName() : null)
+                .buyingUnitId(medicine.getBuyingUnit() != null ? medicine.getBuyingUnit().getId() : null)
+                .buyingUnitName(medicine.getBuyingUnit() != null ? medicine.getBuyingUnit().getUnitName() : null)
+                .packSize(medicine.getPackSize())
                 .taxId(medicine.getTax() != null ? medicine.getTax().getId() : null)
                 .taxName(medicine.getTax() != null ? medicine.getTax().getTaxName() : null)
                 .requiresPrescription(medicine.isRequiresPrescription())

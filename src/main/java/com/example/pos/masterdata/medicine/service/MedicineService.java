@@ -179,6 +179,16 @@ public class MedicineService {
             medicine.setUnit(unit);
         }
 
+        if (dto.getBuyingUnitId() != null) {
+            Unit buyingUnit = unitRepository.findById(dto.getBuyingUnitId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Unit", dto.getBuyingUnitId()));
+            medicine.setBuyingUnit(buyingUnit);
+        }
+
+        if (dto.getPackSize() != null) {
+            medicine.setPackSize(dto.getPackSize());
+        }
+
         if (dto.getTaxId() != null) {
             Tax tax = taxRepository.findById(dto.getTaxId())
                     .orElseThrow(() -> new ResourceNotFoundException("Tax", dto.getTaxId()));

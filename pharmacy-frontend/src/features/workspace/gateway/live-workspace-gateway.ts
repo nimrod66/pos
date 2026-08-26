@@ -1036,6 +1036,9 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
       status: medicine.status === "AVAILABLE" ? "ACTIVE" : "INACTIVE",
       taxCategory: tax?.code ?? "EXEMPT",
       unitId: medicine.unitId ?? "",
+      buyingUnitId: medicine.buyingUnitId ?? null,
+      buyingUnitName: medicine.buyingUnitName ?? null,
+      packSize: medicine.packSize ?? null,
     };
   }
 

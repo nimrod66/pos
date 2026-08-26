@@ -72,6 +72,9 @@ export interface BackendMedicine {
   categoryName: string | null;
   unitId: string;
   unitName: string | null;
+  buyingUnitId: string | null;
+  buyingUnitName: string | null;
+  packSize: number | null;
   taxId: string;
   taxName: string | null;
   requiresPrescription: boolean;

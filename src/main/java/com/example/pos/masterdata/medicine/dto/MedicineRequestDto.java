@@ -74,6 +74,10 @@ public class MedicineRequestDto {
 
     private UUID unitId;
 
+    private UUID buyingUnitId;
+
+    private Integer packSize;
+
     private UUID taxId;
 
     private boolean requiresPrescription;
