@@ -15,7 +15,7 @@ interface BackendPage<T> {
 
 export const inventoryGateway = {
   async listStockTransfers(): Promise<StockTransfer[]> {
-    const endpoint = "/api/v1/stock-transfers?size=100&sort=createdAt,desc";
+    const endpoint = "/stock-transfers?size=100&sort=createdAt,desc";
     const first = await apiRequest<BackendPage<StockTransfer>>(endpoint, {
       cache: "no-store",
     });
@@ -32,7 +32,7 @@ export const inventoryGateway = {
 
   async getStockTransfer(id: string): Promise<StockTransfer> {
     return (
-      await apiRequest<StockTransfer>(`/api/v1/stock-transfers/${id}`, {
+      await apiRequest<StockTransfer>(`/stock-transfers/${id}`, {
         cache: "no-store",
       })
     ).data;
@@ -40,7 +40,7 @@ export const inventoryGateway = {
 
   async createStockTransfer(input: StockTransferInput): Promise<StockTransfer> {
     return (
-      await apiRequest<StockTransfer>("/api/v1/stock-transfers", {
+      await apiRequest<StockTransfer>("/stock-transfers", {
         method: "POST",
         body: input,
       })
@@ -49,7 +49,7 @@ export const inventoryGateway = {
 
   async approveStockTransfer(id: string): Promise<StockTransfer> {
     return (
-      await apiRequest<StockTransfer>(`/api/v1/stock-transfers/${id}/approve`, {
+      await apiRequest<StockTransfer>(`/stock-transfers/${id}/approve`, {
         method: "PATCH",
       })
     ).data;
@@ -57,7 +57,7 @@ export const inventoryGateway = {
 
   async receiveStockTransfer(id: string): Promise<StockTransfer> {
     return (
-      await apiRequest<StockTransfer>(`/api/v1/stock-transfers/${id}/receive`, {
+      await apiRequest<StockTransfer>(`/stock-transfers/${id}/receive`, {
         method: "PATCH",
       })
     ).data;
