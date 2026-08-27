@@ -78,4 +78,9 @@ public class BackupController {
                     ApiResponse.error("Cannot delete backup: " + e.getMessage()));
         }
     }
+
+    @GetMapping("/health")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> backupHealth() {
+        return ResponseEntity.ok(ApiResponse.ok(backupService.getBackupHealth()));
+    }
 }

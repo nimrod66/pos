@@ -24,11 +24,11 @@ public interface PurchaseOrdersRepository extends JpaRepository<PurchaseOrders, 
             "purchaseOrderItems", "purchaseOrderItems.medicine"})
     java.util.Optional<PurchaseOrders> findDetailedByIdAndBranchId(UUID id, UUID branchId);
 
-    @Query("SELECT DISTINCT po FROM PurchaseOrders po LEFT JOIN FETCH po.purchaseOrderItems i LEFT JOIN FETCH i.medicine LEFT JOIN FETCH po.supplier LEFT JOIN FETCH po.branch "
+    @Query("SELECT DISTINCT po FROM PurchaseOrders po LEFT JOIN FETCH po.purchaseOrderItems i LEFT JOIN FETCH i.medicine LEFT JOIN FETCH po.supplier LEFT JOIN FETCH po.branch LEFT JOIN FETCH po.orderedBy LEFT JOIN FETCH po.approvedBy "
             + "WHERE po.branch.id = :branchId")
     Page<PurchaseOrders> findByBranchIdWithItems(@Param("branchId") UUID branchId, Pageable pageable);
 
-    @Query("SELECT DISTINCT po FROM PurchaseOrders po LEFT JOIN FETCH po.purchaseOrderItems i LEFT JOIN FETCH i.medicine LEFT JOIN FETCH po.supplier LEFT JOIN FETCH po.branch "
+    @Query("SELECT DISTINCT po FROM PurchaseOrders po LEFT JOIN FETCH po.purchaseOrderItems i LEFT JOIN FETCH i.medicine LEFT JOIN FETCH po.supplier LEFT JOIN FETCH po.branch LEFT JOIN FETCH po.orderedBy LEFT JOIN FETCH po.approvedBy "
             + "WHERE po.supplier.id = :supplierId AND po.branch.id = :branchId")
     Page<PurchaseOrders> findBySupplierIdAndBranchIdWithItems(@Param("supplierId") UUID supplierId,
                                                               @Param("branchId") UUID branchId,

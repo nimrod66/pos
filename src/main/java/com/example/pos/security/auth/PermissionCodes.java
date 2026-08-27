@@ -110,7 +110,8 @@ public final class PermissionCodes {
             "CASHIER", List.of(
                     POS_SELL, POS_DISCOUNT_REQUEST, SALE_READ, SALE_RECEIPT_REPRINT,
                     SALE_RETURN, MEDICINE_READ, CUSTOMER_READ, CUSTOMER_WRITE,
-                    SHIFT_OPEN, SHIFT_CLOSE),
+                    SHIFT_OPEN, SHIFT_CLOSE, EXPENSE_READ, PURCHASE_ORDER_READ,
+                    SUPPLIER_READ, PRESCRIPTION_READ),
             "STORE_KEEPER", List.of(
                     DASHBOARD_READ, MEDICINE_READ, MEDICINE_WRITE, MEDICINE_PRICE_WRITE,
                     INVENTORY_READ, INVENTORY_RECEIVE,

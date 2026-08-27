@@ -6,6 +6,7 @@ import com.example.pos.core.backup.dto.BackupResponseDto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.io.*;
@@ -16,6 +17,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 
 @Service
@@ -29,18 +31,24 @@ public class BackupService {
     private final int dbPort;
     private final String dbPassword;
     private final Path backupDir;
+    private final int retentionDays;
+    private final AtomicReference<Instant> lastBackupTime = new AtomicReference<>(Instant.EPOCH);
+    private final AtomicReference<String> lastBackupStatus = new AtomicReference<>("NONE");
+    private final AtomicReference<String> lastBackupError = new AtomicReference<>(null);
 
     public BackupService(
             @Value("${spring.datasource.url:jdbc:postgresql://localhost:5432/pharmacy_pos}") String jdbcUrl,
             @Value("${spring.datasource.username:pharmacy_pos}") String dbUser,
             @Value("${spring.datasource.password:pharmacy_pos}") String dbPassword,
-            @Value("${pos.backup.dir:backups}") String backupDir) {
+            @Value("${pos.backup.dir:backups}") String backupDir,
+            @Value("${pos.backup.retention-days:30}") int retentionDays) {
         this.dbUser = dbUser;
         this.dbPassword = dbPassword;
         this.dbHost = extractHost(jdbcUrl);
         this.dbPort = extractPort(jdbcUrl);
         this.dbName = extractDbName(jdbcUrl);
         this.backupDir = Path.of(backupDir).toAbsolutePath();
+        this.retentionDays = retentionDays;
         try {
             Files.createDirectories(this.backupDir);
         } catch (IOException e) {
@@ -193,6 +201,41 @@ public class BackupService {
         } catch (IOException e) {
             log.warn("Prune failed: {}", e.getMessage());
         }
+    }
+
+    @Scheduled(cron = "0 0 2 * * *")
+    public void scheduledBackup() {
+        log.info("Starting scheduled backup...");
+        try {
+            BackupResponseDto result = createBackup();
+            lastBackupTime.set(Instant.now());
+            lastBackupStatus.set("SUCCESS");
+            lastBackupError.set(null);
+            log.info("Scheduled backup completed: {}", result.getFilename());
+            pruneOldBackups(retentionDays);
+            log.info("Pruned backups older than {} days", retentionDays);
+        } catch (Exception e) {
+            lastBackupTime.set(Instant.now());
+            lastBackupStatus.set("FAILED");
+            lastBackupError.set(e.getMessage());
+            log.error("Scheduled backup failed: {}", e.getMessage());
+        }
+    }
+
+    public Map<String, Object> getBackupHealth() {
+        List<BackupResponseDto> backups = listBackups();
+        Instant lastTime = lastBackupTime.get();
+        String status = lastBackupStatus.get();
+        String error = lastBackupError.get();
+        long totalSize = backups.stream().mapToLong(BackupResponseDto::getSizeBytes).sum();
+        return Map.of(
+            "status", status,
+            "lastBackupTime", lastTime.toString(),
+            "lastBackupError", error != null ? error : "",
+            "backupCount", backups.size(),
+            "totalSizeBytes", totalSize,
+            "retentionDays", retentionDays
+        );
     }
 
     private void safeDelete(Path path) {

@@ -136,6 +136,24 @@ export interface SystemStatusSnapshot {
   status: SystemStatus;
 }
 
+export interface HealthComponent {
+  status: "UP" | "DOWN" | "WARNING" | "UNKNOWN";
+  [key: string]: unknown;
+}
+
+export interface SystemHealthCheck {
+  status: "HEALTHY" | "DEGRADED";
+  checkedAt: string;
+  api: HealthComponent;
+  database: HealthComponent;
+  disk: HealthComponent & { totalGB: number; freeGB: number; usedGB: number; usedPercent: number };
+  memory: HealthComponent & { heapUsedMB: number; heapMaxMB: number; heapUsedPercent: number };
+  connectionPool: HealthComponent & { totalConnections: number; activeConnections: number; idleConnections: number; threadsAwaiting: number };
+  backup: HealthComponent & { count: number; lastBackup: string | null; lastBackupSize: number; hoursSinceBackup: number };
+  sync: HealthComponent & { online: boolean; latencyMs: number | null; mode: string };
+  terminals: HealthComponent & { total: number; active: number };
+}
+
 interface TerminalGateway {
   addPeripheral(terminalId: string, input: PeripheralInput): Promise<HardwarePeripheral>;
   approveTerminal(terminalId: string): Promise<Terminal>;
@@ -145,6 +163,7 @@ interface TerminalGateway {
   getHardwareConfig(): Promise<HardwareBridgeConfig>;
   getCashRegisterConfig(terminalId: string): Promise<CashRegisterConfig>;
   getSystemStatus(signal?: AbortSignal): Promise<SystemStatusSnapshot>;
+  getHealthCheck(signal?: AbortSignal): Promise<SystemHealthCheck>;
   getTerminal(terminalId: string): Promise<Terminal>;
   getTerminalHealth(terminalId: string): Promise<TerminalHealth>;
   heartbeat(terminalId: string): Promise<void>;
@@ -246,6 +265,14 @@ class LiveTerminalGateway implements TerminalGateway {
       signal,
     });
     return { requestId: response.meta.requestId, status: response.data };
+  }
+
+  async getHealthCheck(signal?: AbortSignal): Promise<SystemHealthCheck> {
+    const response = await apiRequest<SystemHealthCheck>("/system/health", {
+      cache: "no-store",
+      signal,
+    });
+    return response.data;
   }
 
   async getTerminal(terminalId: string) {
@@ -489,6 +516,21 @@ class PreviewTerminalGateway implements TerminalGateway {
         databaseName: "preview",
         version: "0.0.1",
       },
+    };
+  }
+
+  async getHealthCheck(): Promise<SystemHealthCheck> {
+    return {
+      status: "HEALTHY",
+      checkedAt: new Date().toISOString(),
+      api: { status: "UP", uptime: "0s" },
+      database: { status: "UP", database: "preview", medicineCount: 7 },
+      disk: { status: "UP", totalGB: 256, freeGB: 180, usedGB: 76, usedPercent: 30 },
+      memory: { status: "UP", heapUsedMB: 128, heapMaxMB: 512, heapUsedPercent: 25 },
+      connectionPool: { status: "UP", totalConnections: 5, activeConnections: 2, idleConnections: 3, threadsAwaiting: 0 },
+      backup: { status: "UP", count: 3, lastBackup: new Date().toISOString(), lastBackupSize: 1024000, hoursSinceBackup: 2 },
+      sync: { status: "UP", online: true, latencyMs: 45, mode: "LOCAL" },
+      terminals: { status: "UP", total: 2, active: 2 },
     };
   }
 

@@ -25,4 +25,6 @@ public interface TerminalRegistryRepository extends JpaRepository<Terminal, UUID
     boolean existsByName(String name);
     boolean existsByBranchIdAndNameIgnoreCase(UUID branchId, String name);
     boolean existsByBranchIdAndNameIgnoreCaseAndIdNot(UUID branchId, String name, UUID id);
+
+    long countByStatus(TerminalStatus status);
 }

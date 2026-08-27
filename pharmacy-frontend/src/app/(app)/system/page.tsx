@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 
 import { PaymentSettingsPanel } from "@/features/system/components/payment-settings-panel";
 import { SystemStatusPanel } from "@/features/system/components/system-status-panel";
+import { SystemHealthDashboard } from "@/features/system/components/system-health-dashboard";
 import { BackupRestorePanel } from "@/features/system/components/backup-restore-panel";
 import { API_BASE_URL, DEMO_AUTH_ENABLED } from "@/lib/api-config";
 
@@ -33,6 +34,10 @@ export default function SystemPage() {
 
       <div className="mb-6">
         <PaymentSettingsPanel />
+      </div>
+
+      <div className="mb-6">
+        <SystemHealthDashboard />
       </div>
 
       <div className="mb-6">

@@ -205,7 +205,7 @@ public class SecurityConfig {
                     PermissionCodes.INVENTORY_READ,
                     PermissionCodes.INVENTORY_ADJUST_REQUEST,
                     PermissionCodes.INVENTORY_ADJUST_APPROVE)
-                .requestMatchers("/api/v1/suppliers/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "STORE_KEEPER", "PHARMACY_TECHNICIAN")
+                .requestMatchers("/api/v1/suppliers/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "STORE_KEEPER", "PHARMACY_TECHNICIAN", "CASHIER")
                 .requestMatchers("/api/v1/purchase-orders/**").hasAnyAuthority(
                     PermissionCodes.PURCHASE_ORDER_READ,
                     PermissionCodes.PURCHASE_ORDER_WRITE,
@@ -221,8 +221,8 @@ public class SecurityConfig {
                     PermissionCodes.SALE_READ, PermissionCodes.SALE_RETURN)
                 .requestMatchers("/api/v1/prescriptions/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "PHARMACIST", "PHARMACY_TECHNICIAN")
                 .requestMatchers("/api/v1/dispensary/**").hasAnyRole("OWNER", "PHARMACIST")
-                .requestMatchers("/api/v1/expenses/**").hasAnyRole("OWNER", "BRANCH_MANAGER")
-                .requestMatchers("/api/v1/expense-categories/**").hasAnyRole("OWNER", "BRANCH_MANAGER")
+                .requestMatchers("/api/v1/expenses/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "CASHIER")
+                .requestMatchers("/api/v1/expense-categories/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "CASHIER")
                 .requestMatchers("/api/v1/cash-drawers/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "CASHIER")
                 .requestMatchers("/api/v1/shifts/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "PHARMACIST", "CASHIER", "PHARMACY_TECHNICIAN")
                 .requestMatchers("/api/v1/expiry-logs/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "STORE_KEEPER")
