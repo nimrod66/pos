@@ -18,6 +18,9 @@ public class UnitResponseDto {
     private UUID id;
     private String unitName;
     private String unitAbbreviation;
+    private UUID parentUnitId;
+    private String parentUnitName;
+    private Integer conversionFactor;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -26,9 +29,11 @@ public class UnitResponseDto {
                 .id(unit.getId())
                 .unitName(unit.getUnitName())
                 .unitAbbreviation(unit.getUnitAbbreviation())
+                .parentUnitId(unit.getParentUnit() != null ? unit.getParentUnit().getId() : null)
+                .parentUnitName(unit.getParentUnit() != null ? unit.getParentUnit().getUnitName() : null)
+                .conversionFactor(unit.getConversionFactor())
                 .createdAt(unit.getCreatedAt())
                 .updatedAt(unit.getUpdatedAt())
                 .build();
     }
 }
-

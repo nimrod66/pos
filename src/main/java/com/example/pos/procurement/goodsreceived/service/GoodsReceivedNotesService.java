@@ -231,7 +231,16 @@ public class GoodsReceivedNotesService {
 
         int previousQuantity = batch.getInitialQuantity() != null ? batch.getInitialQuantity() : 0;
         BigDecimal previousCost = batch.getBuyingPrice() != null ? batch.getBuyingPrice() : BigDecimal.ZERO;
-        int combinedQuantity = previousQuantity + lineDto.getQuantity();
+
+        // Convert buying units to selling units if packSize is set
+        int receivedSellingUnits = lineDto.getQuantity();
+        if (medicine.getPackSize() != null && medicine.getPackSize() > 0
+                && medicine.getBuyingUnit() != null
+                && !medicine.getBuyingUnit().getId().equals(medicine.getUnit() != null ? medicine.getUnit().getId() : null)) {
+            receivedSellingUnits = lineDto.getQuantity() * medicine.getPackSize();
+        }
+
+        int combinedQuantity = previousQuantity + receivedSellingUnits;
         BigDecimal weightedCost = previousCost.multiply(BigDecimal.valueOf(previousQuantity))
                 .add(lineDto.getUnitCost().multiply(BigDecimal.valueOf(lineDto.getQuantity())))
                 .divide(BigDecimal.valueOf(combinedQuantity), 2, RoundingMode.HALF_UP);
@@ -245,7 +254,7 @@ public class GoodsReceivedNotesService {
                 .batch(batch)
                 .batchNumber(batchNumber)
                 .expiryDate(lineDto.getExpiryDate())
-                .quantity(lineDto.getQuantity())
+                .quantity(receivedSellingUnits)
                 .unitCost(lineDto.getUnitCost())
                 .purchaseOrderLineId(lineDto.getPurchaseOrderLineId())
                 .build();
@@ -262,7 +271,7 @@ public class GoodsReceivedNotesService {
                         .reorderLevel(medicine.getReorderLevel())
                         .build());
         stock.setQuantityAvailable((stock.getQuantityAvailable() != null
-                ? stock.getQuantityAvailable() : 0) + lineDto.getQuantity());
+                ? stock.getQuantityAvailable() : 0) + receivedSellingUnits);
         stock.setLastStockDate(receivedDate);
         stockRepo.save(stock);
 
@@ -274,7 +283,7 @@ public class GoodsReceivedNotesService {
                 .referenceType("GOODS_RECEIVED")
                 .referenceId(grn.getId())
                 .movementDate(receivedDate)
-                .quantity(lineDto.getQuantity())
+                .quantity(receivedSellingUnits)
                 .build());
     }
 

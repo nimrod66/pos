@@ -25,10 +25,15 @@ import {
 } from "@/features/workspace/gateway/workspace-gateway";
 import { addMoney, formatKes, moneyToCents } from "@/features/workspace/lib/money";
 import { todayIsoDate } from "@/features/workspace/lib/workspace-helpers";
+import { apiRequest } from "@/lib/api-client";
 import type {
   InventoryReport,
   PluRow,
+  ProfitReport,
+  ReorderSuggestionReport,
   SalesReport,
+  SlowStockReport,
+  SupplierPriceComparison,
 } from "@/features/workspace/types";
 import { cn } from "@/lib/cn";
 
@@ -44,6 +49,13 @@ export function ReportsPage() {
   const [inventoryReport, setInventoryReport] =
     useState<InventoryReport | null>(null);
   const [pluRows, setPluRows] = useState<PluRow[]>([]);
+  const [profitReport, setProfitReport] = useState<ProfitReport | null>(null);
+  const [slowStockReport, setSlowStockReport] =
+    useState<SlowStockReport | null>(null);
+  const [reorderReport, setReorderReport] =
+    useState<ReorderSuggestionReport | null>(null);
+  const [supplierReport, setSupplierReport] =
+    useState<SupplierPriceComparison | null>(null);
   const [salesError, setSalesError] = useState<string | null>(null);
   const [inventoryError, setInventoryError] = useState<string | null>(null);
 
@@ -104,6 +116,70 @@ export function ReportsPage() {
       .catch(() => {
         /* PLU is best-effort */
       });
+    return () => {
+      active = false;
+    };
+  }, [branchId, canViewSales, from, to]);
+
+  useEffect(() => {
+    if (!branchId || !canViewSales || !from || !to || to < from) return;
+    let active = true;
+    apiRequest<ProfitReport>(
+      `/api/v1/reports/profit?branchId=${branchId}&from=${from}&to=${to}`,
+    )
+      .then((res) => {
+        if (!active) return;
+        setProfitReport(res.data);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [branchId, canViewSales, from, to]);
+
+  useEffect(() => {
+    if (!branchId || !canViewInventory) return;
+    let active = true;
+    apiRequest<SlowStockReport>(
+      `/api/v1/reports/slow-stock?branchId=${branchId}`,
+    )
+      .then((res) => {
+        if (!active) return;
+        setSlowStockReport(res.data);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [branchId, canViewInventory]);
+
+  useEffect(() => {
+    if (!branchId || !canViewInventory) return;
+    let active = true;
+    apiRequest<ReorderSuggestionReport>(
+      `/api/v1/reports/reorder-suggestions?branchId=${branchId}`,
+    )
+      .then((res) => {
+        if (!active) return;
+        setReorderReport(res.data);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [branchId, canViewInventory]);
+
+  useEffect(() => {
+    if (!branchId || !canViewSales || !from || !to || to < from) return;
+    let active = true;
+    apiRequest<SupplierPriceComparison>(
+      `/api/v1/reports/supplier-prices?branchId=${branchId}`,
+    )
+      .then((res) => {
+        if (!active) return;
+        setSupplierReport(res.data);
+      })
+      .catch(() => {});
     return () => {
       active = false;
     };
@@ -458,6 +534,357 @@ export function ReportsPage() {
               </tbody>
             </table>
           </div>
+        </section>
+      ) : null}
+
+      {canViewSales && profitReport ? (
+        <section className="mt-6 rounded-md border border-[var(--border)] bg-white">
+          <div className="border-b border-[var(--border)] px-4 py-3.5">
+            <h2 className="text-sm font-semibold">Profit &amp; margin report</h2>
+          </div>
+          <div className="grid gap-4 p-4 sm:grid-cols-4">
+            <div>
+              <p className="text-xs text-[var(--text-muted)]">Total revenue</p>
+              <p className="mt-1 text-lg font-semibold">
+                {formatKes(profitReport.totalRevenue)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-[var(--text-muted)]">
+                Cost of goods sold
+              </p>
+              <p className="mt-1 text-lg font-semibold">
+                {formatKes(profitReport.totalCostOfGoods)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-[var(--text-muted)]">
+                Gross profit
+              </p>
+              <p className="mt-1 text-lg font-semibold">
+                {formatKes(profitReport.totalGrossProfit)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-[var(--text-muted)]">
+                Overall margin
+              </p>
+              <p className="mt-1 text-lg font-semibold">
+                {profitReport.overallMarginPercent.toFixed(1)}%
+              </p>
+            </div>
+          </div>
+          {profitReport.medicines.length > 0 ? (
+            <div className="overflow-x-auto border-t border-[var(--border)]">
+              <table className="w-full min-w-[700px] text-left text-sm">
+                <thead className="bg-[var(--surface-muted)] text-xs uppercase text-[var(--text-muted)]">
+                  <tr>
+                    <th className="px-4 py-3 font-semibold">Medicine</th>
+                    <th className="px-4 py-3 font-semibold">SKU</th>
+                    <th className="px-4 py-3 text-right font-semibold">
+                      Qty sold
+                    </th>
+                    <th className="px-4 py-3 text-right font-semibold">
+                      Revenue
+                    </th>
+                    <th className="px-4 py-3 text-right font-semibold">
+                      COGS
+                    </th>
+                    <th className="px-4 py-3 text-right font-semibold">
+                      Gross profit
+                    </th>
+                    <th className="px-4 py-3 text-right font-semibold">
+                      Margin %
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border)]">
+                  {profitReport.medicines.map((med) => (
+                    <tr key={med.medicineId}>
+                      <td className="px-4 py-3.5 font-medium">
+                        {med.medicineName}
+                      </td>
+                      <td className="px-4 py-3.5 text-[var(--text-muted)]">
+                        {med.sku}
+                      </td>
+                      <td className="px-4 py-3.5 text-right font-semibold">
+                        {med.quantitySold}
+                      </td>
+                      <td className="px-4 py-3.5 text-right">
+                        {formatKes(med.revenue)}
+                      </td>
+                      <td className="px-4 py-3.5 text-right">
+                        {formatKes(med.costOfGoods)}
+                      </td>
+                      <td className="px-4 py-3.5 text-right font-semibold">
+                        {formatKes(med.grossProfit)}
+                      </td>
+                      <td className="px-4 py-3.5 text-right">
+                        <span
+                          className={cn(
+                            "inline-flex min-h-6 items-center rounded-full px-2 py-0.5 text-xs font-medium",
+                            med.marginPercent > 30
+                              ? "bg-[var(--success-soft)] text-[var(--success)]"
+                              : med.marginPercent >= 15
+                                ? "bg-[var(--warning-soft)] text-[var(--warning)]"
+                                : "bg-[var(--danger-soft)] text-[var(--danger)]",
+                          )}
+                        >
+                          {med.marginPercent.toFixed(1)}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="p-5 text-sm text-[var(--text-muted)]">
+              No profit data available for this period.
+            </p>
+          )}
+        </section>
+      ) : null}
+
+      {canViewInventory && slowStockReport ? (
+        <section className="mt-6 rounded-md border border-[var(--border)] bg-white">
+          <div className="border-b border-[var(--border)] px-4 py-3.5">
+            <h2 className="text-sm font-semibold">Slow / dead stock</h2>
+          </div>
+          <div className="grid gap-4 p-4 sm:grid-cols-2">
+            <div>
+              <p className="text-xs text-[var(--text-muted)]">Dead items</p>
+              <p className="mt-1 text-lg font-semibold text-[var(--danger)]">
+                {slowStockReport.totalDead}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-[var(--text-muted)]">Slow items</p>
+              <p className="mt-1 text-lg font-semibold text-[var(--warning)]">
+                {slowStockReport.totalSlow}
+              </p>
+            </div>
+          </div>
+          {slowStockReport.items.length > 0 ? (
+            <div className="overflow-x-auto border-t border-[var(--border)]">
+              <table className="w-full min-w-[700px] text-left text-sm">
+                <thead className="bg-[var(--surface-muted)] text-xs uppercase text-[var(--text-muted)]">
+                  <tr>
+                    <th className="px-4 py-3 font-semibold">Medicine</th>
+                    <th className="px-4 py-3 font-semibold">SKU</th>
+                    <th className="px-4 py-3 text-right font-semibold">
+                      Current stock
+                    </th>
+                    <th className="px-4 py-3 font-semibold">Last sold</th>
+                    <th className="px-4 py-3 text-right font-semibold">
+                      90-day sales
+                    </th>
+                    <th className="px-4 py-3 text-right font-semibold">
+                      Velocity
+                    </th>
+                    <th className="px-4 py-3 font-semibold">Category</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border)]">
+                  {slowStockReport.items.map((item) => (
+                    <tr key={item.medicineId}>
+                      <td className="px-4 py-3.5 font-medium">
+                        {item.medicineName}
+                      </td>
+                      <td className="px-4 py-3.5 text-[var(--text-muted)]">
+                        {item.sku}
+                      </td>
+                      <td className="px-4 py-3.5 text-right font-semibold">
+                        {item.currentStock}
+                      </td>
+                      <td className="px-4 py-3.5 text-[var(--text-muted)]">
+                        {item.lastSoldAt
+                          ? new Date(item.lastSoldAt).toLocaleDateString()
+                          : "—"}
+                      </td>
+                      <td className="px-4 py-3.5 text-right">
+                        {item.totalSold90d}
+                      </td>
+                      <td className="px-4 py-3.5 text-right">
+                        {item.velocity.toFixed(2)}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <StatusBadge
+                          tone={
+                            item.category === "DEAD" ? "danger" : "warning"
+                          }
+                        >
+                          {item.category}
+                        </StatusBadge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="p-5 text-sm text-[var(--text-muted)]">
+              No slow or dead stock items found.
+            </p>
+          )}
+        </section>
+      ) : null}
+
+      {canViewInventory && reorderReport ? (
+        <section className="mt-6 rounded-md border border-[var(--border)] bg-white">
+          <div className="border-b border-[var(--border)] px-4 py-3.5">
+            <h2 className="text-sm font-semibold">Reorder suggestions</h2>
+          </div>
+          <div className="grid gap-4 p-4 sm:grid-cols-3">
+            <div>
+              <p className="text-xs text-[var(--text-muted)]">Critical</p>
+              <p className="mt-1 text-lg font-semibold text-[var(--danger)]">
+                {reorderReport.totalCritical}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-[var(--text-muted)]">High</p>
+              <p className="mt-1 text-lg font-semibold text-[var(--warning)]">
+                {reorderReport.totalHigh}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-[var(--text-muted)]">Medium</p>
+              <p className="mt-1 text-lg font-semibold text-[var(--accent)]">
+                {reorderReport.totalMedium}
+              </p>
+            </div>
+          </div>
+          {reorderReport.items.length > 0 ? (
+            <div className="overflow-x-auto border-t border-[var(--border)]">
+              <table className="w-full min-w-[750px] text-left text-sm">
+                <thead className="bg-[var(--surface-muted)] text-xs uppercase text-[var(--text-muted)]">
+                  <tr>
+                    <th className="px-4 py-3 font-semibold">Medicine</th>
+                    <th className="px-4 py-3 font-semibold">SKU</th>
+                    <th className="px-4 py-3 text-right font-semibold">
+                      Current stock
+                    </th>
+                    <th className="px-4 py-3 text-right font-semibold">
+                      Reorder level
+                    </th>
+                    <th className="px-4 py-3 text-right font-semibold">
+                      Weekly sales
+                    </th>
+                    <th className="px-4 py-3 text-right font-semibold">
+                      Suggested order
+                    </th>
+                    <th className="px-4 py-3 font-semibold">Urgency</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border)]">
+                  {reorderReport.items.map((item) => (
+                    <tr key={item.medicineId}>
+                      <td className="px-4 py-3.5 font-medium">
+                        {item.medicineName}
+                      </td>
+                      <td className="px-4 py-3.5 text-[var(--text-muted)]">
+                        {item.sku}
+                      </td>
+                      <td className="px-4 py-3.5 text-right font-semibold">
+                        {item.currentStock}
+                      </td>
+                      <td className="px-4 py-3.5 text-right">
+                        {item.reorderLevel}
+                      </td>
+                      <td className="px-4 py-3.5 text-right">
+                        {item.avgWeeklySales.toFixed(1)}
+                      </td>
+                      <td className="px-4 py-3.5 text-right font-semibold">
+                        {item.suggestedOrderQty}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <StatusBadge
+                          tone={
+                            item.urgency === "CRITICAL"
+                              ? "danger"
+                              : item.urgency === "HIGH"
+                                ? "warning"
+                                : "info"
+                          }
+                        >
+                          {item.urgency}
+                        </StatusBadge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="p-5 text-sm text-[var(--text-muted)]">
+              All medicines are adequately stocked.
+            </p>
+          )}
+        </section>
+      ) : null}
+
+      {canViewSales && supplierReport ? (
+        <section className="mt-6 rounded-md border border-[var(--border)] bg-white">
+          <div className="border-b border-[var(--border)] px-4 py-3.5">
+            <h2 className="text-sm font-semibold">
+              Supplier price comparison
+            </h2>
+          </div>
+          {supplierReport.rows.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[700px] text-left text-sm">
+                <thead className="bg-[var(--surface-muted)] text-xs uppercase text-[var(--text-muted)]">
+                  <tr>
+                    <th className="px-4 py-3 font-semibold">Supplier</th>
+                    <th className="px-4 py-3 font-semibold">Medicine</th>
+                    <th className="px-4 py-3 font-semibold">SKU</th>
+                    <th className="px-4 py-3 text-right font-semibold">
+                      Last cost
+                    </th>
+                    <th className="px-4 py-3 text-right font-semibold">
+                      Avg cost
+                    </th>
+                    <th className="px-4 py-3 text-right font-semibold">
+                      Total purchased
+                    </th>
+                    <th className="px-4 py-3 text-right font-semibold">
+                      Purchase count
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border)]">
+                  {supplierReport.rows.map((row) => (
+                    <tr key={`${row.supplierId}-${row.medicineId}`}>
+                      <td className="px-4 py-3.5 font-medium">
+                        {row.supplierName}
+                      </td>
+                      <td className="px-4 py-3.5">{row.medicineName}</td>
+                      <td className="px-4 py-3.5 text-[var(--text-muted)]">
+                        {row.sku}
+                      </td>
+                      <td className="px-4 py-3.5 text-right">
+                        {formatKes(row.lastCost)}
+                      </td>
+                      <td className="px-4 py-3.5 text-right">
+                        {formatKes(row.avgCost)}
+                      </td>
+                      <td className="px-4 py-3.5 text-right font-semibold">
+                        {row.totalPurchased}
+                      </td>
+                      <td className="px-4 py-3.5 text-right">
+                        {row.purchaseCount}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="p-5 text-sm text-[var(--text-muted)]">
+              No supplier price data available for this period.
+            </p>
+          )}
         </section>
       ) : null}
     </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  History,
   Mail,
   Pencil,
   Phone,
@@ -11,6 +12,7 @@ import {
   UserRoundPlus,
   X,
 } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
@@ -313,7 +315,7 @@ export function CustomersPage() {
                   <th className="px-4 py-3 font-semibold">Address</th>
                   <th className="px-4 py-3 text-right font-semibold">Points</th>
                   <th className="px-4 py-3 font-semibold">Added</th>
-                  <th className="w-24 px-3 py-3">
+                  <th className="w-28 px-3 py-3">
                     <span className="sr-only">Actions</span>
                   </th>
                 </tr>
@@ -356,28 +358,40 @@ export function CustomersPage() {
                       {formatDate(customer.createdAt.slice(0, 10))}
                     </td>
                     <td className="px-3 py-3">
-                      {canWrite ? (
-                        <div className="flex justify-end gap-1">
-                          <button
-                            type="button"
-                            title={`Edit ${fullName(customer)}`}
-                            aria-label={`Edit ${fullName(customer)}`}
+                      <div className="flex justify-end gap-1">
+                        {canRead ? (
+                          <Link
+                            href={`/customers/${customer.id}`}
+                            title={`View history for ${fullName(customer)}`}
+                            aria-label={`View history for ${fullName(customer)}`}
                             className="flex size-9 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-white hover:text-[var(--text)]"
-                            onClick={() => openEdit(customer)}
                           >
-                            <Pencil aria-hidden="true" size={16} />
-                          </button>
-                          <button
-                            type="button"
-                            title={`Delete ${fullName(customer)}`}
-                            aria-label={`Delete ${fullName(customer)}`}
-                            className="flex size-9 items-center justify-center rounded-md text-[var(--danger)] hover:bg-[var(--danger-soft)]"
-                            onClick={() => setDeleteTarget(customer)}
-                          >
-                            <Trash2 aria-hidden="true" size={16} />
-                          </button>
-                        </div>
-                      ) : null}
+                            <History aria-hidden="true" size={16} />
+                          </Link>
+                        ) : null}
+                        {canWrite ? (
+                          <>
+                            <button
+                              type="button"
+                              title={`Edit ${fullName(customer)}`}
+                              aria-label={`Edit ${fullName(customer)}`}
+                              className="flex size-9 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-white hover:text-[var(--text)]"
+                              onClick={() => openEdit(customer)}
+                            >
+                              <Pencil aria-hidden="true" size={16} />
+                            </button>
+                            <button
+                              type="button"
+                              title={`Delete ${fullName(customer)}`}
+                              aria-label={`Delete ${fullName(customer)}`}
+                              className="flex size-9 items-center justify-center rounded-md text-[var(--danger)] hover:bg-[var(--danger-soft)]"
+                              onClick={() => setDeleteTarget(customer)}
+                            >
+                              <Trash2 aria-hidden="true" size={16} />
+                            </button>
+                          </>
+                        ) : null}
+                      </div>
                     </td>
                   </tr>
                 ))}

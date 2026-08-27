@@ -53,4 +53,7 @@ public interface SalesRepository extends JpaRepository<Sales, UUID> {
     List<Sales> findByBranchIdAndSaleStatus(UUID branchId, Sales.SaleStatus saleStatus);
 
     List<Sales> findByUserIdAndCreatedAtBetween(UUID userId, LocalDateTime start, LocalDateTime end);
+
+    @EntityGraph(attributePaths = {"saleItems", "saleItems.medicineBatches", "saleItems.medicineBatches.medicine", "payment"})
+    List<Sales> findByCustomerIdAndBranchIdOrderByCompletedAtDesc(UUID customerId, UUID branchId);
 }

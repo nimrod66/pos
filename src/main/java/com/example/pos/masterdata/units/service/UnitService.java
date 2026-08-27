@@ -1,5 +1,6 @@
 package com.example.pos.masterdata.units.service;
 
+import com.example.pos.common.exception.BadRequestException;
 import com.example.pos.common.exception.ConflictException;
 import com.example.pos.common.exception.ResourceNotFoundException;
 import com.example.pos.masterdata.units.dto.UnitRequestDto;
@@ -26,6 +27,15 @@ public class UnitService {
         Unit unit = new Unit();
         unit.setUnitName(dto.getUnitName());
         unit.setUnitAbbreviation(dto.getUnitAbbreviation());
+        unit.setConversionFactor(dto.getConversionFactor() != null ? dto.getConversionFactor() : 1);
+        if (dto.getParentUnitId() != null) {
+            Unit parent = repository.findById(dto.getParentUnitId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Parent unit", dto.getParentUnitId()));
+            if (parent.getId().equals(unit.getId())) {
+                throw new BadRequestException("A unit cannot be its own parent", "SELF_REFERENTIAL_UNIT");
+            }
+            unit.setParentUnit(parent);
+        }
         return repository.save(unit);
     }
 
@@ -43,8 +53,31 @@ public class UnitService {
             throw new ConflictException("Unit '" + dto.getUnitName() + "' already exists");
         unit.setUnitName(dto.getUnitName());
         unit.setUnitAbbreviation(dto.getUnitAbbreviation());
+        unit.setConversionFactor(dto.getConversionFactor() != null ? dto.getConversionFactor() : 1);
+        if (dto.getParentUnitId() != null) {
+            Unit parent = repository.findById(dto.getParentUnitId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Parent unit", dto.getParentUnitId()));
+            if (parent.getId().equals(id)) {
+                throw new BadRequestException("A unit cannot be its own parent", "SELF_REFERENTIAL_UNIT");
+            }
+            unit.setParentUnit(parent);
+        } else {
+            unit.setParentUnit(null);
+        }
         return repository.save(unit);
     }
 
     public void delete(UUID id) { repository.delete(getById(id)); }
+
+    @Transactional(readOnly = true)
+    public int convertToBase(int quantity, Unit unit) {
+        if (unit == null) return quantity;
+        int total = quantity;
+        Unit current = unit;
+        while (current.getParentUnit() != null) {
+            total *= current.getConversionFactor() != null ? current.getConversionFactor() : 1;
+            current = current.getParentUnit();
+        }
+        return total;
+    }
 }

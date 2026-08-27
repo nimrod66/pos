@@ -227,6 +227,10 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/shifts/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "PHARMACIST", "CASHIER", "PHARMACY_TECHNICIAN")
                 .requestMatchers("/api/v1/expiry-logs/**").hasAnyRole("OWNER", "BRANCH_MANAGER", "STORE_KEEPER")
                 .requestMatchers("/api/v1/controlled-drugs/**").hasAnyRole("OWNER", "PHARMACIST")
+                .requestMatchers("/api/v1/stock-counts/**").hasAnyAuthority(
+                    "stock_count.read", "stock_count.write")
+                .requestMatchers("/api/v1/stock-transfers/**").hasAnyAuthority(
+                    "stock_transfer.read", "stock_transfer.write")
                 .requestMatchers("/api/v1/categories/**").hasAuthority(PermissionCodes.MEDICINE_READ)
                 .requestMatchers("/api/v1/dosage-forms/**").hasAuthority(PermissionCodes.MEDICINE_READ)
                 .requestMatchers("/api/v1/units/**").hasAuthority(PermissionCodes.MEDICINE_READ)

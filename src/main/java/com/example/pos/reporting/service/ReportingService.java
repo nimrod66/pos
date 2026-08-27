@@ -2,6 +2,7 @@ package com.example.pos.reporting.service;
 
 import com.example.pos.common.exception.BadRequestException;
 import com.example.pos.common.exception.ForbiddenException;
+import com.example.pos.common.exception.ResourceNotFoundException;
 import com.example.pos.core.branch.model.Branch;
 import com.example.pos.core.branch.repository.BranchRepository;
 import com.example.pos.core.systemsettings.service.SystemSettingsService;
@@ -9,9 +10,20 @@ import com.example.pos.inventory.stock.model.Stock;
 import com.example.pos.inventory.stock.repository.StockRepository;
 import com.example.pos.masterdata.medicine.model.Medicine;
 import com.example.pos.masterdata.medicine.repository.MedicineRepository;
+import com.example.pos.procurement.goodsreceived.model.GRNLine;
+import com.example.pos.procurement.goodsreceived.repository.GRNLineRepository;
 import com.example.pos.reporting.dto.DashboardReportDto;
 import com.example.pos.reporting.dto.InventoryReportDto;
+import com.example.pos.reporting.dto.ProfitReportDto;
+import com.example.pos.reporting.dto.ReorderSuggestionReportDto;
 import com.example.pos.reporting.dto.SalesReportDto;
+import com.example.pos.reporting.dto.SlowStockReportDto;
+import com.example.pos.reporting.dto.SupplierPriceComparisonDto;
+import com.example.pos.reporting.dto.CustomerHistoryDto;
+import com.example.pos.customer.model.Customer;
+import com.example.pos.customer.repository.CustomerRepository;
+import com.example.pos.prescriptions.prescriptions.model.Prescriptions;
+import com.example.pos.prescriptions.prescriptions.repository.PrescriptionsRepository;
 import com.example.pos.sale.payment.model.Payment;
 import com.example.pos.sale.saleitems.model.SaleItems;
 import com.example.pos.sale.salereturnitems.model.SaleReturnItems;
@@ -42,6 +54,7 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class ReportingService {
 
+    private static final BigDecimal HUNDRED = new BigDecimal("100");
     private static final List<Sales.SaleStatus> COMPLETED_SALE_STATUSES =
             List.of(Sales.SaleStatus.COMPLETED, Sales.SaleStatus.DONE);
 
@@ -50,7 +63,10 @@ public class ReportingService {
     private final StockRepository stockRepository;
     private final com.example.pos.sale.saleitems.repository.SaleItemsRepository saleItemsRepository;
     private final MedicineRepository medicineRepository;
+    private final GRNLineRepository grnLineRepository;
     private final BranchRepository branchRepository;
+    private final CustomerRepository customerRepository;
+    private final PrescriptionsRepository prescriptionsRepository;
     private final SystemSettingsService settingsService;
     private final AuthenticatedUserContext current;
     private final Clock clock;
@@ -60,7 +76,10 @@ public class ReportingService {
                             StockRepository stockRepository,
                             com.example.pos.sale.saleitems.repository.SaleItemsRepository saleItemsRepository,
                             MedicineRepository medicineRepository,
+                            GRNLineRepository grnLineRepository,
                             BranchRepository branchRepository,
+                            CustomerRepository customerRepository,
+                            PrescriptionsRepository prescriptionsRepository,
                             SystemSettingsService settingsService,
                             AuthenticatedUserContext current,
                             Clock clock) {
@@ -69,7 +88,10 @@ public class ReportingService {
         this.stockRepository = stockRepository;
         this.saleItemsRepository = saleItemsRepository;
         this.medicineRepository = medicineRepository;
+        this.grnLineRepository = grnLineRepository;
         this.branchRepository = branchRepository;
+        this.customerRepository = customerRepository;
+        this.prescriptionsRepository = prescriptionsRepository;
         this.settingsService = settingsService;
         this.current = current;
         this.clock = clock;
@@ -430,5 +452,376 @@ public class ReportingService {
         private BigDecimal other() {
             return other;
         }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // FEATURE 6: Profit / Margin report
+    // ═══════════════════════════════════════════════════════════════
+
+    public ProfitReportDto getProfitReport(UUID branchId, LocalDate from, LocalDate to,
+                                            boolean pharmacyWide) {
+        List<Branch> branches = resolveBranches(branchId, pharmacyWide);
+        validateDateRange(from, to);
+        LocalDateTime start = from.atStartOfDay();
+        LocalDateTime end = to.plusDays(1).atStartOfDay();
+        List<UUID> branchIds = branches.stream().map(Branch::getId).toList();
+
+        List<Sales> sales = salesRepository
+                .findByBranchIdInAndSaleStatusInAndCompletedAtGreaterThanEqualAndCompletedAtLessThan(
+                        branchIds, COMPLETED_SALE_STATUSES, start, end);
+        List<SaleReturns> returns = returnsRepository
+                .findByBranchIdInAndStatusIgnoreCaseAndReturnDateGreaterThanEqualAndReturnDateLessThan(
+                        branchIds, "COMPLETED", start, end);
+
+        Map<UUID, ProfitProductTotals> profitMap = new LinkedHashMap<>();
+        for (Sales sale : sales) {
+            for (SaleItems item : sale.getSaleItems()) {
+                Medicine medicine = item.getMedicineBatches().getMedicine();
+                ProfitProductTotals t = profitMap.computeIfAbsent(medicine.getId(),
+                        ignored -> new ProfitProductTotals(medicine.getBrandName(), medicine.getSku()));
+                int qty = item.getQuantity() == null ? 0 : item.getQuantity();
+                t.quantity += qty;
+                t.revenue = t.revenue.add(zeroIfNull(item.getTotal()));
+                BigDecimal buyingPrice = item.getMedicineBatches().getBuyingPrice() != null
+                        ? item.getMedicineBatches().getBuyingPrice() : BigDecimal.ZERO;
+                t.cost = t.cost.add(buyingPrice.multiply(BigDecimal.valueOf(qty)));
+            }
+        }
+        for (SaleReturns ret : returns) {
+            for (SaleReturnItems item : ret.getSaleReturnItems()) {
+                Medicine medicine = item.getMedicineBatches().getMedicine();
+                ProfitProductTotals t = profitMap.computeIfAbsent(medicine.getId(),
+                        ignored -> new ProfitProductTotals(medicine.getBrandName(), medicine.getSku()));
+                int qty = item.getQuantity() == null ? 0 : item.getQuantity();
+                t.quantity -= qty;
+                t.revenue = t.revenue.subtract(zeroIfNull(item.getRefundAmount()));
+                BigDecimal buyingPrice = item.getMedicineBatches().getBuyingPrice() != null
+                        ? item.getMedicineBatches().getBuyingPrice() : BigDecimal.ZERO;
+                t.cost = t.cost.subtract(buyingPrice.multiply(BigDecimal.valueOf(qty)));
+            }
+        }
+
+        BigDecimal totalRevenue = BigDecimal.ZERO;
+        BigDecimal totalCost = BigDecimal.ZERO;
+        List<ProfitReportDto.MedicineProfitDto> breakdown = new ArrayList<>();
+        for (var entry : profitMap.entrySet()) {
+            ProfitProductTotals t = entry.getValue();
+            totalRevenue = totalRevenue.add(t.revenue);
+            totalCost = totalCost.add(t.cost);
+            BigDecimal profit = t.revenue.subtract(t.cost);
+            BigDecimal margin = t.revenue.compareTo(BigDecimal.ZERO) > 0
+                    ? profit.multiply(HUNDRED).divide(t.revenue, 1, RoundingMode.HALF_UP)
+                    : BigDecimal.ZERO;
+            breakdown.add(new ProfitReportDto.MedicineProfitDto(
+                    entry.getKey(), t.name, t.sku, t.quantity,
+                    money(t.revenue), money(t.cost), money(profit), margin));
+        }
+
+        BigDecimal grossProfit = totalRevenue.subtract(totalCost);
+        BigDecimal grossMargin = totalRevenue.compareTo(BigDecimal.ZERO) > 0
+                ? grossProfit.multiply(HUNDRED).divide(totalRevenue, 1, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+
+        return new ProfitReportDto(
+                pharmacyWide ? null : branchId, pharmacyWide, from, to,
+                money(totalRevenue), money(totalCost), money(grossProfit), grossMargin,
+                breakdown.stream().sorted((a, b) -> b.profit().compareTo(a.profit())).toList());
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // FEATURE 7: Slow / Dead stock report
+    // ═══════════════════════════════════════════════════════════════
+
+    public SlowStockReportDto getSlowStockReport(UUID branchId, LocalDate asOf) {
+        current.requireBranch(branchId);
+        LocalDate reportDate = asOf == null ? LocalDate.now(clock) : asOf;
+        LocalDateTime ninetyDaysAgo = reportDate.minusDays(90).atStartOfDay();
+
+        List<Stock> stocks = stockRepository.findByBranchIdIn(List.of(branchId));
+        Map<UUID, Integer> stockByMedicine = new HashMap<>();
+        Map<UUID, BigDecimal> stockValueByMedicine = new HashMap<>();
+        for (Stock stock : stocks) {
+            int qty = stock.getQuantityAvailable() != null ? stock.getQuantityAvailable() : 0;
+            if (qty <= 0 || stock.getMedicineBatches() == null
+                    || stock.getMedicineBatches().getMedicine() == null) continue;
+            UUID medId = stock.getMedicineBatches().getMedicine().getId();
+            stockByMedicine.merge(medId, qty, Integer::sum);
+            BigDecimal buyingPrice = stock.getMedicineBatches().getBuyingPrice() != null
+                    ? stock.getMedicineBatches().getBuyingPrice() : BigDecimal.ZERO;
+            stockValueByMedicine.merge(medId, buyingPrice.multiply(BigDecimal.valueOf(qty)), BigDecimal::add);
+        }
+
+        // Get sales velocity in last 90 days
+        List<UUID> branchIds = List.of(branchId);
+        List<Sales> recentSales = salesRepository
+                .findByBranchIdInAndSaleStatusInAndCompletedAtGreaterThanEqualAndCompletedAtLessThan(
+                        branchIds, COMPLETED_SALE_STATUSES, ninetyDaysAgo, reportDate.plusDays(1).atStartOfDay());
+        Map<UUID, Integer> soldLast90 = new HashMap<>();
+        Map<UUID, LocalDate> lastSaleDate = new HashMap<>();
+        for (Sales sale : recentSales) {
+            for (SaleItems item : sale.getSaleItems()) {
+                UUID medId = item.getMedicineBatches().getMedicine().getId();
+                soldLast90.merge(medId, item.getQuantity() != null ? item.getQuantity() : 0, Integer::sum);
+                if (sale.getCompletedAt() != null) {
+                    LocalDate saleDate = sale.getCompletedAt().toLocalDate();
+                    lastSaleDate.merge(medId, saleDate, (a, b) -> a.isAfter(b) ? a : b);
+                }
+            }
+        }
+
+        List<Medicine> medicines = medicineRepository.findAllByPharmacyId(current.pharmacyId());
+        List<SlowStockReportDto.SlowStockItemDto> items = new ArrayList<>();
+        int slowCount = 0;
+        int deadCount = 0;
+        BigDecimal slowValue = BigDecimal.ZERO;
+        BigDecimal deadValue = BigDecimal.ZERO;
+
+        for (Medicine medicine : medicines) {
+            int stockQty = stockByMedicine.getOrDefault(medicine.getId(), 0);
+            if (stockQty <= 0) continue;
+            int soldQty = soldLast90.getOrDefault(medicine.getId(), 0);
+            LocalDate lastSale = lastSaleDate.get(medicine.getId());
+            int daysSinceLastSale = lastSale != null
+                    ? (int) ChronoUnit.DAYS.between(lastSale, reportDate) : 999;
+            BigDecimal value = stockValueByMedicine.getOrDefault(medicine.getId(), BigDecimal.ZERO);
+
+            String velocity;
+            if (soldQty == 0 && daysSinceLastSale > 90) {
+                velocity = "DEAD";
+                deadCount++;
+                deadValue = deadValue.add(value);
+            } else if (soldQty < stockQty / 3 || daysSinceLastSale > 60) {
+                velocity = "SLOW";
+                slowCount++;
+                slowValue = slowValue.add(value);
+            } else {
+                velocity = "ACTIVE";
+            }
+
+            items.add(new SlowStockReportDto.SlowStockItemDto(
+                    medicine.getId(), medicine.getBrandName(), medicine.getSku(),
+                    stockQty, soldQty, daysSinceLastSale, money(value), velocity));
+        }
+
+        items.sort((a, b) -> Integer.compare(b.daysSinceLastSale(), a.daysSinceLastSale()));
+
+        return new SlowStockReportDto(
+                branchId, reportDate, items.size(), slowCount, deadCount,
+                money(slowValue), money(deadValue), items);
+    }
+
+    private static final class ProfitProductTotals {
+        private final String name;
+        private final String sku;
+        private int quantity;
+        private BigDecimal revenue = BigDecimal.ZERO;
+        private BigDecimal cost = BigDecimal.ZERO;
+
+        private ProfitProductTotals(String name, String sku) {
+            this.name = name;
+            this.sku = sku;
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // FEATURE 8: Reorder suggestions
+    // ═══════════════════════════════════════════════════════════════
+
+    public ReorderSuggestionReportDto getReorderSuggestions(UUID branchId) {
+        current.requireBranch(branchId);
+        Branch branch = current.branch();
+        LocalDate thirtyDaysAgo = LocalDate.now(clock).minusDays(30);
+        LocalDateTime start = thirtyDaysAgo.atStartOfDay();
+        LocalDateTime end = LocalDate.now(clock).plusDays(1).atStartOfDay();
+
+        List<Stock> stocks = stockRepository.findByBranchIdIn(List.of(branchId));
+        Map<UUID, Integer> stockByMedicine = new HashMap<>();
+        for (Stock stock : stocks) {
+            int qty = stock.getQuantityAvailable() != null ? stock.getQuantityAvailable() : 0;
+            if (stock.getMedicineBatches() == null || stock.getMedicineBatches().getMedicine() == null) continue;
+            UUID medId = stock.getMedicineBatches().getMedicine().getId();
+            stockByMedicine.merge(medId, qty, Integer::sum);
+        }
+
+        List<Sales> recentSales = salesRepository
+                .findByBranchIdInAndSaleStatusInAndCompletedAtGreaterThanEqualAndCompletedAtLessThan(
+                        List.of(branchId), COMPLETED_SALE_STATUSES, start, end);
+        Map<UUID, Integer> soldLast30 = new HashMap<>();
+        for (Sales sale : recentSales) {
+            for (SaleItems item : sale.getSaleItems()) {
+                UUID medId = item.getMedicineBatches().getMedicine().getId();
+                soldLast30.merge(medId, item.getQuantity() != null ? item.getQuantity() : 0, Integer::sum);
+            }
+        }
+
+        List<Medicine> medicines = medicineRepository.findAllByPharmacyId(current.pharmacyId());
+        List<ReorderSuggestionReportDto.ReorderItemDto> items = new ArrayList<>();
+        int needReorder = 0;
+
+        for (Medicine medicine : medicines) {
+            if (medicine.getStatus() != Medicine.Status.AVAILABLE) continue;
+            int stockQty = stockByMedicine.getOrDefault(medicine.getId(), 0);
+            int reorderLevel = medicine.getReorderLevel() != null ? medicine.getReorderLevel() : 0;
+            if (reorderLevel <= 0) continue;
+
+            int soldQty = soldLast30.getOrDefault(medicine.getId(), 0);
+            int suggestedQty = Math.max(0, (soldQty > 0 ? soldQty : reorderLevel) * 2 - stockQty);
+            BigDecimal estimatedCost = medicine.getBuyingPrice() != null
+                    ? medicine.getBuyingPrice().multiply(BigDecimal.valueOf(suggestedQty))
+                    : BigDecimal.ZERO;
+
+            String urgency;
+            if (stockQty == 0) {
+                urgency = "CRITICAL";
+                needReorder++;
+            } else if (stockQty <= reorderLevel / 2) {
+                urgency = "HIGH";
+                needReorder++;
+            } else if (stockQty <= reorderLevel) {
+                urgency = "MEDIUM";
+                needReorder++;
+            } else {
+                continue;
+            }
+
+            items.add(new ReorderSuggestionReportDto.ReorderItemDto(
+                    medicine.getId(), medicine.getBrandName(), medicine.getSku(),
+                    stockQty, reorderLevel, soldQty, suggestedQty, money(estimatedCost), urgency));
+        }
+
+        items.sort(Comparator.comparing(ReorderSuggestionReportDto.ReorderItemDto::urgency));
+
+        return new ReorderSuggestionReportDto(branchId, medicines.size(), needReorder, items);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // FEATURE 9: Supplier price comparison
+    // ═══════════════════════════════════════════════════════════════
+
+    public List<SupplierPriceComparisonDto> getSupplierPriceComparison(UUID branchId) {
+        current.requireBranch(branchId);
+        UUID pharmacyId = current.pharmacyId();
+        List<GRNLine> allLines = grnLineRepository.findAllByPharmacyId(pharmacyId);
+
+        Map<UUID, Map<UUID, SupplierAccumulator>> medicineSupplierMap = new LinkedHashMap<>();
+        for (GRNLine line : allLines) {
+            if (line.getMedicine() == null || line.getGoodsReceivedNotes() == null
+                    || line.getGoodsReceivedNotes().getSupplier() == null) continue;
+            UUID medId = line.getMedicine().getId();
+            UUID supplierId = line.getGoodsReceivedNotes().getSupplier().getId();
+
+            medicineSupplierMap
+                    .computeIfAbsent(medId, k -> new LinkedHashMap<>())
+                    .computeIfAbsent(supplierId, k -> new SupplierAccumulator(
+                            line.getGoodsReceivedNotes().getSupplier().getSupplierName()))
+                    .add(line.getQuantity(), line.getUnitCost(),
+                            line.getGoodsReceivedNotes().getReceivedAt() != null
+                                    ? line.getGoodsReceivedNotes().getReceivedAt().toLocalDate() : null);
+        }
+
+        List<SupplierPriceComparisonDto> result = new ArrayList<>();
+        for (var medEntry : medicineSupplierMap.entrySet()) {
+            Medicine medicine = medicineRepository.findById(medEntry.getKey()).orElse(null);
+            if (medicine == null) continue;
+
+            List<SupplierPriceComparisonDto.SupplierPriceDto> supplierPrices = medEntry.getValue().entrySet().stream()
+                    .map(entry -> {
+                        SupplierAccumulator acc = entry.getValue();
+                        return new SupplierPriceComparisonDto.SupplierPriceDto(
+                                entry.getKey(), acc.name,
+                                acc.lastCost, acc.totalQty, acc.count,
+                                acc.lastDate, acc.averageCost());
+                    })
+                    .sorted(Comparator.comparing(SupplierPriceComparisonDto.SupplierPriceDto::averageCost))
+                    .toList();
+
+            result.add(new SupplierPriceComparisonDto(
+                    medicine.getId(), medicine.getBrandName(), medicine.getSku(), supplierPrices));
+        }
+
+        return result.stream()
+                .sorted(Comparator.comparing(SupplierPriceComparisonDto::medicineName))
+                .toList();
+    }
+
+    private static final class SupplierAccumulator {
+        private final String name;
+        private int totalQty;
+        private int count;
+        private BigDecimal lastCost = BigDecimal.ZERO;
+        private BigDecimal totalCost = BigDecimal.ZERO;
+        private LocalDate lastDate;
+
+        SupplierAccumulator(String name) { this.name = name; }
+
+        void add(int qty, BigDecimal unitCost, LocalDate date) {
+            totalQty += qty;
+            count++;
+            lastCost = unitCost;
+            totalCost = totalCost.add(unitCost.multiply(BigDecimal.valueOf(qty)));
+            if (date != null && (lastDate == null || date.isAfter(lastDate))) lastDate = date;
+        }
+
+        BigDecimal averageCost() {
+            return totalQty > 0 ? totalCost.divide(BigDecimal.valueOf(totalQty), 2, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // FEATURE 10: Customer/patient history
+    // ═══════════════════════════════════════════════════════════════
+
+    public CustomerHistoryDto getCustomerHistory(UUID customerId) {
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Customer", customerId));
+        Branch branch = current.branch();
+
+        String fullName = ((customer.getFirstName() != null ? customer.getFirstName() : "")
+                + " " + (customer.getLastName() != null ? customer.getLastName() : "")).trim();
+
+        // Fetch sales for this customer
+        List<Sales> sales = salesRepository.findByCustomerIdAndBranchIdOrderByCompletedAtDesc(customerId, branch.getId());
+        BigDecimal totalSpent = sales.stream()
+                .map(Sales::getTotal)
+                .map(this::zeroIfNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        List<CustomerHistoryDto.CustomerSaleDto> recentSales = sales.stream().limit(20).map(sale -> {
+            List<CustomerHistoryDto.CustomerSaleItemDto> items = sale.getSaleItems().stream()
+                    .map(item -> new CustomerHistoryDto.CustomerSaleItemDto(
+                            item.getMedicineBatches() != null && item.getMedicineBatches().getMedicine() != null
+                                    ? item.getMedicineBatches().getMedicine().getBrandName() : "Unknown",
+                            item.getQuantity() != null ? item.getQuantity() : 0,
+                            item.getPrice() != null ? item.getPrice() : BigDecimal.ZERO,
+                            item.getTotal() != null ? item.getTotal() : BigDecimal.ZERO))
+                    .toList();
+            String paymentMethod = sale.getPayment() != null && !sale.getPayment().isEmpty()
+                    ? sale.getPayment().iterator().next().getPaymentMethod().name() : "UNKNOWN";
+            return new CustomerHistoryDto.CustomerSaleDto(
+                    sale.getId(), sale.getCompletedAt(), money(sale.getTotal()),
+                    paymentMethod, items);
+        }).toList();
+
+        // Fetch prescriptions by customer name
+        List<Prescriptions> prescriptions = prescriptionsRepository
+                .findByCustomerNameContainingIgnoreCaseAndBranchId(fullName, branch.getId());
+        List<CustomerHistoryDto.CustomerPrescriptionDto> rxList = prescriptions.stream().map(rx -> {
+            List<CustomerHistoryDto.CustomerPrescriptionItemDto> rxItems = rx.getPrescriptionItems() != null
+                    ? rx.getPrescriptionItems().stream()
+                            .map(pi -> new CustomerHistoryDto.CustomerPrescriptionItemDto(
+                                    pi.getMedicine() != null ? pi.getMedicine().getBrandName() : "Unknown",
+                                    pi.getDosage(),
+                                    pi.getQuantity()))
+                            .toList()
+                    : List.of();
+            return new CustomerHistoryDto.CustomerPrescriptionDto(
+                    rx.getId(), rx.getPrescriptionNumber(), rx.getDoctorName(),
+                    rx.getDiagnosis(), rx.getIssuedDate(), rx.getStatus(), rxItems);
+        }).toList();
+
+        return new CustomerHistoryDto(
+                customer.getId(), fullName, customer.getPhoneNumber(),
+                customer.getLoyaltyPoints(), sales.size(), money(totalSpent),
+                recentSales, rxList);
     }
 }

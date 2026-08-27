@@ -17,6 +17,9 @@ export interface BackendUnit {
   id: string;
   unitName: string;
   unitAbbreviation: string;
+  parentUnitId: string | null;
+  parentUnitName: string | null;
+  conversionFactor: number | null;
 }
 
 export interface BackendManufacturer {

@@ -43,6 +43,7 @@ const medicineSchema = z.object({
   manufacturer: z.string().trim().min(2, "Enter the manufacturer."),
   taxCategory: z.enum(["EXEMPT", "VAT_16", "ZERO_RATED"]),
   prescriptionRequired: z.boolean(),
+  controlledDrug: z.boolean(),
   buyingPrice: z
     .string()
     .trim()
@@ -91,6 +92,7 @@ export function MedicineForm({ medicineId }: { medicineId?: string }) {
           manufacturer: medicine.manufacturer,
           taxCategory: medicine.taxCategory,
           prescriptionRequired: medicine.prescriptionRequired,
+          controlledDrug: medicine.controlledDrug ?? false,
           buyingPrice: medicine.buyingPrice,
           sellingPrice: medicine.sellingPrice,
           reorderLevel: medicine.reorderLevel,
@@ -108,6 +110,7 @@ export function MedicineForm({ medicineId }: { medicineId?: string }) {
           manufacturer: manufacturers[0]?.name ?? "",
           taxCategory: "EXEMPT",
           prescriptionRequired: false,
+          controlledDrug: false,
           buyingPrice: "",
           sellingPrice: "",
           reorderLevel: 10,
@@ -318,6 +321,19 @@ export function MedicineForm({ medicineId }: { medicineId?: string }) {
               <span className="block font-medium">Prescription medicine</span>
               <span className="mt-0.5 block text-xs text-[var(--text-muted)]">
                 Checkout requires a pharmacist approval confirmation.
+              </span>
+            </span>
+          </label>
+          <label className="mt-3 flex items-start gap-3 text-sm">
+            <input
+              type="checkbox"
+              className="mt-0.5 size-4 accent-[var(--brand)]"
+              {...register("controlledDrug")}
+            />
+            <span>
+              <span className="block font-medium">Controlled drug</span>
+              <span className="mt-0.5 block text-xs text-[var(--text-muted)]">
+                Dispensing is recorded in the controlled drugs register.
               </span>
             </span>
           </label>

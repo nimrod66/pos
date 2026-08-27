@@ -3,11 +3,17 @@ package com.example.pos.reporting.controller;
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.reporting.dto.DashboardReportDto;
 import com.example.pos.reporting.dto.InventoryReportDto;
+import com.example.pos.reporting.dto.ProfitReportDto;
+import com.example.pos.reporting.dto.ReorderSuggestionReportDto;
 import com.example.pos.reporting.dto.SalesReportDto;
+import com.example.pos.reporting.dto.SlowStockReportDto;
+import com.example.pos.reporting.dto.SupplierPriceComparisonDto;
+import com.example.pos.reporting.dto.CustomerHistoryDto;
 import com.example.pos.reporting.service.ReportingService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -65,5 +71,45 @@ public class ReportingController {
             @RequestParam LocalDate from,
             @RequestParam LocalDate to) {
         return ResponseEntity.ok(ApiResponse.ok(service.getPluReport(branchId, from, to)));
+    }
+
+    @GetMapping("/profit")
+    @PreAuthorize("hasAuthority('report.sales.read')")
+    public ResponseEntity<ApiResponse<ProfitReportDto>> getProfitReport(
+            @RequestParam UUID branchId,
+            @RequestParam LocalDate from,
+            @RequestParam LocalDate to,
+            @RequestParam(defaultValue = "false") boolean pharmacyWide) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                service.getProfitReport(branchId, from, to, pharmacyWide)));
+    }
+
+    @GetMapping("/slow-stock")
+    @PreAuthorize("hasAuthority('report.inventory.read')")
+    public ResponseEntity<ApiResponse<SlowStockReportDto>> getSlowStockReport(
+            @RequestParam UUID branchId,
+            @RequestParam(required = false) LocalDate asOf) {
+        return ResponseEntity.ok(ApiResponse.ok(service.getSlowStockReport(branchId, asOf)));
+    }
+
+    @GetMapping("/reorder-suggestions")
+    @PreAuthorize("hasAuthority('report.inventory.read')")
+    public ResponseEntity<ApiResponse<ReorderSuggestionReportDto>> getReorderSuggestions(
+            @RequestParam UUID branchId) {
+        return ResponseEntity.ok(ApiResponse.ok(service.getReorderSuggestions(branchId)));
+    }
+
+    @GetMapping("/supplier-prices")
+    @PreAuthorize("hasAuthority('report.inventory.read')")
+    public ResponseEntity<ApiResponse<List<SupplierPriceComparisonDto>>> getSupplierPrices(
+            @RequestParam UUID branchId) {
+        return ResponseEntity.ok(ApiResponse.ok(service.getSupplierPriceComparison(branchId)));
+    }
+
+    @GetMapping("/customer-history/{customerId}")
+    @PreAuthorize("hasAuthority('customer.read')")
+    public ResponseEntity<ApiResponse<CustomerHistoryDto>> getCustomerHistory(
+            @PathVariable UUID customerId) {
+        return ResponseEntity.ok(ApiResponse.ok(service.getCustomerHistory(customerId)));
     }
 }

@@ -11,4 +11,5 @@ public interface DispensaryRepository extends JpaRepository<Dispensary, UUID> {
 
     List<Dispensary> findByUserId(UUID userId);
     List<Dispensary> findByMedicineBatchesId(UUID batchId);
+    List<Dispensary> findByPrescriptionItemsId(UUID prescriptionItemsId);
 }

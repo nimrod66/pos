@@ -42,6 +42,10 @@ public final class PermissionCodes {
     public static final String EXPENSE_WRITE = "expense.write";
     public static final String INSURANCE_READ = "insurance.read";
     public static final String INSURANCE_WRITE = "insurance.write";
+    public static final String STOCK_COUNT_READ = "stock_count.read";
+    public static final String STOCK_COUNT_WRITE = "stock_count.write";
+    public static final String STOCK_TRANSFER_READ = "stock_transfer.read";
+    public static final String STOCK_TRANSFER_WRITE = "stock_transfer.write";
 
     public static final List<String> ALL = List.of(
             DASHBOARD_READ,
@@ -80,7 +84,11 @@ public final class PermissionCodes {
             EXPENSE_READ,
             EXPENSE_WRITE,
             INSURANCE_READ,
-            INSURANCE_WRITE);
+            INSURANCE_WRITE,
+            STOCK_COUNT_READ,
+            STOCK_COUNT_WRITE,
+            STOCK_TRANSFER_READ,
+            STOCK_TRANSFER_WRITE);
 
     public static final Map<String, List<String>> ROLE_BUNDLES = Map.of(
             "OWNER", ALL.stream().filter(code -> !PRESCRIPTION_APPROVE.equals(code)).toList(),
@@ -92,7 +100,9 @@ public final class PermissionCodes {
                     CUSTOMER_WRITE, PURCHASE_ORDER_READ, SHIFT_VARIANCE_APPROVE,
                     REPORT_SALES_READ, REPORT_INVENTORY_READ, TERMINAL_READ,
                     TERMINAL_MANAGE, PRESCRIPTION_READ,
-                    EXPENSE_READ, EXPENSE_WRITE, INSURANCE_READ, INSURANCE_WRITE),
+                    EXPENSE_READ, EXPENSE_WRITE, INSURANCE_READ, INSURANCE_WRITE,
+                    STOCK_COUNT_READ, STOCK_COUNT_WRITE,
+                    STOCK_TRANSFER_READ, STOCK_TRANSFER_WRITE),
             "PHARMACIST", List.of(
                     DASHBOARD_READ, POS_SELL, SALE_READ, MEDICINE_READ, INVENTORY_READ,
                     CUSTOMER_READ, CUSTOMER_WRITE,
@@ -105,7 +115,9 @@ public final class PermissionCodes {
                     DASHBOARD_READ, MEDICINE_READ, MEDICINE_WRITE, MEDICINE_PRICE_WRITE,
                     INVENTORY_READ, INVENTORY_RECEIVE,
                     INVENTORY_ADJUST_REQUEST, SUPPLIER_READ, SUPPLIER_WRITE,
-                    PURCHASE_ORDER_READ, PURCHASE_ORDER_WRITE, REPORT_INVENTORY_READ),
+                    PURCHASE_ORDER_READ, PURCHASE_ORDER_WRITE, REPORT_INVENTORY_READ,
+                    STOCK_COUNT_READ, STOCK_COUNT_WRITE,
+                    STOCK_TRANSFER_READ, STOCK_TRANSFER_WRITE),
             "PHARMACY_TECHNICIAN", List.of(
                     DASHBOARD_READ, POS_SELL, SALE_READ, SALE_RECEIPT_REPRINT, MEDICINE_READ,
                     INVENTORY_READ, INVENTORY_RECEIVE, SUPPLIER_READ,

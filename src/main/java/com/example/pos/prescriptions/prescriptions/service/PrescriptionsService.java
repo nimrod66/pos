@@ -4,6 +4,10 @@ import com.example.pos.common.exception.BadRequestException;
 import com.example.pos.common.exception.ConflictException;
 import com.example.pos.common.exception.ResourceNotFoundException;
 import com.example.pos.core.branch.model.Branch;
+import com.example.pos.inventory.stock.model.Stock;
+import com.example.pos.inventory.stock.repository.StockRepository;
+import com.example.pos.inventory.stockmovements.model.StockMovements;
+import com.example.pos.inventory.stockmovements.repository.StockMovementsRepository;
 import com.example.pos.masterdata.medicine.model.Medicine;
 import com.example.pos.masterdata.medicine.repository.MedicineRepository;
 import com.example.pos.prescriptions.prescriptionitems.model.PrescriptionItems;
@@ -31,13 +35,19 @@ public class PrescriptionsService {
 
     private final PrescriptionsRepository repo;
     private final MedicineRepository medicineRepo;
+    private final StockRepository stockRepo;
+    private final StockMovementsRepository movementsRepo;
     private final AuthenticatedUserContext current;
 
     public PrescriptionsService(PrescriptionsRepository repo,
                                 MedicineRepository medicineRepo,
+                                StockRepository stockRepo,
+                                StockMovementsRepository movementsRepo,
                                 AuthenticatedUserContext current) {
         this.repo = repo;
         this.medicineRepo = medicineRepo;
+        this.stockRepo = stockRepo;
+        this.movementsRepo = movementsRepo;
         this.current = current;
     }
 
@@ -104,6 +114,48 @@ public class PrescriptionsService {
         if (!"ACTIVE".equalsIgnoreCase(prescription.getStatus())) {
             throw new ConflictException("Prescription is not active", "PRESCRIPTION_NOT_ACTIVE");
         }
+
+        Branch branch = current.branch();
+        User user = current.user();
+
+        // Deduct stock for each prescription item
+        for (PrescriptionItems item : prescription.getPrescriptionItems()) {
+            int remaining = item.getQuantity();
+            List<Stock> stockList = stockRepo.findByBranchIdAndMedicineBatches_Medicine_Id(
+                    branch.getId(), item.getMedicine().getId());
+
+            for (Stock stock : stockList) {
+                if (remaining <= 0) break;
+                int available = stock.getQuantityAvailable() != null ? stock.getQuantityAvailable() : 0;
+                int deduct = Math.min(remaining, available);
+                if (deduct <= 0) continue;
+
+                stock.setQuantityAvailable(available - deduct);
+                stock.setLastStockDate(LocalDate.now());
+                stockRepo.save(stock);
+
+                movementsRepo.save(StockMovements.builder()
+                        .medicineBatches(stock.getMedicineBatches())
+                        .branch(branch)
+                        .user(user)
+                        .movementType(StockMovements.MovementType.DISPENSE)
+                        .referenceType("PRESCRIPTION")
+                        .referenceId(item.getId())
+                        .movementDate(LocalDate.now())
+                        .quantity(deduct)
+                        .build());
+
+                remaining -= deduct;
+            }
+
+            if (remaining > 0) {
+                throw new ConflictException(
+                        "Insufficient stock for " + item.getMedicine().getBrandName()
+                                + ". Short by " + remaining + " units.",
+                        "INSUFFICIENT_STOCK");
+            }
+        }
+
         prescription.setStatus("DISPENSED");
         prescription.setDispensedAt(LocalDateTime.now());
         return repo.save(prescription);

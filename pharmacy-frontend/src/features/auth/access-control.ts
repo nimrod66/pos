@@ -36,6 +36,10 @@ export const PERMISSIONS = {
   EXPENSE_WRITE: "expense.write",
   INSURANCE_READ: "insurance.read",
   INSURANCE_WRITE: "insurance.write",
+  STOCK_COUNT_READ: "stock_count.read",
+  STOCK_COUNT_WRITE: "stock_count.write",
+  STOCK_TRANSFER_READ: "stock_transfer.read",
+  STOCK_TRANSFER_WRITE: "stock_transfer.write",
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -107,6 +111,10 @@ export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
       PERMISSIONS.EXPENSE_WRITE,
       PERMISSIONS.INSURANCE_READ,
       PERMISSIONS.INSURANCE_WRITE,
+      PERMISSIONS.STOCK_COUNT_READ,
+      PERMISSIONS.STOCK_COUNT_WRITE,
+      PERMISSIONS.STOCK_TRANSFER_READ,
+      PERMISSIONS.STOCK_TRANSFER_WRITE,
     ],
   },
   {
@@ -164,6 +172,10 @@ export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
       PERMISSIONS.PURCHASE_ORDER_READ,
       PERMISSIONS.PURCHASE_ORDER_WRITE,
       PERMISSIONS.REPORT_INVENTORY_READ,
+      PERMISSIONS.STOCK_COUNT_READ,
+      PERMISSIONS.STOCK_COUNT_WRITE,
+      PERMISSIONS.STOCK_TRANSFER_READ,
+      PERMISSIONS.STOCK_TRANSFER_WRITE,
     ],
   },
   {
@@ -298,6 +310,14 @@ const routeAccessRules: Array<{
     rule: {
       anyOf: [PERMISSIONS.REPORT_SALES_READ, PERMISSIONS.REPORT_INVENTORY_READ],
     },
+  },
+  {
+    path: "/inventory/stock-counts",
+    rule: { allOf: [PERMISSIONS.STOCK_COUNT_READ] },
+  },
+  {
+    path: "/inventory/transfers",
+    rule: { allOf: [PERMISSIONS.STOCK_TRANSFER_READ] },
   },
   {
     path: "/admin/users",

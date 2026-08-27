@@ -16,6 +16,8 @@ import com.example.pos.inventory.stockmovements.model.StockMovements;
 import com.example.pos.inventory.stockmovements.repository.StockMovementsRepository;
 import com.example.pos.masterdata.medicine.model.Medicine;
 import com.example.pos.masterdata.tax.model.Tax;
+import com.example.pos.pharmacy.regulatory.controlledrugs.model.ControlledDrugs;
+import com.example.pos.pharmacy.regulatory.controlledrugs.repository.ControlledDrugsRepository;
 import com.example.pos.prescriptions.prescriptions.model.Prescriptions;
 import com.example.pos.prescriptions.prescriptions.repository.PrescriptionsRepository;
 import com.example.pos.sale.idempotency.model.IdempotencyKey;
@@ -78,6 +80,7 @@ public class SaleService {
     private final StaffShiftsRepository shiftsRepository;
     private final PaymentRepository paymentRepository;
     private final PrescriptionsRepository prescriptionsRepository;
+    private final ControlledDrugsRepository controlledDrugsRepository;
     private final AuthenticatedUserContext current;
     private final TerminalConfig terminalConfig;
     private final SyncProperties syncProperties;
@@ -94,6 +97,7 @@ public class SaleService {
                        StaffShiftsRepository shiftsRepository,
                        PaymentRepository paymentRepository,
                        PrescriptionsRepository prescriptionsRepository,
+                       ControlledDrugsRepository controlledDrugsRepository,
                        AuthenticatedUserContext current,
                        TerminalConfig terminalConfig,
                        SyncProperties syncProperties,
@@ -109,6 +113,7 @@ public class SaleService {
         this.shiftsRepository = shiftsRepository;
         this.paymentRepository = paymentRepository;
         this.prescriptionsRepository = prescriptionsRepository;
+        this.controlledDrugsRepository = controlledDrugsRepository;
         this.current = current;
         this.terminalConfig = terminalConfig;
         this.syncProperties = syncProperties;
@@ -312,6 +317,24 @@ public class SaleService {
         if (prescriptionUsed && !pendingOnlinePayment) {
             prescription.setStatus("DISPENSED");
             prescription.setDispensedAt(checkoutAt);
+        }
+
+        // Auto-record controlled drug dispensing
+        if (!pendingOnlinePayment) {
+            for (StockAllocation allocation : allocations) {
+                Medicine med = allocation.batch().getMedicine();
+                if (med != null && med.isControlledDrug()) {
+                    controlledDrugsRepository.save(ControlledDrugs.builder()
+                            .medicine(med)
+                            .prescriptions(prescription)
+                            .user(cashier)
+                            .quantityDispensed(allocation.quantity())
+                            .medicineBatches(allocation.batch())
+                            .saleItems(null)
+                            .branch(branch)
+                            .build());
+                }
+            }
         }
 
         key.setResourceId(saved.getId().toString());

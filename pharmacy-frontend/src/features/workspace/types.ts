@@ -23,6 +23,9 @@ export interface Unit {
   id: string;
   name: string;
   symbol: string;
+  parentUnitId: string | null;
+  parentUnitName: string | null;
+  conversionFactor: number | null;
 }
 
 export interface Manufacturer {
@@ -53,6 +56,7 @@ export interface Medicine {
   manufacturer: string;
   taxCategory: "EXEMPT" | "VAT_16" | "ZERO_RATED";
   prescriptionRequired: boolean;
+  controlledDrug: boolean;
   buyingPrice: string;
   sellingPrice: string;
   reorderLevel: number;
@@ -207,6 +211,7 @@ export interface MedicineInput {
   manufacturer: string;
   taxCategory: "EXEMPT" | "VAT_16" | "ZERO_RATED";
   prescriptionRequired: boolean;
+  controlledDrug: boolean;
   buyingPrice: string;
   sellingPrice: string;
   reorderLevel: number;
@@ -338,4 +343,197 @@ export interface PluRow {
   quantitySold: number;
   revenue: string;
   remainingStock: number;
+}
+
+export interface StockCountItem {
+  id: string;
+  medicineBatchId: string;
+  batchNumber: string;
+  medicineName: string;
+  systemQuantity: number;
+  countedQuantity: number | null;
+  variance: number | null;
+  status: string;
+}
+
+export interface StockCount {
+  id: string;
+  countNumber: string;
+  branchId: string;
+  branchName: string;
+  status: "DRAFT" | "IN_PROGRESS" | "COMPLETED" | "RECONCILED";
+  notes: string | null;
+  countedById: string;
+  countedByName: string;
+  itemCount: number;
+  varianceCount: number;
+  createdAt: string;
+  completedAt: string | null;
+  items: StockCountItem[];
+}
+
+export interface StockCountItemInput {
+  medicineBatchId: string;
+  countedQuantity: number;
+}
+
+export interface StockCountInput {
+  notes?: string;
+  items: StockCountItemInput[];
+}
+
+export interface StockTransferItem {
+  id: string;
+  medicineBatchId: string;
+  batchNumber: string;
+  medicineName: string;
+  quantity: number;
+}
+
+export interface StockTransfer {
+  id: string;
+  transferNumber: string;
+  sourceBranchId: string;
+  sourceBranchName: string;
+  destBranchId: string;
+  destBranchName: string;
+  status: "PENDING" | "APPROVED" | "REJECTED" | "IN_TRANSIT" | "RECEIVED";
+  notes: string | null;
+  requestedByName: string;
+  approvedByName: string | null;
+  receivedByName: string | null;
+  itemCount: number;
+  createdAt: string;
+  approvedAt: string | null;
+  receivedAt: string | null;
+  items: StockTransferItem[];
+}
+
+export interface StockTransferItemInput {
+  medicineBatchId: string;
+  quantity: number;
+}
+
+export interface StockTransferInput {
+  destBranchId: string;
+  notes?: string;
+  items: StockTransferItemInput[];
+}
+
+export interface ProfitMedicine {
+  medicineId: string;
+  medicineName: string;
+  sku: string;
+  quantitySold: number;
+  revenue: string;
+  costOfGoods: string;
+  grossProfit: string;
+  marginPercent: number;
+}
+
+export interface ProfitReport {
+  from: string;
+  to: string;
+  totalRevenue: string;
+  totalCostOfGoods: string;
+  totalGrossProfit: string;
+  overallMarginPercent: number;
+  medicines: ProfitMedicine[];
+}
+
+export interface SlowStockItem {
+  medicineId: string;
+  medicineName: string;
+  sku: string;
+  currentStock: number;
+  lastSoldAt: string | null;
+  totalSold90d: number;
+  velocity: number;
+  category: "DEAD" | "SLOW";
+}
+
+export interface SlowStockReport {
+  asOf: string;
+  totalDead: number;
+  totalSlow: number;
+  items: SlowStockItem[];
+}
+
+export interface ReorderItem {
+  medicineId: string;
+  medicineName: string;
+  sku: string;
+  currentStock: number;
+  reorderLevel: number;
+  avgWeeklySales: number;
+  suggestedOrderQty: number;
+  urgency: "CRITICAL" | "HIGH" | "MEDIUM";
+}
+
+export interface ReorderSuggestionReport {
+  asOf: string;
+  totalCritical: number;
+  totalHigh: number;
+  totalMedium: number;
+  items: ReorderItem[];
+}
+
+export interface SupplierPriceRow {
+  supplierId: string;
+  supplierName: string;
+  medicineId: string;
+  medicineName: string;
+  sku: string;
+  lastCost: string;
+  avgCost: string;
+  totalPurchased: number;
+  purchaseCount: number;
+}
+
+export interface SupplierPriceComparison {
+  from: string;
+  to: string;
+  rows: SupplierPriceRow[];
+}
+
+export interface CustomerSaleItem {
+  medicineName: string;
+  quantity: number;
+  unitPrice: string;
+  lineTotal: string;
+}
+
+export interface CustomerSale {
+  id: string;
+  completedAt: string;
+  total: string;
+  paymentMethod: string;
+  items: CustomerSaleItem[];
+}
+
+export interface CustomerPrescriptionItem {
+  medicineName: string;
+  dosage: string | null;
+  quantity: number;
+}
+
+export interface CustomerPrescription {
+  id: string;
+  prescriptionNumber: string;
+  doctorName: string;
+  diagnosis: string | null;
+  issuedDate: string;
+  status: string;
+  items: CustomerPrescriptionItem[];
+}
+
+export interface CustomerHistory {
+  customerId: string;
+  fullName: string;
+  phoneNumber: string | null;
+  loyaltyPoints: number;
+  totalSales: number;
+  totalSpent: string;
+  recentSales: CustomerSale[];
+  prescriptions: CustomerPrescription[];
 }

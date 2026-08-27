@@ -644,6 +644,9 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
           id: unit.id,
           name: unit.unitName,
           symbol: unit.unitAbbreviation,
+          parentUnitId: unit.parentUnitId ?? null,
+          parentUnitName: unit.parentUnitName ?? null,
+          conversionFactor: unit.conversionFactor ?? null,
         })),
       });
     } catch (error) {
@@ -751,8 +754,22 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
   async setMedicineStatus(id: string, status: MedicineInput["status"]) {
     const medicine = this.requireMedicine(id);
     await this.updateMedicine(id, {
-      ...medicine,
+      barcode: medicine.barcode,
+      brandName: medicine.brandName,
+      buyingPrice: medicine.buyingPrice,
+      buyingUnitId: medicine.buyingUnitId,
+      categoryId: medicine.categoryId,
+      controlledDrug: medicine.controlledDrug,
+      genericName: medicine.genericName,
+      manufacturer: medicine.manufacturer,
+      packSize: medicine.packSize,
+      prescriptionRequired: medicine.prescriptionRequired,
+      reorderLevel: medicine.reorderLevel,
+      sellingPrice: medicine.sellingPrice,
+      sku: medicine.sku,
       status,
+      taxCategory: medicine.taxCategory,
+      unitId: medicine.unitId,
     });
   }
 
@@ -1030,6 +1047,7 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
       id: medicine.id,
       manufacturer: medicine.manufacturerName ?? "Unknown manufacturer",
       prescriptionRequired: medicine.requiresPrescription,
+      controlledDrug: medicine.controlledDrug,
       reorderLevel: medicine.reorderLevel ?? 0,
       sellingPrice: amount(medicine.sellingPrice),
       sku: medicine.sku ?? "",
@@ -1174,7 +1192,7 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
       brandName: input.brandName.trim(),
       buyingPrice: Number(input.buyingPrice),
       genericName: input.genericName.trim(),
-      isControlledDrug: false,
+      isControlledDrug: input.controlledDrug ?? false,
       manufacturerId: manufacturer.id,
       medicineCategoriesId: input.categoryId,
       reorderLevel: input.reorderLevel,

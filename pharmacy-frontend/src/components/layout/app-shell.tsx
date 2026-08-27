@@ -4,6 +4,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   Activity,
   AlertTriangle,
+  ArrowRightLeft,
   BarChart3,
   Building2,
   ChevronDown,
@@ -27,6 +28,7 @@ import {
   Users,
   Wallet,
   X,
+  ListChecks,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -107,6 +109,20 @@ export const appNavigation: NavigationItem[] = [
     icon: Boxes,
     label: "Inventory",
     access: { allOf: [PERMISSIONS.INVENTORY_READ] },
+    section: "Operations",
+  },
+  {
+    href: "/inventory/stock-counts",
+    icon: ListChecks,
+    label: "Stock counts",
+    access: { allOf: [PERMISSIONS.STOCK_COUNT_READ] },
+    section: "Operations",
+  },
+  {
+    href: "/inventory/transfers",
+    icon: ArrowRightLeft,
+    label: "Stock transfers",
+    access: { allOf: [PERMISSIONS.STOCK_TRANSFER_READ] },
     section: "Operations",
   },
   {

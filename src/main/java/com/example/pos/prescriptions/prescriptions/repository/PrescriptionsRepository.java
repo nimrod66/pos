@@ -9,6 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.util.Optional;
+import java.util.List;
 
 public interface PrescriptionsRepository extends JpaRepository<Prescriptions, UUID> {
 
@@ -20,4 +21,7 @@ public interface PrescriptionsRepository extends JpaRepository<Prescriptions, UU
     boolean existsByBranchIdAndPrescriptionNumberIgnoreCase(UUID branchId, String prescriptionNumber);
 
     Optional<Prescriptions> findByPrescriptionNumber(String number);
+
+    @EntityGraph(attributePaths = {"prescriptionItems", "prescriptionItems.medicine"})
+    List<Prescriptions> findByCustomerNameContainingIgnoreCaseAndBranchId(String customerName, UUID branchId);
 }

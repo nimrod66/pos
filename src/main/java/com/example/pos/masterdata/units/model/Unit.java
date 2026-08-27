@@ -2,10 +2,7 @@ package com.example.pos.masterdata.units.model;
 
 import com.example.pos.common.BaseEntity;
 import com.example.pos.masterdata.medicine.model.Medicine;
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Entity;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.*;
 
 import java.util.HashSet;
@@ -25,4 +22,12 @@ public class Unit extends BaseEntity {
 
     private String unitName;
     private String unitAbbreviation;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_unit_id")
+    private Unit parentUnit;
+
+    @Column(name = "conversion_factor")
+    @Builder.Default
+    private Integer conversionFactor = 1;
 }

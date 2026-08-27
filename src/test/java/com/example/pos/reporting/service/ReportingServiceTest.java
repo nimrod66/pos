@@ -59,6 +59,12 @@ class ReportingServiceTest {
     @Mock
     private BranchRepository branchRepository;
     @Mock
+    private com.example.pos.procurement.goodsreceived.repository.GRNLineRepository grnLineRepository;
+    @Mock
+    private com.example.pos.customer.repository.CustomerRepository customerRepository;
+    @Mock
+    private com.example.pos.prescriptions.prescriptions.repository.PrescriptionsRepository prescriptionsRepository;
+    @Mock
     private SystemSettingsService settingsService;
     @Mock
     private AuthenticatedUserContext current;
@@ -77,7 +83,10 @@ class ReportingServiceTest {
                 stockRepository,
                 saleItemsRepository,
                 medicineRepository,
+                grnLineRepository,
                 branchRepository,
+                customerRepository,
+                prescriptionsRepository,
                 settingsService,
                 current,
                 clock);
