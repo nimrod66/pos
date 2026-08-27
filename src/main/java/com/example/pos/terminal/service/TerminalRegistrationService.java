@@ -170,13 +170,14 @@ public class TerminalRegistrationService {
         }
         // Device self-reports: overwrite registration placeholders with real data.
         if (platform != null && !platform.isBlank()) {
-            terminal.setPlatform(platform.trim());
+            terminal.setPlatform(platform.trim().substring(0, Math.min(platform.trim().length(), 30)));
         }
         if (osVersion != null && !osVersion.isBlank()) {
-            terminal.setOsVersion(osVersion.trim());
+            terminal.setOsVersion(osVersion.trim().substring(0, Math.min(osVersion.trim().length(), 30)));
         }
         if (browser != null && !browser.isBlank()) {
-            terminal.setFirmwareVersion("Browser: " + browser.trim());
+            String bv = "Browser: " + browser.trim();
+            terminal.setFirmwareVersion(bv.substring(0, Math.min(bv.length(), 50)));
         }
         terminal.setPairingCode(null);
         terminal.setPairingExpiresAt(null);

@@ -193,11 +193,11 @@ class LiveTerminalGateway implements TerminalGateway {
     const response = await apiRequest<Terminal>(path("/terminals/pair"), {
       body: {
         code,
-        platform: typeof navigator !== "undefined" ? navigator.platform : null,
-        osVersion: typeof navigator !== "undefined" ? navigator.userAgent.slice(0, 200) : null,
+        platform: typeof navigator !== "undefined" ? navigator.platform?.slice(0, 30) : null,
+        osVersion: typeof navigator !== "undefined" ? navigator.userAgent.slice(0, 30) : null,
         browser: typeof navigator !== "undefined" && /Mobi|Android|iPhone/.test(navigator.userAgent)
-          ? "Mobile browser"
-          : "Desktop browser",
+          ? "Mobile"
+          : "Desktop",
       },
       method: "POST",
     });
