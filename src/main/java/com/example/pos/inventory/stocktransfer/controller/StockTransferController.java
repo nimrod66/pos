@@ -23,6 +23,14 @@ public class StockTransferController {
 
     public StockTransferController(StockTransferService service) { this.service = service; }
 
+    @GetMapping
+    public ResponseEntity<ApiResponse<PagedResponse<StockTransferResponseDto>>> getAll(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Page<StockTransferResponseDto> p = service.getAll(PageRequest.of(page, size));
+        return ResponseEntity.ok(ApiResponse.ok(PagedResponse.fromPage(p)));
+    }
+
     @PostMapping
     @PreAuthorize("hasAuthority('stock_transfer.write')")
     public ResponseEntity<ApiResponse<StockTransferResponseDto>> create(

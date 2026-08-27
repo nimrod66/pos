@@ -8,6 +8,12 @@ export interface CartLine {
   lineId: string;
   medicineId: string;
   quantity: number;
+  /** Selected selling unit ID (defaults to medicine's base unit). */
+  sellingUnitId?: string;
+  /** Conversion factor from selected unit to base dispensing unit. */
+  unitConversion?: number;
+  /** Display price per selected unit (string KES). */
+  unitPrice?: string;
   /** Percentage discount applied at the till (0-100). */
   discountPercent?: number;
 }
@@ -23,7 +29,7 @@ interface CartStore {
   paymentMethod: PaymentMethod;
   pharmacistApproved: boolean;
   prescriptionReferenceId: string;
-  addItem(medicineId: string): void;
+  addItem(medicineId: string, sellingUnitId?: string, unitConversion?: number, unitPrice?: string): void;
   clear(): void;
   prepareCheckoutKey(): string;
   removeItem(medicineId: string): void;
@@ -38,6 +44,7 @@ interface CartStore {
   setPrescriptionReferenceId(reference: string): void;
   setQuantity(medicineId: string, quantity: number): void;
   setLineDiscount(medicineId: string, discountPercent: number): void;
+  setLineUnit(medicineId: string, sellingUnitId: string, unitConversion: number, unitPrice: string): void;
 }
 
 export const useCartStore = create<CartStore>()(
@@ -53,7 +60,7 @@ export const useCartStore = create<CartStore>()(
       paymentMethod: "CASH",
       pharmacistApproved: false,
       prescriptionReferenceId: "",
-      addItem(medicineId) {
+      addItem(medicineId, sellingUnitId, unitConversion, unitPrice) {
         const existing = get().lines.find((line) => line.medicineId === medicineId);
         set({
           checkoutKey: null,
@@ -65,7 +72,14 @@ export const useCartStore = create<CartStore>()(
               )
             : [
                 ...get().lines,
-                { lineId: uuid(), medicineId, quantity: 1 },
+                {
+                  lineId: uuid(),
+                  medicineId,
+                  quantity: 1,
+                  sellingUnitId: sellingUnitId || undefined,
+                  unitConversion: unitConversion || undefined,
+                  unitPrice: unitPrice || undefined,
+                },
               ],
         });
       },
@@ -145,6 +159,16 @@ export const useCartStore = create<CartStore>()(
           checkoutKey: null,
           lines: get().lines.map((line) =>
             line.medicineId === medicineId ? { ...line, discountPercent: normalized } : line,
+          ),
+        });
+      },
+      setLineUnit(medicineId, sellingUnitId, unitConversion, unitPrice) {
+        set({
+          checkoutKey: null,
+          lines: get().lines.map((line) =>
+            line.medicineId === medicineId
+              ? { ...line, sellingUnitId, unitConversion, unitPrice, quantity: 1 }
+              : line,
           ),
         });
       },

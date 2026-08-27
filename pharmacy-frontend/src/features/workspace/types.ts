@@ -239,7 +239,7 @@ export interface ReceiveStockInput {
 export interface CheckoutInput {
   idempotencyKey: string;
   customerId?: string;
-  items: Array<{ lineId?: string; medicineId: string; quantity: number; discountPercent?: number }>;
+  items: Array<{ lineId?: string; medicineId: string; quantity: number; discountPercent?: number; sellingUnitId?: string; unitConversion?: number }>;
   paymentMethod: PaymentMethod;
   mpesaMode: "STK" | "MANUAL";
   mpesaPhone: string;
@@ -313,6 +313,31 @@ export interface SalesReport {
     quantity: number;
     netRevenue: string;
   }>;
+}
+
+export interface FinancialSummary {
+  branchId: string | null;
+  pharmacyWide: boolean;
+  from: string;
+  to: string;
+  grossSales: string;
+  salesReturns: string;
+  netSales: string;
+  totalCostOfGoodsSold: string;
+  grossProfit: string;
+  grossMarginPercent: number;
+  totalExpenses: string;
+  expensesByCategory: Array<{
+    categoryId: string | null;
+    categoryName: string;
+    totalAmount: string;
+    transactionCount: number;
+  }>;
+  netProfit: string;
+  netProfitMarginPercent: number;
+  cashCollected: string;
+  mpesaCollected: string;
+  creditCollected: string;
 }
 
 export interface InventoryReport {

@@ -20,6 +20,7 @@ import type {
   ReceiveStockInput,
   ReturnInput,
   SalesReport,
+  FinancialSummary,
   StaffInput,
   StaffUser,
   Supplier,
@@ -119,6 +120,7 @@ export interface WorkspaceGateway {
   getPaymentCapabilities(): Promise<PaymentCapabilities>;
   getPluReport(from?: string, to?: string): Promise<PluRow[]>;
   getSalesReport(from: string, to: string): Promise<SalesReport>;
+  getFinancialSummary(from: string, to: string): Promise<FinancialSummary>;
   hydrate(): Promise<void>;
   lookupPos(query: string): Promise<PosLookupItem[]>;
   openShift(openingFloat: string): Promise<string>;
@@ -283,6 +285,28 @@ class PreviewWorkspaceGateway implements WorkspaceGateway {
         .sort((left, right) => right.netRevenue - left.netRevenue)
         .slice(0, 6)
         .map((product) => ({ ...product, netRevenue: money(product.netRevenue) })),
+    };
+  }
+
+  async getFinancialSummary(from: string, to: string) {
+    return {
+      branchId: null,
+      pharmacyWide: false,
+      from,
+      to,
+      grossSales: "0.00",
+      salesReturns: "0.00",
+      netSales: "0.00",
+      totalCostOfGoodsSold: "0.00",
+      grossProfit: "0.00",
+      grossMarginPercent: 0,
+      totalExpenses: "0.00",
+      expensesByCategory: [],
+      netProfit: "0.00",
+      netProfitMarginPercent: 0,
+      cashCollected: "0.00",
+      mpesaCollected: "0.00",
+      creditCollected: "0.00",
     };
   }
 

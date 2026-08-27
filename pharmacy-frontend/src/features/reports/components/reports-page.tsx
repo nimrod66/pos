@@ -9,6 +9,8 @@ import {
   ReceiptText,
   RotateCcw,
   Smartphone,
+  TrendingDown,
+  TrendingUp,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -27,6 +29,7 @@ import { addMoney, formatKes, moneyToCents } from "@/features/workspace/lib/mone
 import { todayIsoDate } from "@/features/workspace/lib/workspace-helpers";
 import { apiRequest } from "@/lib/api-client";
 import type {
+  FinancialSummary,
   InventoryReport,
   PluRow,
   ProfitReport,
@@ -56,6 +59,8 @@ export function ReportsPage() {
     useState<ReorderSuggestionReport | null>(null);
   const [supplierReport, setSupplierReport] =
     useState<SupplierPriceComparison | null>(null);
+  const [financialSummary, setFinancialSummary] =
+    useState<FinancialSummary | null>(null);
   const [salesError, setSalesError] = useState<string | null>(null);
   const [inventoryError, setInventoryError] = useState<string | null>(null);
 
@@ -178,6 +183,21 @@ export function ReportsPage() {
       .then((res) => {
         if (!active) return;
         setSupplierReport(res.data);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [branchId, canViewSales, from, to]);
+
+  useEffect(() => {
+    if (!branchId || !canViewSales || !from || !to || to < from) return;
+    let active = true;
+    workspaceGateway
+      .getFinancialSummary(from, to)
+      .then((summary) => {
+        if (!active) return;
+        setFinancialSummary(summary);
       })
       .catch(() => {});
     return () => {
@@ -341,6 +361,58 @@ export function ReportsPage() {
           </div>
         ))}
       </div>
+
+      {canViewSales && financialSummary ? (
+        <section className="mt-6 rounded-md border border-[var(--border)] bg-white">
+          <div className="border-b border-[var(--border)] px-4 py-3.5">
+            <h2 className="text-sm font-semibold">Financial summary (P&L)</h2>
+            <p className="mt-0.5 text-xs text-[var(--text-muted)]">
+              Complete picture of income, expenses, and net profit for the period.
+            </p>
+          </div>
+          <div className="grid gap-6 p-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-md bg-[var(--brand-soft)] p-4">
+              <p className="text-xs font-medium text-[var(--brand)]">Gross sales</p>
+              <p className="mt-1 text-xl font-semibold">{formatKes(financialSummary.grossSales)}</p>
+              <p className="mt-0.5 text-xs text-[var(--text-muted)]">Returns: {formatKes(financialSummary.salesReturns)}</p>
+            </div>
+            <div className="rounded-md bg-[var(--success-soft)] p-4">
+              <p className="text-xs font-medium text-[var(--success)]">Net sales</p>
+              <p className="mt-1 text-xl font-semibold">{formatKes(financialSummary.netSales)}</p>
+              <p className="mt-0.5 text-xs text-[var(--text-muted)]">
+                Cash {formatKes(financialSummary.cashCollected)} · M-Pesa {formatKes(financialSummary.mpesaCollected)}
+              </p>
+            </div>
+            <div className="rounded-md bg-[var(--accent-soft)] p-4">
+              <p className="text-xs font-medium text-[var(--accent)]">Gross profit</p>
+              <p className="mt-1 text-xl font-semibold">{formatKes(financialSummary.grossProfit)}</p>
+              <p className="mt-0.5 text-xs text-[var(--text-muted)]">
+                COGS {formatKes(financialSummary.totalCostOfGoodsSold)} · Margin {financialSummary.grossMarginPercent.toFixed(1)}%
+              </p>
+            </div>
+            <div className={cn("rounded-md p-4", Number(financialSummary.netProfit) >= 0 ? "bg-[var(--success-soft)]" : "bg-[var(--danger-soft)]")}>
+              <p className={cn("text-xs font-medium", Number(financialSummary.netProfit) >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]")}>Net profit</p>
+              <p className="mt-1 text-xl font-semibold">{formatKes(financialSummary.netProfit)}</p>
+              <p className="mt-0.5 text-xs text-[var(--text-muted)]">
+                Expenses {formatKes(financialSummary.totalExpenses)} · Margin {financialSummary.netProfitMarginPercent.toFixed(1)}%
+              </p>
+            </div>
+          </div>
+          {financialSummary.expensesByCategory.length > 0 ? (
+            <div className="border-t border-[var(--border)] px-4 py-3">
+              <p className="mb-2 text-xs font-semibold text-[var(--text-muted)]">Expenses by category</p>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {financialSummary.expensesByCategory.map((cat) => (
+                  <div key={cat.categoryName} className="flex items-center justify-between rounded-md bg-[var(--surface-muted)] px-3 py-2 text-sm">
+                    <span>{cat.categoryName}</span>
+                    <span className="font-semibold">{formatKes(cat.totalAmount)} <span className="text-xs text-[var(--text-muted)]">({cat.transactionCount})</span></span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
 
       {canViewSales ? (
         <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">

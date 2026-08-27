@@ -51,6 +51,7 @@ import type {
   ReturnInput,
   Sale,
   SalesReport,
+  FinancialSummary,
   Shift,
   StaffInput,
   StaffRole,
@@ -241,13 +242,15 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
         throw new WorkspaceError("INVALID_CART", "Remove and add the cart item again before checkout.");
       }
       const discountPercent = line.discountPercent ?? 0;
+      const conversion = line.unitConversion ?? 1;
+      const effectivePrice = Number(medicine.sellingPrice) * conversion;
       return {
-        expectedUnitPrice: Number(medicine.sellingPrice),
+        expectedUnitPrice: effectivePrice,
         lineId: line.lineId,
         medicineId: line.medicineId,
         quantity: line.quantity,
         requestedBatchId: null,
-        sellingUnitId: medicine.unitId || null,
+        sellingUnitId: line.sellingUnitId || medicine.unitId || null,
         discountPercent,
       };
     });
@@ -456,6 +459,21 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
         netRevenue: amount(product.netRevenue),
       })),
     };
+  }
+
+  async getFinancialSummary(from: string, to: string): Promise<FinancialSummary> {
+    const session = this.requireSession();
+    const scope = session.user.roles.includes("OWNER")
+      ? "&pharmacyWide=true"
+      : "";
+    const response = await apiRequest<FinancialSummary>(
+      path(
+        `/reports/financial-summary?branchId=${session.user.activeBranch.id}` +
+          `&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}${scope}`,
+      ),
+      { cache: "no-store" },
+    );
+    return response.data;
   }
 
   async hydrate() {

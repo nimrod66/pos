@@ -644,10 +644,19 @@ public class SaleService {
 
     private void validateSellingUnit(SaleRequestDto.SaleItemDto line, Medicine medicine) {
         if (line.getSellingUnitId() == null) return;
-        if (medicine.getUnit() == null || !line.getSellingUnitId().equals(medicine.getUnit().getId())) {
-            throw new BadRequestException("Selling unit does not match the medicine",
-                    "SELLING_UNIT_MISMATCH");
+        UUID sellingUnitId = line.getSellingUnitId();
+        // Accept the medicine's base dispensing unit
+        if (medicine.getUnit() != null && sellingUnitId.equals(medicine.getUnit().getId())) return;
+        // Accept the medicine's buying unit (e.g., strip, box)
+        if (medicine.getBuyingUnit() != null && sellingUnitId.equals(medicine.getBuyingUnit().getId())) return;
+        // Accept any ancestor unit in the hierarchy by walking parent pointers
+        com.example.pos.masterdata.units.model.Unit current = medicine.getUnit();
+        while (current != null && current.getParentUnit() != null) {
+            current = current.getParentUnit();
+            if (sellingUnitId.equals(current.getId())) return;
         }
+        throw new BadRequestException("Selling unit does not match the medicine or its unit hierarchy",
+                "SELLING_UNIT_MISMATCH");
     }
 
     private void validateRequestedBatch(SaleRequestDto.SaleItemDto line, List<Stock> stocks) {

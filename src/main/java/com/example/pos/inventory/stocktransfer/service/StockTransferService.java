@@ -191,6 +191,13 @@ public class StockTransferService {
     }
 
     @Transactional(readOnly = true)
+    public Page<StockTransferResponseDto> getAll(Pageable pageable) {
+        Branch branch = current.branch();
+        return repo.findBySourceBranchIdOrDestBranchIdOrderByCreatedAtDesc(branch.getId(), branch.getId(), pageable)
+                .map(StockTransferResponseDto::from);
+    }
+
+    @Transactional(readOnly = true)
     public Page<StockTransferResponseDto> getTransfersOut(Pageable pageable) {
         Branch branch = current.branch();
         return repo.findBySourceBranchIdOrderByCreatedAtDesc(branch.getId(), pageable)

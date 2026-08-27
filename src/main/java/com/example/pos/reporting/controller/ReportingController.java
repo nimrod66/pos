@@ -9,6 +9,7 @@ import com.example.pos.reporting.dto.SalesReportDto;
 import com.example.pos.reporting.dto.SlowStockReportDto;
 import com.example.pos.reporting.dto.SupplierPriceComparisonDto;
 import com.example.pos.reporting.dto.CustomerHistoryDto;
+import com.example.pos.reporting.dto.FinancialSummaryDto;
 import com.example.pos.reporting.service.ReportingService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -111,5 +112,16 @@ public class ReportingController {
     public ResponseEntity<ApiResponse<CustomerHistoryDto>> getCustomerHistory(
             @PathVariable UUID customerId) {
         return ResponseEntity.ok(ApiResponse.ok(service.getCustomerHistory(customerId)));
+    }
+
+    @GetMapping("/financial-summary")
+    @PreAuthorize("hasAuthority('report.sales.read')")
+    public ResponseEntity<ApiResponse<FinancialSummaryDto>> getFinancialSummary(
+            @RequestParam UUID branchId,
+            @RequestParam LocalDate from,
+            @RequestParam LocalDate to,
+            @RequestParam(defaultValue = "false") boolean pharmacyWide) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                service.getFinancialSummary(branchId, from, to, pharmacyWide)));
     }
 }

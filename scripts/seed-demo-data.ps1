@@ -46,11 +46,12 @@ $reference = @{
     "Antibiotics"    = "10000000-0000-0000-0000-000000000003"
     "Antimalarials"  = "10000000-0000-0000-0000-000000000007"
     "First Aid"      = "10000000-0000-0000-0000-000000000006"   # First aid
-    "Tablet"         = "20000000-0000-0000-0000-000000000007"   # Strip unit
-    "StripUnit"      = "20000000-0000-0000-0000-000000000007"
-    "BoxUnit"        = "20000000-0000-0000-0000-000000000008"
-    "BottleUnit"     = "20000000-0000-0000-0000-000000000003"
-    "PieceUnit"      = "20000000-0000-0000-0000-000000000006"
+    "TabletUnit"     = "20000000-0000-0000-0000-000000000001"   # Tablet (base dispensing unit)
+    "CapsuleUnit"    = "20000000-0000-0000-0000-000000000002"   # Capsule
+    "StripUnit"      = "20000000-0000-0000-0000-000000000007"   # Strip (10 tablets/capsules)
+    "BoxUnit"        = "20000000-0000-0000-0000-000000000008"   # Box (10 strips = 100 tablets)
+    "BottleUnit"     = "20000000-0000-0000-0000-000000000003"   # Bottle
+    "PieceUnit"      = "20000000-0000-0000-0000-000000000006"   # Piece
     "TabletForm"     = "50000000-0000-0000-0000-000000000001"
     "CapsuleForm"    = "50000000-0000-0000-0000-000000000002"
     "SyrupForm"      = "50000000-0000-0000-0000-000000000003"
@@ -82,13 +83,13 @@ Write-Host "== Medicines =="
 $today = Get-Date
 $runTag = (Get-Random -Maximum 9999).ToString("0000")
 $medicines = @(
-    @{ brandName = "Paracetamol 500mg Tablets"; genericName = "Paracetamol"; strength = "500mg"; form = "TabletForm"; unit = "StripUnit"; category = "Analgesics"; buying = 25.00; selling = 40.00; reorder = 20 },
-    @{ brandName = "Amoxicillin 250mg Capsules"; genericName = "Amoxicillin"; strength = "250mg"; form = "CapsuleForm"; unit = "StripUnit"; category = "Antibiotics"; buying = 60.00; selling = 95.00; reorder = 15 },
-    @{ brandName = "Coartem 20/120mg"; genericName = "Artemether/Lumefantrine"; strength = "20/120mg"; form = "TabletForm"; unit = "BoxUnit"; category = "Antimalarials"; buying = 180.00; selling = 280.00; reorder = 10 },
-    @{ brandName = "Ibuprofen 400mg Tablets"; genericName = "Ibuprofen"; strength = "400mg"; form = "TabletForm"; unit = "StripUnit"; category = "Analgesics"; buying = 35.00; selling = 60.00; reorder = 20 },
-    @{ brandName = "Cetirizine 10mg Tablets"; genericName = "Cetirizine Hydrochloride"; strength = "10mg"; form = "TabletForm"; unit = "StripUnit"; category = "Analgesics"; buying = 20.00; selling = 45.00; reorder = 15 },
-    @{ brandName = "Betadine 10% Solution"; genericName = "Povidone Iodine"; strength = "10%"; form = "CreamForm"; unit = "BottleUnit"; category = "First Aid"; buying = 140.00; selling = 220.00; reorder = 8 },
-    @{ brandName = "ORS Sachets"; genericName = "Oral Rehydration Salts"; strength = "20.5g"; form = "SyrupForm"; unit = "PieceUnit"; category = "First Aid"; buying = 18.00; selling = 35.00; reorder = 25 }
+    @{ brandName = "Paracetamol 500mg Tablets"; genericName = "Paracetamol"; strength = "500mg"; form = "TabletForm"; unit = "TabletUnit"; buyingUnit = "StripUnit"; packSize = 10; category = "Analgesics"; buying = 25.00; selling = 40.00; reorder = 20 },
+    @{ brandName = "Amoxicillin 250mg Capsules"; genericName = "Amoxicillin"; strength = "250mg"; form = "CapsuleForm"; unit = "CapsuleUnit"; buyingUnit = "StripUnit"; packSize = 10; category = "Antibiotics"; buying = 60.00; selling = 95.00; reorder = 15 },
+    @{ brandName = "Coartem 20/120mg"; genericName = "Artemether/Lumefantrine"; strength = "20/120mg"; form = "TabletForm"; unit = "TabletUnit"; buyingUnit = "BoxUnit"; packSize = 100; category = "Antimalarials"; buying = 180.00; selling = 280.00; reorder = 10 },
+    @{ brandName = "Ibuprofen 400mg Tablets"; genericName = "Ibuprofen"; strength = "400mg"; form = "TabletForm"; unit = "TabletUnit"; buyingUnit = "StripUnit"; packSize = 10; category = "Analgesics"; buying = 35.00; selling = 60.00; reorder = 20 },
+    @{ brandName = "Cetirizine 10mg Tablets"; genericName = "Cetirizine Hydrochloride"; strength = "10mg"; form = "TabletForm"; unit = "TabletUnit"; buyingUnit = "StripUnit"; packSize = 10; category = "Analgesics"; buying = 20.00; selling = 45.00; reorder = 15 },
+    @{ brandName = "Betadine 10% Solution"; genericName = "Povidone Iodine"; strength = "10%"; form = "CreamForm"; unit = "BottleUnit"; buyingUnit = "BottleUnit"; packSize = 1; category = "First Aid"; buying = 140.00; selling = 220.00; reorder = 8 },
+    @{ brandName = "ORS Sachets"; genericName = "Oral Rehydration Salts"; strength = "20.5g"; form = "SyrupForm"; unit = "PieceUnit"; buyingUnit = "PieceUnit"; packSize = 1; category = "First Aid"; buying = 18.00; selling = 35.00; reorder = 25 }
 )
 $allMeds = (Invoke-RestMethod -Uri "$ApiBase/api/v1/medicines?size=200&sort=brandName,asc" -WebSession $session).data.content
 foreach ($m in $medicines) {
@@ -100,6 +101,8 @@ foreach ($m in $medicines) {
         medicineCategoriesId = $reference[$m.category]
         dosageFormId = $reference[$m.form]
         unitId = $reference[$m.unit]
+        buyingUnitId = $reference[$m.buyingUnit]
+        packSize = $m.packSize
         status = "AVAILABLE"
         trackSerialNumber = $false; trackBatch = $true; trackExpiry = $true
         requiresPrescription = ($m.category -eq "Antibiotics"); requiresRefrigeration = $false; isControlledDrug = $false

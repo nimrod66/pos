@@ -20,6 +20,7 @@ import com.example.pos.reporting.dto.SalesReportDto;
 import com.example.pos.reporting.dto.SlowStockReportDto;
 import com.example.pos.reporting.dto.SupplierPriceComparisonDto;
 import com.example.pos.reporting.dto.CustomerHistoryDto;
+import com.example.pos.reporting.dto.FinancialSummaryDto;
 import com.example.pos.customer.model.Customer;
 import com.example.pos.customer.repository.CustomerRepository;
 import com.example.pos.prescriptions.prescriptions.model.Prescriptions;
@@ -31,6 +32,8 @@ import com.example.pos.sale.salereturns.model.SaleReturns;
 import com.example.pos.sale.salereturns.repository.SaleReturnsRepository;
 import com.example.pos.sale.sales.model.Sales;
 import com.example.pos.sale.sales.repository.SalesRepository;
+import com.example.pos.finance.expenses.model.Expenses;
+import com.example.pos.finance.expenses.repository.ExpensesRepository;
 import com.example.pos.security.auth.AuthenticatedUserContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -67,6 +70,7 @@ public class ReportingService {
     private final BranchRepository branchRepository;
     private final CustomerRepository customerRepository;
     private final PrescriptionsRepository prescriptionsRepository;
+    private final ExpensesRepository expensesRepository;
     private final SystemSettingsService settingsService;
     private final AuthenticatedUserContext current;
     private final Clock clock;
@@ -80,6 +84,7 @@ public class ReportingService {
                             BranchRepository branchRepository,
                             CustomerRepository customerRepository,
                             PrescriptionsRepository prescriptionsRepository,
+                            ExpensesRepository expensesRepository,
                             SystemSettingsService settingsService,
                             AuthenticatedUserContext current,
                             Clock clock) {
@@ -92,6 +97,7 @@ public class ReportingService {
         this.branchRepository = branchRepository;
         this.customerRepository = customerRepository;
         this.prescriptionsRepository = prescriptionsRepository;
+        this.expensesRepository = expensesRepository;
         this.settingsService = settingsService;
         this.current = current;
         this.clock = clock;
@@ -823,5 +829,96 @@ public class ReportingService {
                 customer.getId(), fullName, customer.getPhoneNumber(),
                 customer.getLoyaltyPoints(), sales.size(), money(totalSpent),
                 recentSales, rxList);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // FINANCIAL SUMMARY: Income + Expenses + Net Profit (P&L)
+    // ═══════════════════════════════════════════════════════════════
+
+    public FinancialSummaryDto getFinancialSummary(UUID branchId, LocalDate from, LocalDate to,
+                                                   boolean pharmacyWide) {
+        List<Branch> branches = resolveBranches(branchId, pharmacyWide);
+        validateDateRange(from, to);
+        LocalDateTime start = from.atStartOfDay();
+        LocalDateTime end = to.plusDays(1).atStartOfDay();
+        List<UUID> branchIds = branches.stream().map(Branch::getId).toList();
+
+        // --- Sales ---
+        List<Sales> sales = salesRepository
+                .findByBranchIdInAndSaleStatusInAndCompletedAtGreaterThanEqualAndCompletedAtLessThan(
+                        branchIds, COMPLETED_SALE_STATUSES, start, end);
+        List<SaleReturns> returns = returnsRepository
+                .findByBranchIdInAndStatusIgnoreCaseAndReturnDateGreaterThanEqualAndReturnDateLessThan(
+                        branchIds, "COMPLETED", start, end);
+
+        BigDecimal grossSales = BigDecimal.ZERO;
+        BigDecimal totalCogs = BigDecimal.ZERO;
+        BigDecimal cashCollected = BigDecimal.ZERO;
+        BigDecimal mpesaCollected = BigDecimal.ZERO;
+        BigDecimal creditCollected = BigDecimal.ZERO;
+
+        for (Sales sale : sales) {
+            grossSales = grossSales.add(zeroIfNull(sale.getTotal()));
+            for (SaleItems item : sale.getSaleItems()) {
+                int qty = item.getQuantity() == null ? 0 : item.getQuantity();
+                BigDecimal buyingPrice = item.getMedicineBatches().getBuyingPrice() != null
+                        ? item.getMedicineBatches().getBuyingPrice() : BigDecimal.ZERO;
+                totalCogs = totalCogs.add(buyingPrice.multiply(BigDecimal.valueOf(qty)));
+            }
+            for (Payment p : sale.getPayment()) {
+                if (p.getPaymentMethod() == null) continue;
+                String method = p.getPaymentMethod().name();
+                BigDecimal amt = zeroIfNull(p.getAmount());
+                if ("CASH".equals(method)) cashCollected = cashCollected.add(amt);
+                else if (method.contains("MPESA") || "M_PESA".equals(method)) mpesaCollected = mpesaCollected.add(amt);
+                else creditCollected = creditCollected.add(amt);
+            }
+        }
+
+        BigDecimal salesReturnsTotal = BigDecimal.ZERO;
+        for (SaleReturns ret : returns) {
+            salesReturnsTotal = salesReturnsTotal.add(zeroIfNull(ret.getRefundAmount()));
+            for (SaleReturnItems item : ret.getSaleReturnItems()) {
+                int qty = item.getQuantity() == null ? 0 : item.getQuantity();
+                BigDecimal buyingPrice = item.getMedicineBatches().getBuyingPrice() != null
+                        ? item.getMedicineBatches().getBuyingPrice() : BigDecimal.ZERO;
+                totalCogs = totalCogs.subtract(buyingPrice.multiply(BigDecimal.valueOf(qty)));
+            }
+        }
+
+        BigDecimal netSales = grossSales.subtract(salesReturnsTotal);
+        BigDecimal grossProfit = netSales.subtract(totalCogs);
+        BigDecimal grossMargin = netSales.compareTo(BigDecimal.ZERO) > 0
+                ? grossProfit.multiply(HUNDRED).divide(netSales, 1, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+
+        // --- Expenses ---
+        List<Expenses> expenses = expensesRepository.findByExpenseDateBetween(start, end);
+        BigDecimal totalExpenses = BigDecimal.ZERO;
+        Map<String, FinancialSummaryDto.ExpenseByCategory> expenseMap = new LinkedHashMap<>();
+        for (Expenses exp : expenses) {
+            BigDecimal amt = zeroIfNull(exp.getAmount());
+            totalExpenses = totalExpenses.add(amt);
+            String catName = exp.getExpenseCategory() != null ? exp.getExpenseCategory().getCategoryName() : "Uncategorized";
+            UUID catId = exp.getExpenseCategory() != null ? exp.getExpenseCategory().getId() : null;
+            expenseMap.merge(catName, new FinancialSummaryDto.ExpenseByCategory(catId, catName, amt, 1),
+                    (existing, ignored) -> new FinancialSummaryDto.ExpenseByCategory(
+                            catId, catName,
+                            existing.totalAmount().add(amt),
+                            existing.transactionCount() + 1));
+        }
+
+        BigDecimal netProfit = grossProfit.subtract(totalExpenses);
+        BigDecimal netProfitMargin = netSales.compareTo(BigDecimal.ZERO) > 0
+                ? netProfit.multiply(HUNDRED).divide(netSales, 1, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+
+        return new FinancialSummaryDto(
+                pharmacyWide ? null : branchId, pharmacyWide, from, to,
+                money(grossSales), money(salesReturnsTotal), money(netSales),
+                money(totalCogs), money(grossProfit), grossMargin,
+                money(totalExpenses), expenseMap.values().stream().toList(),
+                money(netProfit), netProfitMargin,
+                money(cashCollected), money(mpesaCollected), money(creditCollected));
     }
 }

@@ -29,6 +29,9 @@ public interface ExpensesRepository extends JpaRepository<Expenses, UUID> {
     @EntityGraph(attributePaths = {"expenseCategory", "user", "cashDrawers"})
     List<Expenses> findByUserIdAndCreatedAtBetween(UUID userId, LocalDateTime start, LocalDateTime end);
 
+    @EntityGraph(attributePaths = {"expenseCategory"})
+    List<Expenses> findByExpenseDateBetween(LocalDateTime start, LocalDateTime end);
+
     @Override
     @EntityGraph(attributePaths = {"expenseCategory", "user", "cashDrawers"})
     Optional<Expenses> findById(UUID id);

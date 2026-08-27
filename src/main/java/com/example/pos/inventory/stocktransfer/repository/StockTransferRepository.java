@@ -14,5 +14,7 @@ public interface StockTransferRepository extends JpaRepository<StockTransfer, UU
 
     Page<StockTransfer> findByDestBranchIdOrderByCreatedAtDesc(UUID branchId, Pageable pageable);
 
+    Page<StockTransfer> findBySourceBranchIdOrDestBranchIdOrderByCreatedAtDesc(UUID branchId1, UUID branchId2, Pageable pageable);
+
     List<StockTransfer> findBySourceBranchIdOrDestBranchIdAndStatus(UUID sourceBranchId, UUID destBranchId, String status);
 }
