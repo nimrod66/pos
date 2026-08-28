@@ -186,6 +186,7 @@ public class StaffShiftsService {
         }
         appendRemarks(shift, "Variance reviewed"
                 + (trimToNull(dto.getRemarks()) == null ? "" : ": " + trimToNull(dto.getRemarks())));
+        shift.setStatus(StaffShifts.Status.REVIEWED);
         return shiftRepository.save(shift);
     }
 

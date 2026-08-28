@@ -5,7 +5,7 @@ import type { Resolver } from "react-hook-form";
 import { ArrowLeft, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 import { PrimaryButton, SecondaryLink } from "@/components/ui/buttons";
@@ -72,6 +72,7 @@ export function MedicineForm({ medicineId }: { medicineId?: string }) {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const {
+    control,
     formState: { errors, isSubmitting },
     handleSubmit,
     register,
@@ -136,6 +137,17 @@ export function MedicineForm({ medicineId }: { medicineId?: string }) {
       if (!selected) setValue("taxCategory", taxCategories[0].code);
     }
   }, [categories, getValues, manufacturers, medicine, setValue, taxCategories, units]);
+
+  const barcodeValue = useWatch({ control, name: "barcode" });
+
+  useEffect(() => {
+    if (medicine) return;
+    const bc = (barcodeValue ?? "").trim();
+    const sku = getValues("sku");
+    if (bc.length >= 4 && !sku) {
+      setValue("sku", bc);
+    }
+  }, [barcodeValue, medicine, getValues, setValue]);
 
   async function onSubmit(values: MedicineFormValues) {
     setSubmitError(null);

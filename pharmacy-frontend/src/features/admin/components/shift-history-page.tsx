@@ -303,18 +303,22 @@ export function ShiftHistoryPage() {
                           tone={
                             shift.status === "ACTIVE"
                               ? "info"
-                              : hasVariance
-                                ? "danger"
-                                : "success"
+                              : shift.status === "REVIEWED"
+                                ? "success"
+                                : hasVariance
+                                  ? "danger"
+                                  : "success"
                           }
                         >
                           {shift.status === "ACTIVE"
                             ? "Open"
                             : shift.status === "CANCELLED"
                               ? "Cancelled"
-                              : hasVariance
-                                ? `Variance ${money(variance)}`
-                                : "Reconciled"}
+                              : shift.status === "REVIEWED"
+                                ? "Reviewed"
+                                : hasVariance
+                                  ? `Variance ${money(variance)}`
+                                  : "Reconciled"}
                         </StatusBadge>
                       </td>
                       <td className="px-4 py-3 text-right">

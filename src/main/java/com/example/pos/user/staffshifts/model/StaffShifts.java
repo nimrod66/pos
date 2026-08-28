@@ -47,7 +47,7 @@ public class StaffShifts extends BaseEntity {
     private Status status;
 
     public enum Status {
-        ACTIVE, CLOSED, CANCELLED
+        ACTIVE, CLOSED, CANCELLED, REVIEWED
     }
 
     private String remarks;
