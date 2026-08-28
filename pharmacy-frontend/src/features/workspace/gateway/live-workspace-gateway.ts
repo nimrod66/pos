@@ -47,11 +47,15 @@ import type {
   PharmacySettings,
   PluRow,
   PosLookupItem,
+  ProfitReport,
   ReceiveStockInput,
+  ReorderSuggestionReport,
   ReturnInput,
   Sale,
   SalesReport,
+  SlowStockReport,
   FinancialSummary,
+  SupplierPriceComparison,
   Shift,
   StaffInput,
   StaffRole,
@@ -476,6 +480,43 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
         `/reports/financial-summary?branchId=${session.user.activeBranch.id}` +
           `&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}${scope}`,
       ),
+      { cache: "no-store" },
+    );
+    return response.data;
+  }
+
+  async getProfitReport(from: string, to: string): Promise<ProfitReport> {
+    const session = this.requireSession();
+    const scope = session.user.roles.includes("OWNER") ? "&pharmacyWide=true" : "";
+    const response = await apiRequest<ProfitReport>(
+      path(`/reports/profit?branchId=${session.user.activeBranch.id}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}${scope}`),
+      { cache: "no-store" },
+    );
+    return response.data;
+  }
+
+  async getSlowStockReport(): Promise<SlowStockReport> {
+    const session = this.requireSession();
+    const response = await apiRequest<SlowStockReport>(
+      path(`/reports/slow-stock?branchId=${session.user.activeBranch.id}`),
+      { cache: "no-store" },
+    );
+    return response.data;
+  }
+
+  async getReorderSuggestionReport(): Promise<ReorderSuggestionReport> {
+    const session = this.requireSession();
+    const response = await apiRequest<ReorderSuggestionReport>(
+      path(`/reports/reorder-suggestions?branchId=${session.user.activeBranch.id}`),
+      { cache: "no-store" },
+    );
+    return response.data;
+  }
+
+  async getSupplierPriceComparison(): Promise<SupplierPriceComparison[]> {
+    const session = this.requireSession();
+    const response = await apiRequest<SupplierPriceComparison[]>(
+      path(`/reports/supplier-prices?branchId=${session.user.activeBranch.id}`),
       { cache: "no-store" },
     );
     return response.data;

@@ -27,7 +27,6 @@ import {
 } from "@/features/workspace/gateway/workspace-gateway";
 import { addMoney, formatKes, moneyToCents } from "@/features/workspace/lib/money";
 import { todayIsoDate } from "@/features/workspace/lib/workspace-helpers";
-import { apiRequest } from "@/lib/api-client";
 import type {
   FinancialSummary,
   InventoryReport,
@@ -58,7 +57,7 @@ export function ReportsPage() {
   const [reorderReport, setReorderReport] =
     useState<ReorderSuggestionReport | null>(null);
   const [supplierReport, setSupplierReport] =
-    useState<SupplierPriceComparison | null>(null);
+    useState<SupplierPriceComparison[] | null>(null);
   const [financialSummary, setFinancialSummary] =
     useState<FinancialSummary | null>(null);
   const [salesError, setSalesError] = useState<string | null>(null);
@@ -129,12 +128,11 @@ export function ReportsPage() {
   useEffect(() => {
     if (!branchId || !canViewSales || !from || !to || to < from) return;
     let active = true;
-    apiRequest<ProfitReport>(
-      `/api/v1/reports/profit?branchId=${branchId}&from=${from}&to=${to}`,
-    )
-      .then((res) => {
+    void workspaceGateway
+      .getProfitReport(from, to)
+      .then((report) => {
         if (!active) return;
-        setProfitReport(res.data);
+        setProfitReport(report);
       })
       .catch(() => {});
     return () => {
@@ -145,12 +143,11 @@ export function ReportsPage() {
   useEffect(() => {
     if (!branchId || !canViewInventory) return;
     let active = true;
-    apiRequest<SlowStockReport>(
-      `/api/v1/reports/slow-stock?branchId=${branchId}`,
-    )
-      .then((res) => {
+    void workspaceGateway
+      .getSlowStockReport()
+      .then((report) => {
         if (!active) return;
-        setSlowStockReport(res.data);
+        setSlowStockReport(report);
       })
       .catch(() => {});
     return () => {
@@ -161,12 +158,11 @@ export function ReportsPage() {
   useEffect(() => {
     if (!branchId || !canViewInventory) return;
     let active = true;
-    apiRequest<ReorderSuggestionReport>(
-      `/api/v1/reports/reorder-suggestions?branchId=${branchId}`,
-    )
-      .then((res) => {
+    void workspaceGateway
+      .getReorderSuggestionReport()
+      .then((report) => {
         if (!active) return;
-        setReorderReport(res.data);
+        setReorderReport(report);
       })
       .catch(() => {});
     return () => {
@@ -175,20 +171,19 @@ export function ReportsPage() {
   }, [branchId, canViewInventory]);
 
   useEffect(() => {
-    if (!branchId || !canViewSales || !from || !to || to < from) return;
+    if (!branchId || !canViewInventory) return;
     let active = true;
-    apiRequest<SupplierPriceComparison>(
-      `/api/v1/reports/supplier-prices?branchId=${branchId}`,
-    )
-      .then((res) => {
+    void workspaceGateway
+      .getSupplierPriceComparison()
+      .then((report) => {
         if (!active) return;
-        setSupplierReport(res.data);
+        setSupplierReport(report);
       })
       .catch(() => {});
     return () => {
       active = false;
     };
-  }, [branchId, canViewSales, from, to]);
+  }, [branchId, canViewInventory]);
 
   useEffect(() => {
     if (!branchId || !canViewSales || !from || !to || to < from) return;
@@ -626,7 +621,7 @@ export function ReportsPage() {
                 Cost of goods sold
               </p>
               <p className="mt-1 text-lg font-semibold">
-                {formatKes(profitReport.totalCostOfGoods)}
+                {formatKes(profitReport.totalCostOfGoodsSold)}
               </p>
             </div>
             <div>
@@ -634,7 +629,7 @@ export function ReportsPage() {
                 Gross profit
               </p>
               <p className="mt-1 text-lg font-semibold">
-                {formatKes(profitReport.totalGrossProfit)}
+                {formatKes(profitReport.grossProfit)}
               </p>
             </div>
             <div>
@@ -642,11 +637,11 @@ export function ReportsPage() {
                 Overall margin
               </p>
               <p className="mt-1 text-lg font-semibold">
-                {profitReport.overallMarginPercent.toFixed(1)}%
+                {profitReport.grossMarginPercent.toFixed(1)}%
               </p>
             </div>
           </div>
-          {profitReport.medicines.length > 0 ? (
+          {profitReport.medicineBreakdown.length > 0 ? (
             <div className="overflow-x-auto border-t border-[var(--border)]">
               <table className="w-full min-w-[700px] text-left text-sm">
                 <thead className="bg-[var(--surface-muted)] text-xs uppercase text-[var(--text-muted)]">
@@ -671,7 +666,7 @@ export function ReportsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
-                  {profitReport.medicines.map((med) => (
+                  {profitReport.medicineBreakdown.map((med) => (
                     <tr key={med.medicineId}>
                       <td className="px-4 py-3.5 font-medium">
                         {med.medicineName}
@@ -689,7 +684,7 @@ export function ReportsPage() {
                         {formatKes(med.costOfGoods)}
                       </td>
                       <td className="px-4 py-3.5 text-right font-semibold">
-                        {formatKes(med.grossProfit)}
+                        {formatKes(med.profit)}
                       </td>
                       <td className="px-4 py-3.5 text-right">
                         <span
@@ -727,13 +722,13 @@ export function ReportsPage() {
             <div>
               <p className="text-xs text-[var(--text-muted)]">Dead items</p>
               <p className="mt-1 text-lg font-semibold text-[var(--danger)]">
-                {slowStockReport.totalDead}
+                {slowStockReport.deadStockCount}
               </p>
             </div>
             <div>
               <p className="text-xs text-[var(--text-muted)]">Slow items</p>
               <p className="mt-1 text-lg font-semibold text-[var(--warning)]">
-                {slowStockReport.totalSlow}
+                {slowStockReport.slowMovingCount}
               </p>
             </div>
           </div>
@@ -747,12 +742,11 @@ export function ReportsPage() {
                     <th className="px-4 py-3 text-right font-semibold">
                       Current stock
                     </th>
-                    <th className="px-4 py-3 font-semibold">Last sold</th>
                     <th className="px-4 py-3 text-right font-semibold">
-                      90-day sales
+                      Days since sale
                     </th>
                     <th className="px-4 py-3 text-right font-semibold">
-                      Velocity
+                      90-day sales
                     </th>
                     <th className="px-4 py-3 font-semibold">Category</th>
                   </tr>
@@ -769,24 +763,19 @@ export function ReportsPage() {
                       <td className="px-4 py-3.5 text-right font-semibold">
                         {item.currentStock}
                       </td>
-                      <td className="px-4 py-3.5 text-[var(--text-muted)]">
-                        {item.lastSoldAt
-                          ? new Date(item.lastSoldAt).toLocaleDateString()
-                          : "—"}
+                      <td className="px-4 py-3.5 text-right">
+                        {item.daysSinceLastSale}
                       </td>
                       <td className="px-4 py-3.5 text-right">
-                        {item.totalSold90d}
-                      </td>
-                      <td className="px-4 py-3.5 text-right">
-                        {item.velocity.toFixed(2)}
+                        {item.soldLast90Days}
                       </td>
                       <td className="px-4 py-3.5">
                         <StatusBadge
                           tone={
-                            item.category === "DEAD" ? "danger" : "warning"
+                            item.velocityCategory === "DEAD" ? "danger" : "warning"
                           }
                         >
-                          {item.category}
+                          {item.velocityCategory}
                         </StatusBadge>
                       </td>
                     </tr>
@@ -809,21 +798,15 @@ export function ReportsPage() {
           </div>
           <div className="grid gap-4 p-4 sm:grid-cols-3">
             <div>
-              <p className="text-xs text-[var(--text-muted)]">Critical</p>
+              <p className="text-xs text-[var(--text-muted)]">Total medicines</p>
+              <p className="mt-1 text-lg font-semibold">
+                {reorderReport.totalMedicines}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-[var(--text-muted)]">Need reorder</p>
               <p className="mt-1 text-lg font-semibold text-[var(--danger)]">
-                {reorderReport.totalCritical}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-[var(--text-muted)]">High</p>
-              <p className="mt-1 text-lg font-semibold text-[var(--warning)]">
-                {reorderReport.totalHigh}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-[var(--text-muted)]">Medium</p>
-              <p className="mt-1 text-lg font-semibold text-[var(--accent)]">
-                {reorderReport.totalMedium}
+                {reorderReport.needReorder}
               </p>
             </div>
           </div>
@@ -841,7 +824,7 @@ export function ReportsPage() {
                       Reorder level
                     </th>
                     <th className="px-4 py-3 text-right font-semibold">
-                      Weekly sales
+                      30-day sales
                     </th>
                     <th className="px-4 py-3 text-right font-semibold">
                       Suggested order
@@ -865,7 +848,7 @@ export function ReportsPage() {
                         {item.reorderLevel}
                       </td>
                       <td className="px-4 py-3.5 text-right">
-                        {item.avgWeeklySales.toFixed(1)}
+                        {item.soldLast30Days}
                       </td>
                       <td className="px-4 py-3.5 text-right font-semibold">
                         {item.suggestedOrderQty}
@@ -896,67 +879,63 @@ export function ReportsPage() {
         </section>
       ) : null}
 
-      {canViewSales && supplierReport ? (
+      {canViewInventory && supplierReport && supplierReport.length > 0 ? (
         <section className="mt-6 rounded-md border border-[var(--border)] bg-white">
           <div className="border-b border-[var(--border)] px-4 py-3.5">
             <h2 className="text-sm font-semibold">
               Supplier price comparison
             </h2>
           </div>
-          {supplierReport.rows.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[700px] text-left text-sm">
-                <thead className="bg-[var(--surface-muted)] text-xs uppercase text-[var(--text-muted)]">
-                  <tr>
-                    <th className="px-4 py-3 font-semibold">Supplier</th>
-                    <th className="px-4 py-3 font-semibold">Medicine</th>
-                    <th className="px-4 py-3 font-semibold">SKU</th>
-                    <th className="px-4 py-3 text-right font-semibold">
-                      Last cost
-                    </th>
-                    <th className="px-4 py-3 text-right font-semibold">
-                      Avg cost
-                    </th>
-                    <th className="px-4 py-3 text-right font-semibold">
-                      Total purchased
-                    </th>
-                    <th className="px-4 py-3 text-right font-semibold">
-                      Purchase count
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border)]">
-                  {supplierReport.rows.map((row) => (
-                    <tr key={`${row.supplierId}-${row.medicineId}`}>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[700px] text-left text-sm">
+              <thead className="bg-[var(--surface-muted)] text-xs uppercase text-[var(--text-muted)]">
+                <tr>
+                  <th className="px-4 py-3 font-semibold">Medicine</th>
+                  <th className="px-4 py-3 font-semibold">SKU</th>
+                  <th className="px-4 py-3 font-semibold">Supplier</th>
+                  <th className="px-4 py-3 text-right font-semibold">
+                    Last cost
+                  </th>
+                  <th className="px-4 py-3 text-right font-semibold">
+                    Avg cost
+                  </th>
+                  <th className="px-4 py-3 text-right font-semibold">
+                    Total purchased
+                  </th>
+                  <th className="px-4 py-3 text-right font-semibold">
+                    Purchase count
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border)]">
+                {supplierReport.flatMap((med) =>
+                  med.suppliers.map((sup) => (
+                    <tr key={`${sup.supplierId}-${med.medicineId}`}>
                       <td className="px-4 py-3.5 font-medium">
-                        {row.supplierName}
+                        {med.medicineName}
                       </td>
-                      <td className="px-4 py-3.5">{row.medicineName}</td>
                       <td className="px-4 py-3.5 text-[var(--text-muted)]">
-                        {row.sku}
+                        {med.sku}
+                      </td>
+                      <td className="px-4 py-3.5">{sup.supplierName}</td>
+                      <td className="px-4 py-3.5 text-right">
+                        {formatKes(sup.lastUnitCost)}
                       </td>
                       <td className="px-4 py-3.5 text-right">
-                        {formatKes(row.lastCost)}
-                      </td>
-                      <td className="px-4 py-3.5 text-right">
-                        {formatKes(row.avgCost)}
+                        {formatKes(sup.averageCost)}
                       </td>
                       <td className="px-4 py-3.5 text-right font-semibold">
-                        {row.totalPurchased}
+                        {sup.totalQuantityPurchased}
                       </td>
                       <td className="px-4 py-3.5 text-right">
-                        {row.purchaseCount}
+                        {sup.purchaseCount}
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="p-5 text-sm text-[var(--text-muted)]">
-              No supplier price data available for this period.
-            </p>
-          )}
+                  )),
+                )}
+              </tbody>
+            </table>
+          </div>
         </section>
       ) : null}
     </div>

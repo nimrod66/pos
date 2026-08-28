@@ -100,7 +100,7 @@ export function BackupRestorePanel() {
       const csrfValue = getCsrfToken();
       const headers: Record<string, string> = {};
       if (csrfHeader && csrfValue) headers[csrfHeader] = csrfValue;
-      const res = await fetch("/api/v1/system/backup/restore", {
+      const res = await fetch(`${getApiBaseUrl()}/system/backup/restore`, {
         method: "POST",
         body: formData,
         credentials: "include",

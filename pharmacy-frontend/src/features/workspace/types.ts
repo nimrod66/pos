@@ -454,7 +454,7 @@ export interface ProfitMedicine {
   quantitySold: number;
   revenue: string;
   costOfGoods: string;
-  grossProfit: string;
+  profit: string;
   marginPercent: number;
 }
 
@@ -462,10 +462,10 @@ export interface ProfitReport {
   from: string;
   to: string;
   totalRevenue: string;
-  totalCostOfGoods: string;
-  totalGrossProfit: string;
-  overallMarginPercent: number;
-  medicines: ProfitMedicine[];
+  totalCostOfGoodsSold: string;
+  grossProfit: string;
+  grossMarginPercent: number;
+  medicineBreakdown: ProfitMedicine[];
 }
 
 export interface SlowStockItem {
@@ -473,16 +473,19 @@ export interface SlowStockItem {
   medicineName: string;
   sku: string;
   currentStock: number;
-  lastSoldAt: string | null;
-  totalSold90d: number;
-  velocity: number;
-  category: "DEAD" | "SLOW";
+  soldLast90Days: number;
+  daysSinceLastSale: number;
+  stockValue: string;
+  velocityCategory: string;
 }
 
 export interface SlowStockReport {
   asOf: string;
-  totalDead: number;
-  totalSlow: number;
+  totalItems: number;
+  slowMovingCount: number;
+  deadStockCount: number;
+  slowMovingValue: string;
+  deadStockValue: string;
   items: SlowStockItem[];
 }
 
@@ -492,35 +495,34 @@ export interface ReorderItem {
   sku: string;
   currentStock: number;
   reorderLevel: number;
-  avgWeeklySales: number;
+  soldLast30Days: number;
   suggestedOrderQty: number;
-  urgency: "CRITICAL" | "HIGH" | "MEDIUM";
+  estimatedCost: string;
+  urgency: string;
 }
 
 export interface ReorderSuggestionReport {
-  asOf: string;
-  totalCritical: number;
-  totalHigh: number;
-  totalMedium: number;
+  branchId: string;
+  totalMedicines: number;
+  needReorder: number;
   items: ReorderItem[];
 }
 
-export interface SupplierPriceRow {
+export interface SupplierPriceDetail {
   supplierId: string;
   supplierName: string;
-  medicineId: string;
-  medicineName: string;
-  sku: string;
-  lastCost: string;
-  avgCost: string;
-  totalPurchased: number;
+  lastUnitCost: string;
+  totalQuantityPurchased: number;
   purchaseCount: number;
+  lastPurchaseDate: string | null;
+  averageCost: string;
 }
 
 export interface SupplierPriceComparison {
-  from: string;
-  to: string;
-  rows: SupplierPriceRow[];
+  medicineId: string;
+  medicineName: string;
+  sku: string;
+  suppliers: SupplierPriceDetail[];
 }
 
 export interface CustomerSaleItem {

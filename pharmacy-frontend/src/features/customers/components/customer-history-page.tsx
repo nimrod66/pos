@@ -60,7 +60,7 @@ export function CustomerHistoryPage({
     setError(null);
     try {
       const response = await apiRequest<CustomerHistory>(
-        `/api/v1/reports/customer-history/${customerId}`,
+        `/reports/customer-history/${customerId}`,
       );
       setHistory(response.data);
     } catch (caught) {

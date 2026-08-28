@@ -17,10 +17,14 @@ import type {
   PharmacySettings,
   PluRow,
   PosLookupItem,
+  ProfitReport,
   ReceiveStockInput,
+  ReorderSuggestionReport,
   ReturnInput,
   SalesReport,
+  SlowStockReport,
   FinancialSummary,
+  SupplierPriceComparison,
   StaffInput,
   StaffUser,
   Supplier,
@@ -121,6 +125,10 @@ export interface WorkspaceGateway {
   getPluReport(from?: string, to?: string): Promise<PluRow[]>;
   getSalesReport(from: string, to: string): Promise<SalesReport>;
   getFinancialSummary(from: string, to: string): Promise<FinancialSummary>;
+  getProfitReport(from: string, to: string): Promise<ProfitReport>;
+  getSlowStockReport(): Promise<SlowStockReport>;
+  getReorderSuggestionReport(): Promise<ReorderSuggestionReport>;
+  getSupplierPriceComparison(): Promise<SupplierPriceComparison[]>;
   hydrate(): Promise<void>;
   lookupPos(query: string): Promise<PosLookupItem[]>;
   openShift(openingFloat: string): Promise<string>;
@@ -308,6 +316,22 @@ class PreviewWorkspaceGateway implements WorkspaceGateway {
       mpesaCollected: "0.00",
       creditCollected: "0.00",
     };
+  }
+
+  async getProfitReport(from: string, to: string): Promise<ProfitReport> {
+    return { from, to, totalRevenue: "0.00", totalCostOfGoodsSold: "0.00", grossProfit: "0.00", grossMarginPercent: 0, medicineBreakdown: [] };
+  }
+
+  async getSlowStockReport(): Promise<SlowStockReport> {
+    return { asOf: "", totalItems: 0, slowMovingCount: 0, deadStockCount: 0, slowMovingValue: "0.00", deadStockValue: "0.00", items: [] };
+  }
+
+  async getReorderSuggestionReport(): Promise<ReorderSuggestionReport> {
+    return { branchId: "", totalMedicines: 0, needReorder: 0, items: [] };
+  }
+
+  async getSupplierPriceComparison(): Promise<SupplierPriceComparison[]> {
+    return [];
   }
 
   async hydrate() {
