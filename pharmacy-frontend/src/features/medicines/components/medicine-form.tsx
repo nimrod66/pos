@@ -230,12 +230,13 @@ export function MedicineForm({ medicineId }: { medicineId?: string }) {
             <Field label="SKU" required error={errors.sku?.message}>
               <Input autoCapitalize="characters" {...register("sku")} />
             </Field>
-            <Field
-              label="Barcode"
-              error={errors.barcode?.message}
-              hint="Scan the retail pack when available. Supplier product codes are stored separately."
-            >
-              <Input inputMode="numeric" {...register("barcode")} />
+            <Field label="Barcode" error={errors.barcode?.message} hint="Scan the retail pack when available. Supplier product codes are stored separately.">
+              <div className="space-y-2">
+                <div className="rounded bg-[var(--accent-soft)] px-3 py-2 text-xs text-[var(--accent)] flex items-center gap-2">
+                  <span className="font-semibold">Scan barcode:</span>Use a USB/handheld barcode scanner — it types the code directly into this field. Press Enter after each scan. The SKU field will auto-fill from the barcode.
+                </div>
+                <Input inputMode="numeric" {...register("barcode")} placeholder="000000000000" />
+              </div>
             </Field>
             <Field label="Status" required error={errors.status?.message}>
               <Select {...register("status")}>

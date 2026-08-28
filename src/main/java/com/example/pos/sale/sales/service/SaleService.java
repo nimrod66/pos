@@ -18,6 +18,8 @@ import com.example.pos.inventory.stockmovements.model.StockMovements;
 import com.example.pos.inventory.stockmovements.repository.StockMovementsRepository;
 import com.example.pos.masterdata.medicine.model.Medicine;
 import com.example.pos.masterdata.tax.model.Tax;
+import com.example.pos.masterdata.units.model.Unit;
+import com.example.pos.masterdata.units.repository.UnitRepository;
 import com.example.pos.pharmacy.regulatory.controlledrugs.model.ControlledDrugs;
 import com.example.pos.pharmacy.regulatory.controlledrugs.repository.ControlledDrugsRepository;
 import com.example.pos.prescriptions.prescriptions.model.Prescriptions;
@@ -84,6 +86,7 @@ public class SaleService {
     private final PaymentRepository paymentRepository;
     private final PrescriptionsRepository prescriptionsRepository;
     private final ControlledDrugsRepository controlledDrugsRepository;
+    private final UnitRepository unitRepository;
     private final AuthenticatedUserContext current;
     private final TerminalConfig terminalConfig;
     private final SyncProperties syncProperties;
@@ -92,17 +95,18 @@ public class SaleService {
     private final EntityManager entityManager;
     private final com.example.pos.core.systemsettings.service.SystemSettingsService settingsService;
 
-    public SaleService(SalesRepository salesRepository,
-                       CustomerRepository customerRepository,
-                       CustomerTransactionRepository customerTransactionRepository,
-                       StockRepository stockRepository,
-                       StockMovementsRepository movementsRepository,
-                       IdempotencyKeyRepository idempotencyRepository,
-                       StaffShiftsRepository shiftsRepository,
-                       PaymentRepository paymentRepository,
-                       PrescriptionsRepository prescriptionsRepository,
-                       ControlledDrugsRepository controlledDrugsRepository,
-                       AuthenticatedUserContext current,
+public SaleService(SalesRepository salesRepository,
+                        CustomerRepository customerRepository,
+                        CustomerTransactionRepository customerTransactionRepository,
+                        StockRepository stockRepository,
+                        StockMovementsRepository movementsRepository,
+                        IdempotencyKeyRepository idempotencyRepository,
+                        StaffShiftsRepository shiftsRepository,
+                        PaymentRepository paymentRepository,
+                        PrescriptionsRepository prescriptionsRepository,
+                        ControlledDrugsRepository controlledDrugsRepository,
+                        UnitRepository unitRepository,
+                        AuthenticatedUserContext current,
                        TerminalConfig terminalConfig,
                        SyncProperties syncProperties,
                        SyncService syncService,
@@ -119,6 +123,7 @@ public class SaleService {
         this.paymentRepository = paymentRepository;
         this.prescriptionsRepository = prescriptionsRepository;
         this.controlledDrugsRepository = controlledDrugsRepository;
+        this.unitRepository = unitRepository;
         this.current = current;
         this.terminalConfig = terminalConfig;
         this.syncProperties = syncProperties;
@@ -228,7 +233,7 @@ public class SaleService {
                 if (available <= 0) continue;
 
                 MedicineBatches batch = stock.getMedicineBatches();
-                BigDecimal unitPrice = requiredPrice(medicine, line.getExpectedUnitPrice());
+                BigDecimal unitPrice = requiredPrice(medicine, line.getExpectedUnitPrice(), line.getSellingUnitId());
                 int allocatedQuantity = Math.min(available, remaining);
                 LineAmounts amounts = calculateLineAmounts(
                         unitPrice, allocatedQuantity, medicine.getTax(), discountPercent);
@@ -695,17 +700,24 @@ public class SaleService {
         }
     }
 
-    private BigDecimal requiredPrice(Medicine medicine, BigDecimal expectedPrice) {
+    private BigDecimal requiredPrice(Medicine medicine, BigDecimal expectedPrice, UUID sellingUnitId) {
         if (medicine.getSellingPrice() == null) {
             throw new ConflictException("Medicine " + medicine.getBrandName() + " has no selling price",
                     "SELLING_PRICE_MISSING");
         }
         BigDecimal currentPrice = money(medicine.getSellingPrice());
-        if (currentPrice.compareTo(money(expectedPrice)) != 0) {
-            throw new ConflictException("The selling price changed to " + currentPrice,
+        BigDecimal convertedPrice = currentPrice;
+        if (sellingUnitId != null) {
+            Unit sellingUnit = unitRepository.findById(sellingUnitId).orElse(null);
+            if (sellingUnit != null && sellingUnit.getConversionFactor() != null && sellingUnit.getConversionFactor() > 1) {
+                convertedPrice = currentPrice.multiply(BigDecimal.valueOf(sellingUnit.getConversionFactor()));
+            }
+        }
+        if (convertedPrice.compareTo(money(expectedPrice)) != 0) {
+            throw new ConflictException("The selling price changed to " + convertedPrice.toPlainString(),
                     "PRICE_CHANGED");
         }
-        return currentPrice;
+        return convertedPrice;
     }
 
     private LineAmounts calculateLineAmounts(BigDecimal unitPrice, int quantity,

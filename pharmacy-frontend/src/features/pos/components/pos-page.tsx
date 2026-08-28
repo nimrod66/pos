@@ -101,6 +101,8 @@ export function PosPage() {
   const [scanStatus, setScanStatus] = useState("");
   const [showScanner, setShowScanner] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [pendingOfflineSales, setPendingOfflineSales] = useState(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -116,6 +118,40 @@ export function PosPage() {
     return () => {
       active = false;
     };
+  }, []);
+
+  useEffect(() => {
+    const handleOnline = async () => {
+      setIsOnline(true);
+      const raw = localStorage.getItem("pharmacy-pos:offline-queue");
+      if (!raw) return;
+      let queue;
+      try { queue = JSON.parse(raw); } catch { return; }
+      if (!queue.length) return;
+      const remaining: typeof queue = [];
+      for (const sale of queue) {
+        try {
+          const resp = await fetch("/api/v1/sales", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ...sale, cashTendered: sale.cashTendered || "0" }),
+          });
+          if (!resp.ok) remaining.push(sale);
+        } catch { remaining.push(sale); }
+      }
+      if (remaining.length > 0) {
+        localStorage.setItem("pharmacy-pos:offline-queue", JSON.stringify(remaining));
+        setPendingOfflineSales(remaining.length);
+      } else {
+        localStorage.removeItem("pharmacy-pos:offline-queue");
+        setPendingOfflineSales(0);
+      }
+    };
+    window.addEventListener("online", handleOnline);
+    setPendingOfflineSales(() => {
+      try { return JSON.parse(localStorage.getItem("pharmacy-pos:offline-queue") ?? "[]").length; } catch { return 0; }
+    });
+    return () => window.removeEventListener("online", handleOnline);
   }, []);
 
   useEffect(() => {
@@ -472,6 +508,35 @@ export function PosPage() {
     setCheckoutError(null);
     setSubmitting(true);
     try {
+      if (!isOnline) {
+        const offlineSale = {
+          idempotencyKey: prepareCheckoutKey(),
+          customerId: customerId,
+          items: detailedLines.map(({ lineId, medicineId, quantity, discountPercent, sellingUnitId, unitConversion }) => ({
+            lineId, medicineId, quantity,
+            discountPercent: discountPercent ?? 0,
+            sellingUnitId: sellingUnitId || undefined,
+            unitConversion: unitConversion ?? 1,
+          })),
+          paymentMethod,
+          mpesaMode,
+          mpesaPhone,
+          mpesaReference,
+          pharmacistApproved: canApprovePrescription,
+          cashTendered: cashTendered || total,
+          prescriptionReferenceId: requiresApproval ? prescriptionReferenceId.trim() : undefined,
+          creditAmount: paymentMethod === "CREDIT" ? creditAmount || total : undefined,
+        };
+        const raw = localStorage.getItem("pharmacy-pos:offline-queue") ?? "[]";
+        const queue = JSON.parse(raw);
+        queue.push(offlineSale);
+        localStorage.setItem("pharmacy-pos:offline-queue", JSON.stringify(queue));
+        setPendingOfflineSales(queue.length);
+        clear();
+        setCheckoutError("You're offline — sale queued and will sync when connected.");
+        setSubmitting(false);
+        return;
+      }
       const saleId = await workspaceGateway.completeSale({
         idempotencyKey: prepareCheckoutKey(),
         customerId: customerId ?? undefined,
@@ -522,6 +587,11 @@ export function PosPage() {
 
   return (
     <div className="grid min-h-[calc(100vh-6.25rem)] content-start xl:grid-cols-[minmax(0,1fr)_430px]">
+      {!isOnline && (
+        <div className="col-span-full rounded-md bg-[var(--danger-soft)] px-4 py-2.5 text-sm text-[var(--danger)] flex items-center justify-between">
+          <span><strong>Offline mode</strong> — sales are queued and will sync automatically when you reconnect. Pending: {pendingOfflineSales}</span>
+        </div>
+      )}
       <div className="sticky top-[6.25rem] z-20 col-span-full grid grid-cols-2 gap-1 border-b border-[var(--border)] bg-white p-2 xl:hidden">
         <button
           type="button"
@@ -579,7 +649,8 @@ export function PosPage() {
                   <Image src={medicineImage(medicine)} alt="" width={160} height={96} className="mx-auto my-2 h-16 w-full object-contain" />
                   <span className="mt-2 line-clamp-2 text-sm font-semibold">{medicine.brandName}</span>
                   <span className="mt-0.5 line-clamp-1 text-xs text-[var(--text-muted)]">{medicine.genericName}</span>
-                  <div className="mt-auto flex w-full items-end justify-between gap-2 pt-3"><span className="font-semibold text-[var(--brand-strong)]">{formatKes(medicine.sellingPrice)}</span><span className={cn("text-xs", stock <= medicine.reorderLevel ? "text-[var(--danger)]" : "text-[var(--text-muted)]")}>{stock} left</span></div>
+                   <div className="mt-auto flex w-full items-end justify-between gap-2 pt-3"><span className="font-semibold text-[var(--brand-strong)]">{formatKes(medicine.sellingPrice)}</span><span className={cn("text-xs", stock <= medicine.reorderLevel ? "text-[var(--danger)]" : "text-[var(--text-muted)]")}>{stock} left</span></div>
+                   {(() => { const base = getMedicineUnits(medicine)[0]; return base ? <span className="text-[10px] text-[var(--text-muted)]">per {base.name}</span> : null; })()}
                 </button>
               );
             })}
