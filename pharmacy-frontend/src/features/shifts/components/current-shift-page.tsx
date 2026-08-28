@@ -225,7 +225,7 @@ export function CurrentShiftPage() {
                   </p>
                   <div className="mt-3 grid gap-3 sm:grid-cols-[140px_minmax(0,1fr)]">
                     <Field label="Amount (KES)" required>
-                      <Input autoFocus inputMode="decimal" value={cashAmount} onChange={(event) => setCashAmount(event.target.value)} />
+                      <Input autoFocus inputMode="decimal" value={cashAmount} onChange={(event) => setCashAmount(event.target.value.replace(/[^\d.]/g, ""))} />
                     </Field>
                     <Field label="Reason" required>
                       <Input placeholder={cashDialog === "CASH_IN" ? "e.g. Change top-up" : "e.g. Petty cash, courier"} value={cashReason} onChange={(event) => setCashReason(event.target.value)} />
@@ -266,7 +266,7 @@ export function CurrentShiftPage() {
             <p className="mt-1 text-sm text-[var(--text-muted)]">Count the physical cash drawer before closing.</p>
             <div className="mt-5">
               <Field label="Actual cash counted (KES)" required>
-                <Input inputMode="decimal" value={actualCash} onChange={(event) => setActualCash(event.target.value)} />
+                <Input inputMode="decimal" value={actualCash} onChange={(event) => setActualCash(event.target.value.replace(/[^\d.]/g, ""))} />
               </Field>
             </div>
             <div className="mt-4 space-y-2 border-y border-[var(--border)] py-4 text-sm">
@@ -285,7 +285,7 @@ export function CurrentShiftPage() {
           <p className="mt-1 text-sm text-[var(--text-muted)]">Sales stay locked until the starting cash float is recorded.</p>
           <form onSubmit={handleOpen} className="mt-5">
             <Field label="Opening cash float (KES)" required>
-              <Input autoFocus inputMode="decimal" value={openingFloat} onChange={(event) => setOpeningFloat(event.target.value)} />
+              <Input autoFocus inputMode="decimal" value={openingFloat} onChange={(event) => setOpeningFloat(event.target.value.replace(/[^\d.]/g, ""))} />
             </Field>
             <PrimaryButton type="submit" className="mt-5 w-full"><Play aria-hidden="true" size={17} /> Open shift</PrimaryButton>
           </form>
