@@ -818,7 +818,7 @@ public class SaleService {
                             ? null : completedAt)
                     .build();
             sale.getPayment().add(payment);
-            submitted = submitted.add(amount);
+            if (method != Payment.PaymentMethod.CREDIT) submitted = submitted.add(amount);
             if (method != Payment.PaymentMethod.M_PESA) paid = paid.add(amount);
             if (method == Payment.PaymentMethod.CASH) cashApplied = cashApplied.add(amount);
             if (method == Payment.PaymentMethod.CREDIT) creditAmount = creditAmount.add(amount);
