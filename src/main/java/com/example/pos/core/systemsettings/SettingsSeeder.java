@@ -108,7 +108,7 @@ public class SettingsSeeder implements CommandLineRunner {
                 "Maximum discount percentage allowed");
         seed(pharmacyId, branchId, SettingKeys.Sale.REQUIRE_MANAGER_FOR_VOID, "true",
                 "Require manager approval to void a sale");
-        seed(pharmacyId, branchId, SettingKeys.Sale.ALLOW_CREDIT_SALES, "false",
+        seed(pharmacyId, branchId, SettingKeys.Sale.ALLOW_CREDIT_SALES, "true",
                 "Allow credit sales");
         seed(pharmacyId, branchId, SettingKeys.Sale.ROUNDING_MODE, "HALF_UP",
                 "Rounding mode: UP, DOWN, HALF_UP");

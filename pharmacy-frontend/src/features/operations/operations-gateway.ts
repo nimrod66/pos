@@ -20,6 +20,9 @@ export interface Customer {
   kraPin: string | null;
   loyaltyPoints: number;
   notes: string | null;
+  balance?: number;
+  creditLimit?: number | null;
+  accountStatus?: string;
   createdAt: string;
   updatedAt: string;
 }

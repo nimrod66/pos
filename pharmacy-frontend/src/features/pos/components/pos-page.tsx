@@ -1,6 +1,6 @@
 "use client";
 
-import { Banknote, Minus, PackageSearch, Plus, ScanLine, Search, ShieldCheck, Smartphone, Trash2, UserRound } from "lucide-react";
+import { Banknote, CreditCard, Minus, PackageSearch, Plus, ScanLine, Search, ShieldCheck, Smartphone, Trash2, UserRound } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -59,6 +59,7 @@ export function PosPage() {
   const lines = useCartStore((state) => state.lines);
   const customerId = useCartStore((state) => state.customerId);
   const cashTendered = useCartStore((state) => state.cashTendered);
+  const creditAmount = useCartStore((state) => state.creditAmount);
   const paymentMethod = useCartStore((state) => state.paymentMethod);
   const mpesaMode = useCartStore((state) => state.mpesaMode);
   const mpesaPhone = useCartStore((state) => state.mpesaPhone);
@@ -76,6 +77,7 @@ export function PosPage() {
   const setMpesaPhone = useCartStore((state) => state.setMpesaPhone);
   const setMpesaReference = useCartStore((state) => state.setMpesaReference);
   const setCashTendered = useCartStore((state) => state.setCashTendered);
+  const setCreditAmount = useCartStore((state) => state.setCreditAmount);
   const setCustomerId = useCartStore((state) => state.setCustomerId);
   const setPrescriptionReferenceId = useCartStore(
     (state) => state.setPrescriptionReferenceId,
@@ -329,6 +331,11 @@ export function PosPage() {
     cashTendered === "" || /^\d+(\.\d{1,2})?$/.test(cashTendered);
   const cashCoversTotal =
     cashTendered === "" || (validCashTendered && moneyToCents(cashTendered) >= moneyToCents(total));
+  const validCreditAmount =
+    creditAmount === "" || /^\d+(\.\d{1,2})?$/.test(creditAmount);
+  const creditAmountValid =
+    paymentMethod !== "CREDIT" ||
+    (validCreditAmount && creditAmount !== "" && moneyToCents(creditAmount) > 0 && moneyToCents(creditAmount) <= moneyToCents(total));
   const changeDue =
     paymentMethod === "CASH" && cashTendered && validCashTendered
       ? centsToMoney(
@@ -485,6 +492,7 @@ export function PosPage() {
         prescriptionReferenceId: requiresApproval
           ? prescriptionReferenceId.trim()
           : undefined,
+        creditAmount: paymentMethod === "CREDIT" ? creditAmount || total : undefined,
       });
       if (
         paymentMethod === "CASH" &&
@@ -703,9 +711,10 @@ export function PosPage() {
               ))}
             </Select>
           </label>
-          <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Payment method">
+          <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Payment method">
             <button type="button" role="radio" aria-checked={paymentMethod === "CASH"} disabled={registerConfig?.cashEnabled === false} onClick={() => setPaymentMethod("CASH")} className={cn("flex h-11 items-center justify-center gap-2 rounded-md border text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40", paymentMethod === "CASH" ? "border-[var(--brand)] bg-[var(--brand-soft)] text-[var(--brand-strong)]" : "border-[var(--border-strong)] text-[var(--text-muted)]")}><Banknote aria-hidden="true" size={17} /> Cash</button>
             <button type="button" role="radio" aria-checked={paymentMethod === "MPESA"} disabled={registerConfig?.mpesaEnabled === false} onClick={() => setPaymentMethod("MPESA")} className={cn("flex h-11 items-center justify-center gap-2 rounded-md border text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40", paymentMethod === "MPESA" ? "border-[var(--brand)] bg-[var(--brand-soft)] text-[var(--brand-strong)]" : "border-[var(--border-strong)] text-[var(--text-muted)]")}><Smartphone aria-hidden="true" size={17} /> M-Pesa</button>
+            <button type="button" role="radio" aria-checked={paymentMethod === "CREDIT"} disabled={!customerId} onClick={() => setPaymentMethod("CREDIT")} title={!customerId ? "Select a customer first" : undefined} className={cn("flex h-11 items-center justify-center gap-2 rounded-md border text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40", paymentMethod === "CREDIT" ? "border-[var(--brand)] bg-[var(--brand-soft)] text-[var(--brand-strong)]" : "border-[var(--border-strong)] text-[var(--text-muted)]")}><CreditCard aria-hidden="true" size={17} /> Credit</button>
           </div>
           {paymentMethod === "MPESA" ? (
             <div className="mt-3 space-y-3">
@@ -756,6 +765,7 @@ export function PosPage() {
             </div>
           ) : null}
           {paymentMethod === "CASH" ? <label className="mt-3 block"><span className="mb-1.5 block text-xs font-semibold">Cash tendered</span><Input inputMode="decimal" placeholder={total} value={cashTendered} onChange={(event) => setCashTendered(event.target.value.replace(/[^\d.]/g, ""))} />{cashTendered && validCashTendered && cashCoversTotal ? <span className="mt-1.5 block text-xs text-[var(--text-muted)]">Change due: {formatKes(changeDue)}</span> : null}</label> : null}
+          {paymentMethod === "CREDIT" ? <label className="mt-3 block"><span className="mb-1.5 block text-xs font-semibold">Credit amount (max {formatKes(total)})</span><Input inputMode="decimal" placeholder={total} value={creditAmount} onChange={(event) => setCreditAmount(event.target.value.replace(/[^\d.]/g, ""))} />{creditAmount && validCreditAmount ? <span className="mt-1.5 block text-xs text-[var(--text-muted)]">Amount owed: {formatKes(centsToMoney(moneyToCents(total) - moneyToCents(creditAmount || "0")))}</span> : null}</label> : null}
           {requiresApproval && canApprovePrescription ? <label className="mt-3 block rounded-md bg-[var(--accent-soft)] p-3 text-sm"><span className="mb-1.5 flex items-center gap-1.5 font-semibold"><ShieldCheck aria-hidden="true" size={16} /> Prescription</span><Select value={prescriptionReferenceId} onChange={(event) => setPrescriptionReferenceId(event.target.value)}><option value="">Select an active prescription</option>{prescriptionReferenceId && !prescriptions.some((item) => item.id === prescriptionReferenceId) ? <option value={prescriptionReferenceId}>Selected prescription</option> : null}{prescriptions.map((prescription) => <option key={prescription.id} value={prescription.id}>{prescription.prescriptionNumber} - {prescription.customerName}</option>)}</Select></label> : null}
           {requiresApproval && !canApprovePrescription ? <div className="mt-3 flex items-start gap-2.5 rounded-md bg-[var(--warning-soft)] p-3 text-sm text-[var(--warning)]"><ShieldCheck aria-hidden="true" className="mt-0.5 shrink-0" size={16} /><span><span className="block font-semibold">Pharmacist approval required</span><span className="mt-0.5 block text-xs">A staff member with prescription approval permission must complete this sale.</span></span></div> : null}
                       {moneyToCents(totalDiscount) > 0 ? (
@@ -766,7 +776,7 @@ export function PosPage() {
             ) : null}
             <div className="my-4 flex items-center justify-between"><span className="text-sm text-[var(--text-muted)]">Total due</span><span className="text-2xl font-semibold">{formatKes(total)}</span></div>
           <FormError message={checkoutError} />
-          <PrimaryButton type="button" onClick={() => void handleCheckout()} disabled={submitting || !currentShiftId || detailedLines.length === 0 || (paymentMethod === "MPESA" && (mpesaMode === "STK" ? !paymentCapabilities?.mpesaStkConfigured || !validMpesaPhone : !mpesaReference.trim())) || (paymentMethod === "CASH" && (!validCashTendered || !cashCoversTotal)) || (requiresApproval && (!canApprovePrescription || !prescriptionReferenceId.trim()))} className="mt-3 h-12 w-full text-base">{submitting ? paymentMethod === "MPESA" && mpesaMode === "STK" ? "Waiting for M-Pesa..." : "Completing sale..." : paymentMethod === "MPESA" && mpesaMode === "STK" ? `Send STK Push - ${formatKes(total)}` : `Complete sale - ${formatKes(total)}`}</PrimaryButton>
+          <PrimaryButton type="button" onClick={() => void handleCheckout()} disabled={submitting || !currentShiftId || detailedLines.length === 0 || (paymentMethod === "MPESA" && (mpesaMode === "STK" ? !paymentCapabilities?.mpesaStkConfigured || !validMpesaPhone : !mpesaReference.trim())) || (paymentMethod === "CASH" && (!validCashTendered || !cashCoversTotal)) || (paymentMethod === "CREDIT" && !creditAmountValid) || (requiresApproval && (!canApprovePrescription || !prescriptionReferenceId.trim()))} className="mt-3 h-12 w-full text-base">{submitting ? paymentMethod === "MPESA" && mpesaMode === "STK" ? "Waiting for M-Pesa..." : "Completing sale..." : paymentMethod === "MPESA" && mpesaMode === "STK" ? `Send STK Push - ${formatKes(total)}` : `Complete sale - ${formatKes(total)}`}</PrimaryButton>
         </div>
       </aside>
 

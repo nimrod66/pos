@@ -18,6 +18,8 @@ export const PERMISSIONS = {
   SUPPLIER_WRITE: "supplier.write",
   CUSTOMER_READ: "customer.read",
   CUSTOMER_WRITE: "customer.write",
+  CUSTOMER_ACCOUNT_READ: "customer.account.read",
+  CUSTOMER_ACCOUNT_WRITE: "customer.account.write",
   PURCHASE_ORDER_READ: "purchase_order.read",
   PURCHASE_ORDER_WRITE: "purchase_order.write",
   SHIFT_OPEN: "shift.open",

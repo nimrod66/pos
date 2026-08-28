@@ -15,18 +15,18 @@ import java.util.Optional;
 
 public interface MedicineRepository extends JpaRepository<Medicine, UUID> {
 
-    String[] DETAILS = {"pharmacy", "manufacturer", "medicineCategories", "dosageForm", "unit", "tax"};
+    String[] DETAILS = {"pharmacy", "manufacturer", "medicineCategories", "dosageForm", "unit", "buyingUnit", "tax"};
 
-    @EntityGraph(attributePaths = {"pharmacy", "manufacturer", "medicineCategories", "dosageForm", "unit", "tax"})
+    @EntityGraph(attributePaths = {"pharmacy", "manufacturer", "medicineCategories", "dosageForm", "unit", "buyingUnit", "tax"})
     Optional<Medicine> findByIdAndPharmacyId(UUID id, UUID pharmacyId);
 
-    @EntityGraph(attributePaths = {"pharmacy", "manufacturer", "medicineCategories", "dosageForm", "unit", "tax"})
+    @EntityGraph(attributePaths = {"pharmacy", "manufacturer", "medicineCategories", "dosageForm", "unit", "buyingUnit", "tax"})
     Page<Medicine> findByPharmacyId(UUID pharmacyId, Pageable pageable);
 
     @EntityGraph(attributePaths = {"pharmacy"})
     List<Medicine> findAllByPharmacyId(UUID pharmacyId);
 
-    @EntityGraph(attributePaths = {"pharmacy", "manufacturer", "medicineCategories", "dosageForm", "unit", "tax"})
+    @EntityGraph(attributePaths = {"pharmacy", "manufacturer", "medicineCategories", "dosageForm", "unit", "buyingUnit", "tax"})
     Optional<Medicine> findByPharmacyIdAndBarcode(UUID pharmacyId, String barcode);
 
     boolean existsByPharmacyIdAndBarcode(UUID pharmacyId, String barcode);
@@ -37,16 +37,16 @@ public interface MedicineRepository extends JpaRepository<Medicine, UUID> {
 
     boolean existsByPharmacyIdAndSkuIgnoreCaseAndIdNot(UUID pharmacyId, String sku, UUID id);
 
-    @EntityGraph(attributePaths = {"pharmacy", "manufacturer", "medicineCategories", "dosageForm", "unit", "tax"})
+    @EntityGraph(attributePaths = {"pharmacy", "manufacturer", "medicineCategories", "dosageForm", "unit", "buyingUnit", "tax"})
     Page<Medicine> findByPharmacyIdAndMedicineCategoriesId(UUID pharmacyId, UUID categoryId, Pageable pageable);
 
-    @EntityGraph(attributePaths = {"pharmacy", "manufacturer", "medicineCategories", "dosageForm", "unit", "tax"})
+    @EntityGraph(attributePaths = {"pharmacy", "manufacturer", "medicineCategories", "dosageForm", "unit", "buyingUnit", "tax"})
     Page<Medicine> findByPharmacyIdAndManufacturerId(UUID pharmacyId, UUID manufacturerId, Pageable pageable);
 
-    @EntityGraph(attributePaths = {"pharmacy", "manufacturer", "medicineCategories", "dosageForm", "unit", "tax"})
+    @EntityGraph(attributePaths = {"pharmacy", "manufacturer", "medicineCategories", "dosageForm", "unit", "buyingUnit", "tax"})
     Page<Medicine> findByPharmacyIdAndIsControlledDrugTrue(UUID pharmacyId, Pageable pageable);
 
-    @EntityGraph(attributePaths = {"pharmacy", "manufacturer", "medicineCategories", "dosageForm", "unit", "tax"})
+    @EntityGraph(attributePaths = {"pharmacy", "manufacturer", "medicineCategories", "dosageForm", "unit", "buyingUnit", "tax"})
     @Query("SELECT m FROM Medicine m WHERE m.pharmacy.id = :pharmacyId AND "
             + "(LOWER(m.brandName) LIKE LOWER(CONCAT('%', :q, '%')) "
             + "OR LOWER(m.genericName) LIKE LOWER(CONCAT('%', :q, '%')) "
@@ -56,7 +56,7 @@ public interface MedicineRepository extends JpaRepository<Medicine, UUID> {
                                     @Param("q") String q,
                                     Pageable pageable);
 
-    @EntityGraph(attributePaths = {"pharmacy", "manufacturer", "medicineCategories", "dosageForm", "unit", "tax"})
+    @EntityGraph(attributePaths = {"pharmacy", "manufacturer", "medicineCategories", "dosageForm", "unit", "buyingUnit", "tax"})
     @Query("SELECT m FROM Medicine m WHERE m.pharmacy.id = :pharmacyId "
             + "AND m.status = com.example.pos.masterdata.medicine.model.Medicine.Status.AVAILABLE AND "
             + "(LOWER(m.brandName) LIKE LOWER(CONCAT('%', :q, '%')) "

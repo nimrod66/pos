@@ -34,6 +34,7 @@ public class SaleResponseDto {
     private BigDecimal paidTotal;
     private BigDecimal cashTendered;
     private BigDecimal changeDue;
+    private BigDecimal amountOwed;
     private UUID shiftId;
     private UUID prescriptionReferenceId;
     private UUID branchId;
@@ -116,6 +117,7 @@ public class SaleResponseDto {
                 .paidTotal(sale.getPaidTotal())
                 .cashTendered(sale.getCashTendered())
                 .changeDue(sale.getChangeDue())
+                .amountOwed(sale.getAmountOwed())
                 .shiftId(sale.getShift() != null ? sale.getShift().getId() : null)
                 .branchId(sale.getBranch() != null ? sale.getBranch().getId() : null)
                 .branchName(sale.getBranch() != null ? sale.getBranch().getBranchName() : null)

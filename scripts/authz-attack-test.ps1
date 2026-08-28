@@ -108,7 +108,7 @@ Write-Host "-- T4: Manager role boundaries --"
 $manager = New-Login "manager@demo.com" "manager123"
 # Get the manager's branch from their profile
 $mgrProfile = (Invoke-RestMethod -Uri "$ApiBase/api/v1/auth/me" -WebSession $manager.session -Headers $manager.headers).data
-$mgrBranchId = if ($mgrProfile.branch) { $mgrProfile.branch.id } else { "fab48c89-7bac-46e0-adc8-7daa4cd4914a" }
+$mgrBranchId = if ($mgrProfile.branch) { $mgrProfile.branch.id } else { (docker exec pharmacy-pos-pilot-postgres-1 psql -U pharmacy_pos -d pharmacy_pos -t -A -c "SELECT id FROM branch LIMIT 1" 2>$null).Trim() }
 
 $r = Call GET "/reports/sales-summary?branchId=$mgrBranchId&from=2026-01-01&to=2026-12-31" $manager
 if ($r.ok) { Ok "T4a-manager-view-sales-report" } else { Bad "T4a-manager-view-sales-report" "should succeed" }

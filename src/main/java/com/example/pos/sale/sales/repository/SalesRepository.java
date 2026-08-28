@@ -2,6 +2,7 @@ package com.example.pos.sale.sales.repository;
 
 import java.util.UUID;
 
+import com.example.pos.customer.model.Customer;
 import com.example.pos.sale.sales.model.Sales;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -12,6 +13,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import jakarta.persistence.LockModeType;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -56,4 +58,6 @@ public interface SalesRepository extends JpaRepository<Sales, UUID> {
 
     @EntityGraph(attributePaths = {"saleItems", "saleItems.medicineBatches", "saleItems.medicineBatches.medicine", "payment"})
     List<Sales> findByCustomerIdAndBranchIdOrderByCompletedAtDesc(UUID customerId, UUID branchId);
+
+    List<Sales> findByCustomerAndAmountOwedGreaterThan(Customer customer, BigDecimal amountOwed);
 }

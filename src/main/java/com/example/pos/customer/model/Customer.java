@@ -9,6 +9,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.*;
 
+import java.math.BigDecimal;
+
 @Entity
 @Getter
 @Setter
@@ -33,4 +35,12 @@ public class Customer extends BaseEntity {
     private String kraPin;
 
     private String notes;
+
+    @Builder.Default
+    private BigDecimal balance = BigDecimal.ZERO;
+
+    private BigDecimal creditLimit;
+
+    @Builder.Default
+    private String accountStatus = "ACTIVE";
 }

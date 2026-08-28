@@ -110,6 +110,11 @@ public class Sales extends BaseEntity {
     @Builder.Default
     private boolean synced = false;
 
+    @Builder.Default
+    private BigDecimal amountOwed = BigDecimal.ZERO;
+
+    private LocalDateTime dueDate;
+
     public enum PaymentStatus {
         PAID, NOT_PAID, IN_PROGRESS
     }

@@ -22,6 +22,7 @@ interface CartStore {
   cashTendered: string;
   checkoutKey: string | null;
   customerId: string | null;
+  creditAmount: string;
   lines: CartLine[];
   mpesaMode: "STK" | "MANUAL";
   mpesaPhone: string;
@@ -40,6 +41,7 @@ interface CartStore {
   setPaymentMethod(method: PaymentMethod): void;
   setPharmacistApproved(approved: boolean): void;
   setCashTendered(amount: string): void;
+  setCreditAmount(amount: string): void;
   setCustomerId(customerId: string | null): void;
   setPrescriptionReferenceId(reference: string): void;
   setQuantity(medicineId: string, quantity: number): void;
@@ -53,6 +55,7 @@ export const useCartStore = create<CartStore>()(
       cashTendered: "",
       checkoutKey: null,
       customerId: null,
+      creditAmount: "",
       lines: [],
       mpesaMode: "STK",
       mpesaPhone: "",
@@ -88,6 +91,7 @@ export const useCartStore = create<CartStore>()(
           checkoutKey: null,
           cashTendered: "",
           customerId: null,
+          creditAmount: "",
           lines: [],
           mpesaMode: "STK",
           mpesaPhone: "",
@@ -123,6 +127,9 @@ export const useCartStore = create<CartStore>()(
       },
       setCashTendered(cashTendered) {
         set({ checkoutKey: null, cashTendered });
+      },
+      setCreditAmount(creditAmount) {
+        set({ checkoutKey: null, creditAmount });
       },
       resetCheckoutKey() {
         set({ checkoutKey: null });

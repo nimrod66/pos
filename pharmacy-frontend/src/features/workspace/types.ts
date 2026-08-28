@@ -2,7 +2,7 @@ import type { TenantRole } from "@/features/auth/access-control";
 
 export type MedicineStatus = "ACTIVE" | "INACTIVE";
 export type SupplierStatus = "ACTIVE" | "INACTIVE";
-export type PaymentMethod = "CASH" | "MPESA";
+export type PaymentMethod = "CASH" | "MPESA" | "CREDIT";
 export type SaleStatus =
   | "COMPLETED"
   | "PARTIALLY_RETURNED"
@@ -143,6 +143,7 @@ export interface Sale {
   refundTotal: string;
   cashTendered: string | null;
   changeDue: string | null;
+  amountOwed?: string | null;
   customerKraPin?: string | null;
   idempotencyKey: string;
 }
@@ -247,6 +248,7 @@ export interface CheckoutInput {
   pharmacistApproved: boolean;
   cashTendered?: string;
   prescriptionReferenceId?: string;
+  creditAmount?: string;
 }
 
 export interface PaymentCapabilities {

@@ -24,6 +24,8 @@ public final class PermissionCodes {
     public static final String SUPPLIER_WRITE = "supplier.write";
     public static final String CUSTOMER_READ = "customer.read";
     public static final String CUSTOMER_WRITE = "customer.write";
+    public static final String CUSTOMER_ACCOUNT_READ = "customer.account.read";
+    public static final String CUSTOMER_ACCOUNT_WRITE = "customer.account.write";
     public static final String PURCHASE_ORDER_READ = "purchase_order.read";
     public static final String PURCHASE_ORDER_WRITE = "purchase_order.write";
     public static final String SHIFT_OPEN = "shift.open";
@@ -67,6 +69,8 @@ public final class PermissionCodes {
             SUPPLIER_WRITE,
             CUSTOMER_READ,
             CUSTOMER_WRITE,
+            CUSTOMER_ACCOUNT_READ,
+            CUSTOMER_ACCOUNT_WRITE,
             PURCHASE_ORDER_READ,
             PURCHASE_ORDER_WRITE,
             SHIFT_OPEN,
@@ -97,7 +101,8 @@ public final class PermissionCodes {
                     SALE_VOID, SALE_RETURN, MEDICINE_READ, MEDICINE_WRITE,
                     MEDICINE_PRICE_WRITE, INVENTORY_READ,
                     INVENTORY_ADJUST_APPROVE, SUPPLIER_READ, CUSTOMER_READ,
-                    CUSTOMER_WRITE, PURCHASE_ORDER_READ, SHIFT_VARIANCE_APPROVE,
+                    CUSTOMER_WRITE, CUSTOMER_ACCOUNT_READ, CUSTOMER_ACCOUNT_WRITE,
+                    PURCHASE_ORDER_READ, SHIFT_VARIANCE_APPROVE,
                     REPORT_SALES_READ, REPORT_INVENTORY_READ, TERMINAL_READ,
                     TERMINAL_MANAGE, PRESCRIPTION_READ,
                     EXPENSE_READ, EXPENSE_WRITE, INSURANCE_READ, INSURANCE_WRITE,
@@ -105,11 +110,11 @@ public final class PermissionCodes {
                     STOCK_TRANSFER_READ, STOCK_TRANSFER_WRITE),
             "PHARMACIST", List.of(
                     DASHBOARD_READ, POS_SELL, SALE_READ, MEDICINE_READ, INVENTORY_READ,
-                    CUSTOMER_READ, CUSTOMER_WRITE,
+                    CUSTOMER_READ, CUSTOMER_WRITE, CUSTOMER_ACCOUNT_READ, CUSTOMER_ACCOUNT_WRITE,
                     SHIFT_OPEN, SHIFT_CLOSE, PRESCRIPTION_READ, PRESCRIPTION_APPROVE),
             "CASHIER", List.of(
                     POS_SELL, POS_DISCOUNT_REQUEST, SALE_READ, SALE_RECEIPT_REPRINT,
-                    SALE_RETURN, MEDICINE_READ, CUSTOMER_READ, CUSTOMER_WRITE,
+                    SALE_RETURN, MEDICINE_READ, CUSTOMER_READ, CUSTOMER_WRITE, CUSTOMER_ACCOUNT_READ,
                     SHIFT_OPEN, SHIFT_CLOSE, EXPENSE_READ, PURCHASE_ORDER_READ,
                     SUPPLIER_READ, PRESCRIPTION_READ),
             "STORE_KEEPER", List.of(
@@ -122,7 +127,8 @@ public final class PermissionCodes {
             "PHARMACY_TECHNICIAN", List.of(
                     DASHBOARD_READ, POS_SELL, SALE_READ, SALE_RECEIPT_REPRINT, MEDICINE_READ,
                     INVENTORY_READ, INVENTORY_RECEIVE, SUPPLIER_READ,
-                    CUSTOMER_READ, CUSTOMER_WRITE, PURCHASE_ORDER_READ,
+                    CUSTOMER_READ, CUSTOMER_WRITE, CUSTOMER_ACCOUNT_READ, CUSTOMER_ACCOUNT_WRITE,
+                    PURCHASE_ORDER_READ,
                     SHIFT_OPEN, SHIFT_CLOSE, PRESCRIPTION_READ));
 
     private PermissionCodes() {

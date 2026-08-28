@@ -54,7 +54,8 @@ Write-Host ""
 # Login two different users
 $cashier1 = New-Login "cashier@demo.com" "cashier123"
 $cashier2 = New-Login "admin@demo.com" "admin123"
-$branchId = "fab48c89-7bac-46e0-adc8-7daa4cd4914a"
+$branchId = (docker exec pharmacy-pos-pilot-postgres-1 psql -U pharmacy_pos -d pharmacy_pos -t -A -c "SELECT id FROM branch LIMIT 1" 2>$null).Trim()
+if (-not $branchId) { $branchId = "5e605c7e-ec5a-436e-8b27-6eb54c4cff80" }
 
 # Open shifts
 $shift1 = (Call POST "/shifts" $cashier1 @{ branchId = $branchId; openingCash = 500 }).data

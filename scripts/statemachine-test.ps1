@@ -71,12 +71,13 @@ function Login-And-GetShift($email, $passw) {
 Write-Host "-- S1: Sale state machine --"
 $owner = New-Login "admin@demo.com" "admin123"
 
-# Get a medicine and branch for testing
+# Get a medicine and branch for testing (dynamically from DB)
 $medsResp = (Call GET "/medicines?page=0&size=1" $owner).data
 $medData = $medsResp.content[0]
 $medId = $medData.id
 $medPrice = if ($medData.sellingPrice) { $medData.sellingPrice } else { 10 }
-$branchId = "fab48c89-7bac-46e0-adc8-7daa4cd4914a"
+$branchId = (docker exec pharmacy-pos-pilot-postgres-1 psql -U pharmacy_pos -d pharmacy_pos -t -A -c "SELECT id FROM branch LIMIT 1" 2>$null).Trim()
+if (-not $branchId) { $branchId = "5e605c7e-ec5a-436e-8b27-6eb54c4cff80" }
 
 # Open a shift first (required for sales)
 $shiftBody = @{ branchId = $branchId; openingCash = 1000 }
@@ -149,11 +150,18 @@ Write-Host ""
 Write-Host "-- S3: Stock transfer state machine --"
 $storekeeper = New-Login "storekeeper@demo.com" "stock1234"
 
-# Find two different branches
-$branches = (Call GET "/branches?pharmacyId=fab48c89-7bac-46e0-adc8-7daa4cd4914a" $storekeeper).data
-if (-not $branches) { $branches = @(@{ id = "fab48c89-7bac-46e0-adc8-7daa4cd4914a"; branchName = "Main" }; @{ id = "21b203ef-34e9-4a00-986d-ebf8e3a117e3"; branchName = "Smoke" }) }
-$srcBranch = $branches[0].id
-$dstBranch = if ($branches.Count -gt 1) { $branches[1].id } else { $branches[0].id }
+# Find two different branches (dynamically from DB)
+$branchRows = (docker exec pharmacy-pos-pilot-postgres-1 psql -U pharmacy_pos -d pharmacy_pos -t -A -c "SELECT id, branch_code FROM branch ORDER BY branch_code" 2>$null)
+$branchList = @()
+foreach ($line in ($branchRows -split "`n")) {
+    if ($line.Trim()) {
+        $parts = $line.Trim().Split("|")
+        $branchList += @{ id = $parts[0]; branchName = $parts[1] }
+    }
+}
+if ($branchList.Count -lt 1) { $branchList = @(@{ id = $branchId; branchName = "MAIN" }) }
+$srcBranch = $branchList[0].id
+$dstBranch = if ($branchList.Count -gt 1) { $branchList[1].id } else { $branchList[0].id }
 
     # Get a medicine batch to transfer
     $stock = (Call GET "/stock?page=0&size=10" $storekeeper).data

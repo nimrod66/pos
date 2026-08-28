@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.util.UUID;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -25,6 +26,9 @@ public class CustomerResponseDto {
     private Integer loyaltyPoints;
     private String kraPin;
     private String notes;
+    private BigDecimal balance;
+    private BigDecimal creditLimit;
+    private String accountStatus;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -35,6 +39,9 @@ public class CustomerResponseDto {
                 .phoneNumber(c.getPhoneNumber()).email(c.getEmail()).address(c.getAddress())
                 .loyaltyPoints(c.getLoyaltyPoints())
                 .kraPin(c.getKraPin()).notes(c.getNotes())
+                .balance(c.getBalance())
+                .creditLimit(c.getCreditLimit())
+                .accountStatus(c.getAccountStatus())
                 .createdAt(c.getCreatedAt()).updatedAt(c.getUpdatedAt()).build();
     }
 }

@@ -41,7 +41,7 @@ public class Payment extends BaseEntity {
     private LocalDateTime paymentDate;
 
     public enum PaymentMethod {
-        MPESA_MANUAL, M_PESA, CASH, CARD, STRIPE
+        MPESA_MANUAL, M_PESA, CASH, CARD, STRIPE, CREDIT
     }
 
 }

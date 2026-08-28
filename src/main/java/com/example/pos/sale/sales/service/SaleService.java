@@ -8,7 +8,9 @@ import com.example.pos.common.exception.ResourceNotFoundException;
 import com.example.pos.core.branch.model.Branch;
 import com.example.pos.core.pharmacy.model.Pharmacy;
 import com.example.pos.customer.model.Customer;
+import com.example.pos.customer.model.CustomerTransaction;
 import com.example.pos.customer.repository.CustomerRepository;
+import com.example.pos.customer.repository.CustomerTransactionRepository;
 import com.example.pos.inventory.batches.model.MedicineBatches;
 import com.example.pos.inventory.stock.model.Stock;
 import com.example.pos.inventory.stock.repository.StockRepository;
@@ -74,6 +76,7 @@ public class SaleService {
 
     private final SalesRepository salesRepository;
     private final CustomerRepository customerRepository;
+    private final CustomerTransactionRepository customerTransactionRepository;
     private final StockRepository stockRepository;
     private final StockMovementsRepository movementsRepository;
     private final IdempotencyKeyRepository idempotencyRepository;
@@ -91,6 +94,7 @@ public class SaleService {
 
     public SaleService(SalesRepository salesRepository,
                        CustomerRepository customerRepository,
+                       CustomerTransactionRepository customerTransactionRepository,
                        StockRepository stockRepository,
                        StockMovementsRepository movementsRepository,
                        IdempotencyKeyRepository idempotencyRepository,
@@ -107,6 +111,7 @@ public class SaleService {
                        com.example.pos.core.systemsettings.service.SystemSettingsService settingsService) {
         this.salesRepository = salesRepository;
         this.customerRepository = customerRepository;
+        this.customerTransactionRepository = customerTransactionRepository;
         this.stockRepository = stockRepository;
         this.movementsRepository = movementsRepository;
         this.idempotencyRepository = idempotencyRepository;
@@ -273,10 +278,14 @@ public class SaleService {
         sale.setPaidTotal(paymentTotals.paidTotal());
         sale.setCashTendered(paymentTotals.cashTendered());
         sale.setChangeDue(paymentTotals.changeDue());
+        sale.setAmountOwed(paymentTotals.amountOwed());
         sale.setSaleStatus(pendingOnlinePayment
                 ? Sales.SaleStatus.SUSPENDED : Sales.SaleStatus.COMPLETED);
         sale.setPaymentStatus(pendingOnlinePayment
-                ? Sales.PaymentStatus.IN_PROGRESS : Sales.PaymentStatus.PAID);
+                ? Sales.PaymentStatus.IN_PROGRESS
+                : paymentTotals.amountOwed().signum() > 0
+                        ? Sales.PaymentStatus.NOT_PAID
+                        : Sales.PaymentStatus.PAID);
         sale.setCompletedAt(pendingOnlinePayment ? null : checkoutAt);
 
         // Simple loyalty accrual: one point per full KES 100 spent.
@@ -335,6 +344,24 @@ public class SaleService {
                             .build());
                 }
             }
+        }
+
+        // Record credit sale: update customer balance and create ledger entry
+        if (!pendingOnlinePayment && paymentTotals.amountOwed().signum() > 0 && customer != null) {
+            BigDecimal newBalance = customer.getBalance().add(paymentTotals.amountOwed());
+            customer.setBalance(newBalance);
+            customerRepository.save(customer);
+
+            customerTransactionRepository.save(CustomerTransaction.builder()
+                    .customer(customer)
+                    .sale(saved)
+                    .transactionType(CustomerTransaction.TransactionType.CREDIT_ISSUED.name())
+                    .amount(paymentTotals.amountOwed())
+                    .runningBalance(newBalance)
+                    .description("Credit sale " + saved.getInvoiceNumber())
+                    .reference(saved.getInvoiceNumber())
+                    .recordedBy(cashier)
+                    .build());
         }
 
         key.setResourceId(saved.getId().toString());
@@ -716,6 +743,7 @@ public class SaleService {
         BigDecimal submitted = money(BigDecimal.ZERO);
         BigDecimal paid = money(BigDecimal.ZERO);
         BigDecimal cashApplied = money(BigDecimal.ZERO);
+        BigDecimal creditAmount = money(BigDecimal.ZERO);
         Set<String> manualReferences = new HashSet<>();
         boolean pendingOnlinePayment = false;
 
@@ -748,6 +776,31 @@ public class SaleService {
                             "INVALID_PAYMENT_REFERENCE");
                 }
                 pendingOnlinePayment = true;
+            } else if (method == Payment.PaymentMethod.CREDIT) {
+                String allowCredit = settingsService.resolveSettingValue(
+                        "sale.allow_credit_sales", current.branchId(), current.pharmacyId(), "true");
+                if (!Boolean.parseBoolean(allowCredit)) {
+                    throw new BadRequestException("Credit sales are not enabled",
+                            "CREDIT_SALES_DISABLED");
+                }
+                if (sale.getCustomer() == null) {
+                    throw new BadRequestException("Credit sales require a customer to be selected",
+                            "CREDIT_REQUIRES_CUSTOMER");
+                }
+                if (amount.compareTo(total) > 0) {
+                    throw new BadRequestException("Credit amount cannot exceed the sale total",
+                            "CREDIT_AMOUNT_EXCEEDS_TOTAL");
+                }
+                BigDecimal currentBalance = sale.getCustomer().getBalance() != null
+                        ? sale.getCustomer().getBalance() : BigDecimal.ZERO;
+                BigDecimal newOwed = total.subtract(submitted).subtract(amount).negate();
+                BigDecimal projectedBalance = currentBalance.add(newOwed);
+                if (sale.getCustomer().getCreditLimit() != null
+                        && projectedBalance.compareTo(sale.getCustomer().getCreditLimit()) > 0) {
+                    throw new BadRequestException("Credit limit exceeded. Current balance: "
+                            + currentBalance + ", limit: " + sale.getCustomer().getCreditLimit(),
+                            "CREDIT_LIMIT_EXCEEDED");
+                }
             } else if (reference != null) {
                 throw new BadRequestException("Cash payments cannot include a transaction reference",
                         "INVALID_PAYMENT_REFERENCE");
@@ -768,6 +821,7 @@ public class SaleService {
             submitted = submitted.add(amount);
             if (method != Payment.PaymentMethod.M_PESA) paid = paid.add(amount);
             if (method == Payment.PaymentMethod.CASH) cashApplied = cashApplied.add(amount);
+            if (method == Payment.PaymentMethod.CREDIT) creditAmount = creditAmount.add(amount);
         }
 
         if (pendingOnlinePayment && dto.getPayments().size() != 1) {
@@ -777,7 +831,15 @@ public class SaleService {
         submitted = money(submitted);
         paid = money(paid);
         cashApplied = money(cashApplied);
-        if (submitted.compareTo(total) != 0) {
+        creditAmount = money(creditAmount);
+
+        BigDecimal amountOwed = money(total.subtract(submitted));
+        if (amountOwed.signum() < 0) {
+            throw new BadRequestException("Total payments exceed the sale total",
+                    "PAYMENTS_EXCEED_TOTAL");
+        }
+
+        if (amountOwed.signum() > 0 && creditAmount.signum() == 0) {
             throw new BadRequestException("Payments must equal the sale total of " + total,
                     "PAYMENT_TOTAL_MISMATCH");
         }
@@ -797,7 +859,7 @@ public class SaleService {
                     "INSUFFICIENT_CASH_TENDERED");
         }
         return new PaymentTotals(
-                paid, tendered, money(tendered.subtract(cashApplied)), pendingOnlinePayment);
+                paid, tendered, money(tendered.subtract(cashApplied)), pendingOnlinePayment, amountOwed);
     }
 
     private Payment.PaymentMethod requestPaymentMethod(String value) {
@@ -806,7 +868,8 @@ public class SaleService {
             case "CASH" -> Payment.PaymentMethod.CASH;
             case "MPESA", "MPESA_MANUAL" -> Payment.PaymentMethod.MPESA_MANUAL;
             case "M_PESA", "MPESA_STK" -> Payment.PaymentMethod.M_PESA;
-            default -> throw new BadRequestException("Only CASH, MPESA_MANUAL, and M_PESA are supported",
+            case "CREDIT" -> Payment.PaymentMethod.CREDIT;
+            default -> throw new BadRequestException("Only CASH, MPESA_MANUAL, M_PESA, and CREDIT are supported",
                     "UNSUPPORTED_PAYMENT_METHOD");
         };
     }
@@ -959,6 +1022,7 @@ public class SaleService {
     private record PaymentTotals(BigDecimal paidTotal,
                                  BigDecimal cashTendered,
                                  BigDecimal changeDue,
-                                 boolean pendingOnlinePayment) {
+                                 boolean pendingOnlinePayment,
+                                 BigDecimal amountOwed) {
     }
 }

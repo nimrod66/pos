@@ -51,7 +51,8 @@ Write-Host ""
 
 # Login as owner (has all permissions)
 $owner = New-Login "admin@demo.com" "admin123"
-$branchId = "fab48c89-7bac-46e0-adc8-7daa4cd4914a"
+$branchId = (docker exec pharmacy-pos-pilot-postgres-1 psql -U pharmacy_pos -d pharmacy_pos -t -A -c "SELECT id FROM branch LIMIT 1" 2>$null).Trim()
+if (-not $branchId) { $branchId = "5e605c7e-ec5a-436e-8b27-6eb54c4cff80" }
 
 # Open shift
 $shift = (Call POST "/shifts" $owner @{ branchId = $branchId; openingCash = 500 }).data

@@ -261,7 +261,12 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
     );
     const method = input.paymentMethod === "MPESA"
       ? input.mpesaMode === "STK" ? "M_PESA" : "MPESA_MANUAL"
-      : "CASH";
+      : input.paymentMethod === "CREDIT" ? "CREDIT" : "CASH";
+
+    const paymentAmount = input.paymentMethod === "CREDIT"
+      ? Number(input.creditAmount ?? total.toFixed(2))
+      : total;
+
     const response = await apiRequest<BackendSale>("/sales", {
       body: {
         cashTendered:
@@ -274,7 +279,7 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
         note: null,
         payments: [
           {
-            amount: total,
+            amount: paymentAmount,
             method,
             reference:
               input.paymentMethod === "MPESA" && input.mpesaMode === "MANUAL"
