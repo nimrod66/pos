@@ -1,6 +1,6 @@
 "use client";
 
-import { Banknote, CreditCard, Minus, PackageSearch, Plus, ScanLine, Search, ShieldCheck, Smartphone, Trash2, UserRound } from "lucide-react";
+import { Banknote, CreditCard, Minus, PackageSearch, Plus, ScanLine, Search, ShieldCheck, Smartphone, Trash2, UserRound, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -46,6 +46,8 @@ import { WorkspaceError } from "@/features/workspace/store/workspace-store";
 import type { CheckoutInput, PaymentCapabilities } from "@/features/workspace/types";
 import type { PosLookupItem } from "@/features/workspace/types";
 import { cn } from "@/lib/cn";
+import { useDrugInteractions } from "@/features/drug-interactions/use-drug-interactions";
+import { SEVERITY_STYLES } from "@/features/drug-interactions/types";
 
 export function PosPage() {
   const router = useRouter();
@@ -108,6 +110,7 @@ export function PosPage() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [pendingOfflineSales, setPendingOfflineSales] = useState(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const drugInteractions = useDrugInteractions();
 
   useEffect(() => {
     let active = true;
@@ -913,6 +916,22 @@ export function PosPage() {
               </div>
             ) : null}
             <div className="my-4 flex items-center justify-between"><span className="text-sm text-[var(--text-muted)]">Total due</span><span className="text-2xl font-semibold">{formatKes(total)}</span></div>
+          {drugInteractions.length > 0 ? (
+            <div className="mb-3 space-y-2">
+              {drugInteractions.map((di) => {
+                const styles = SEVERITY_STYLES[di.severity];
+                return (
+                  <div key={di.id} className={`flex items-start gap-2 rounded-md border p-2.5 text-xs ${styles.bg} ${styles.text} ${styles.border}`}>
+                    <AlertTriangle aria-hidden="true" className="mt-0.5 shrink-0" size={15} />
+                    <span>
+                      <span className="font-semibold">{di.medicine1Name}</span> + <span className="font-semibold">{di.medicine2Name}</span>: {di.severity.toLowerCase()}
+                      {di.description ? ` — ${di.description}` : ""}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
           <FormError message={checkoutError} />
           <PrimaryButton type="button" onClick={() => void handleCheckout()} disabled={submitting || !currentShiftId || detailedLines.length === 0 || (paymentMethod === "MPESA" && (mpesaMode === "STK" ? !paymentCapabilities?.mpesaStkConfigured || !validMpesaPhone : !mpesaReference.trim())) || (paymentMethod === "CASH" && (!validCashTendered || !cashCoversTotal)) || (paymentMethod === "CREDIT" && !creditAmountValid) || (requiresApproval && (!canApprovePrescription || !prescriptionReferenceId.trim()))} className="mt-3 h-12 w-full text-base">{submitting ? paymentMethod === "MPESA" && mpesaMode === "STK" ? "Waiting for M-Pesa..." : "Completing sale..." : paymentMethod === "MPESA" && mpesaMode === "STK" ? `Send STK Push - ${formatKes(total)}` : `Complete sale - ${formatKes(total)}`}</PrimaryButton>
         </div>

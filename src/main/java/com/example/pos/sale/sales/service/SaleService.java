@@ -190,6 +190,12 @@ public SaleService(SalesRepository salesRepository,
         BigDecimal grandTotal = money(BigDecimal.ZERO);
         BigDecimal discountTotal = money(BigDecimal.ZERO);
 
+        // Batch-fetch all units to avoid N+1 lazy loading on parentUnit hierarchy
+        Map<UUID, Unit> unitMap = new HashMap<>();
+        for (Unit u : unitRepository.findAll()) {
+            unitMap.put(u.getId(), u);
+        }
+
         for (SaleRequestDto.SaleItemDto line : dto.getItems()) {
             if (!lineIds.add(line.getLineId())) {
                 throw new BadRequestException("Each sale line ID must be unique", "DUPLICATE_LINE_ID");
@@ -219,7 +225,7 @@ public SaleService(SalesRepository salesRepository,
             }
 
             Medicine medicine = stocks.getFirst().getMedicineBatches().getMedicine();
-            validateSellingUnit(line, medicine);
+            validateSellingUnit(line, medicine, unitMap);
             if (medicine.isRequiresPrescription() || medicine.isControlledDrug()) {
                 validatePrescription(medicine, prescription, requestedQuantity, prescriptionAllowance);
                 prescriptionUsed = true;
@@ -227,10 +233,10 @@ public SaleService(SalesRepository salesRepository,
             validateRequestedBatch(line, stocks);
 
             // Determine cumulative conversion factor for quantity conversion
-            int conversionFactor = cumulativeConversionFactor(medicine, line.getSellingUnitId());
+            int conversionFactor = cumulativeConversionFactor(medicine, line.getSellingUnitId(), unitMap);
             int baseQuantity = requestedQuantity * conversionFactor;
 
-            BigDecimal unitPrice = requiredPrice(medicine, line.getExpectedUnitPrice(), line.getSellingUnitId());
+            BigDecimal unitPrice = requiredPrice(medicine, line.getExpectedUnitPrice(), line.getSellingUnitId(), unitMap);
             int remaining = baseQuantity;
             for (Stock stock : stocks) {
                 if (remaining == 0) break;
@@ -685,36 +691,36 @@ public SaleService(SalesRepository salesRepository,
         return allowance;
     }
 
-    private void validateSellingUnit(SaleRequestDto.SaleItemDto line, Medicine medicine) {
+    private void validateSellingUnit(SaleRequestDto.SaleItemDto line, Medicine medicine, Map<UUID, Unit> unitMap) {
         if (line.getSellingUnitId() == null) return;
         UUID sellingUnitId = line.getSellingUnitId();
         // Accept the medicine's base dispensing unit
         if (medicine.getUnit() != null && sellingUnitId.equals(medicine.getUnit().getId())) return;
         // Accept the medicine's buying unit (e.g., strip, box)
         if (medicine.getBuyingUnit() != null && sellingUnitId.equals(medicine.getBuyingUnit().getId())) return;
-        // Accept any ancestor unit in the hierarchy by walking parent pointers
-        com.example.pos.masterdata.units.model.Unit current = medicine.getUnit();
+        // Accept any ancestor unit in the hierarchy by walking parent pointers from cache
+        Unit current = unitMap.get(sellingUnitId);
         while (current != null && current.getParentUnit() != null) {
-            current = current.getParentUnit();
-            if (sellingUnitId.equals(current.getId())) return;
+            current = unitMap.get(current.getParentUnit().getId());
+            if (current != null && sellingUnitId.equals(current.getId())) return;
         }
         throw new BadRequestException("Selling unit does not match the medicine or its unit hierarchy",
                 "SELLING_UNIT_MISMATCH");
     }
 
-    private int cumulativeConversionFactor(Medicine medicine, UUID sellingUnitId) {
+    private int cumulativeConversionFactor(Medicine medicine, UUID sellingUnitId, Map<UUID, Unit> unitMap) {
         if (sellingUnitId == null) return 1;
-        com.example.pos.masterdata.units.model.Unit sellingUnit = unitRepository.findById(sellingUnitId).orElse(null);
+        Unit sellingUnit = unitMap.get(sellingUnitId);
         if (sellingUnit == null) return 1;
         // Walk from selling unit down to base unit, multiplying conversion factors
         int total = 1;
-        com.example.pos.masterdata.units.model.Unit current = sellingUnit;
+        Unit current = sellingUnit;
         while (current != null) {
             total *= current.getConversionFactor() != null ? current.getConversionFactor() : 1;
-            current = current.getParentUnit();
+            current = current.getParentUnit() != null ? unitMap.get(current.getParentUnit().getId()) : null;
         }
         // Divide by base unit's own factor (which is always 1 for the base)
-        com.example.pos.masterdata.units.model.Unit base = medicine.getUnit();
+        Unit base = medicine.getUnit() != null ? unitMap.get(medicine.getUnit().getId()) : null;
         if (base != null && base.getConversionFactor() != null && base.getConversionFactor() > 0) {
             total /= base.getConversionFactor();
         }
@@ -730,13 +736,13 @@ public SaleService(SalesRepository salesRepository,
         }
     }
 
-    private BigDecimal requiredPrice(Medicine medicine, BigDecimal expectedPrice, UUID sellingUnitId) {
+    private BigDecimal requiredPrice(Medicine medicine, BigDecimal expectedPrice, UUID sellingUnitId, Map<UUID, Unit> unitMap) {
         if (medicine.getSellingPrice() == null) {
             throw new ConflictException("Medicine " + medicine.getBrandName() + " has no selling price",
                     "SELLING_PRICE_MISSING");
         }
         BigDecimal basePrice = money(medicine.getSellingPrice());
-        int conversionFactor = cumulativeConversionFactor(medicine, sellingUnitId);
+        int conversionFactor = cumulativeConversionFactor(medicine, sellingUnitId, unitMap);
         if (conversionFactor > 1) {
             BigDecimal convertedPrice = basePrice.multiply(BigDecimal.valueOf(conversionFactor));
             if (convertedPrice.compareTo(money(expectedPrice)) != 0) {
