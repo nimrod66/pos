@@ -3,12 +3,14 @@ package com.example.pos.core.backup.service;
 import com.example.pos.common.exception.BadRequestException;
 import com.example.pos.common.exception.InternalServerException;
 import com.example.pos.core.backup.dto.BackupResponseDto;
+import com.zaxxer.hikari.HikariDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import javax.sql.DataSource;
 import java.io.*;
 import java.nio.file.*;
 import java.time.Instant;
@@ -32,6 +34,7 @@ public class BackupService {
     private final String dbPassword;
     private final Path backupDir;
     private final int retentionDays;
+    private final DataSource dataSource;
     private final AtomicReference<Instant> lastBackupTime = new AtomicReference<>(Instant.EPOCH);
     private final AtomicReference<String> lastBackupStatus = new AtomicReference<>("NONE");
     private final AtomicReference<String> lastBackupError = new AtomicReference<>(null);
@@ -41,7 +44,8 @@ public class BackupService {
             @Value("${spring.datasource.username:pharmacy_pos}") String dbUser,
             @Value("${spring.datasource.password:pharmacy_pos}") String dbPassword,
             @Value("${pos.backup.dir:backups}") String backupDir,
-            @Value("${pos.backup.retention-days:30}") int retentionDays) {
+            @Value("${pos.backup.retention-days:30}") int retentionDays,
+            DataSource dataSource) {
         this.dbUser = dbUser;
         this.dbPassword = dbPassword;
         this.dbHost = extractHost(jdbcUrl);
@@ -49,6 +53,7 @@ public class BackupService {
         this.dbName = extractDbName(jdbcUrl);
         this.backupDir = Path.of(backupDir).toAbsolutePath();
         this.retentionDays = retentionDays;
+        this.dataSource = dataSource;
         try {
             Files.createDirectories(this.backupDir);
         } catch (IOException e) {
@@ -127,6 +132,15 @@ public class BackupService {
     }
 
     public void restoreBackup(InputStream dumpStream) {
+        // Create safety backup before destructive restore
+        BackupResponseDto safetyBackup = null;
+        try {
+            safetyBackup = createBackup();
+            log.info("Safety backup created before restore: {}", safetyBackup.getFilename());
+        } catch (Exception e) {
+            log.warn("Could not create safety backup before restore: {}", e.getMessage());
+        }
+
         Path tempDump = backupDir.resolve("restore_temp_" + System.currentTimeMillis() + ".dump");
         try {
             Files.copy(dumpStream, tempDump, StandardCopyOption.REPLACE_EXISTING);
@@ -136,56 +150,64 @@ public class BackupService {
 
         log.info("Starting restore from {}", tempDump);
 
-        ProcessBuilder dropPb = new ProcessBuilder(
-                "psql",
-                "-h", dbHost,
-                "-p", String.valueOf(dbPort),
-                "-U", dbUser,
-                "-d", "postgres",
-                "-c", "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '" + dbName + "' AND pid <> pg_backend_pid();",
-                "-c", "DROP DATABASE IF EXISTS " + dbName + ";",
-                "-c", "CREATE DATABASE " + dbName + " OWNER " + dbUser + ";"
-        );
-        dropPb.environment().put("PGPASSWORD", dbPassword);
-        dropPb.redirectErrorStream(true);
-
         try {
-            Process proc = dropPb.start();
-            String output = new String(proc.getInputStream().readAllBytes());
-            int exitCode = proc.waitFor();
-            if (exitCode != 0) {
-                log.error("Database reset failed: {}", output);
-                throw new InternalServerException("Database reset failed: " + output);
+            // Terminate connections, drop and recreate database
+            ProcessBuilder dropPb = new ProcessBuilder(
+                    "psql",
+                    "-h", dbHost,
+                    "-p", String.valueOf(dbPort),
+                    "-U", dbUser,
+                    "-d", "postgres",
+                    "-c", "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '" + dbName + "' AND pid <> pg_backend_pid();",
+                    "-c", "DROP DATABASE IF EXISTS " + dbName + ";",
+                    "-c", "CREATE DATABASE " + dbName + " OWNER " + dbUser + ";"
+            );
+            dropPb.environment().put("PGPASSWORD", dbPassword);
+            dropPb.redirectErrorStream(true);
+
+            Process dropProc = dropPb.start();
+            String dropOutput = new String(dropProc.getInputStream().readAllBytes());
+            int dropExit = dropProc.waitFor();
+            if (dropExit != 0) {
+                log.error("Database reset failed: {}", dropOutput);
+                throw new InternalServerException("Database reset failed: " + dropOutput);
             }
-        } catch (IOException | InterruptedException e) {
-            throw new InternalServerException("Database reset process failed: " + e.getMessage());
-        } finally {
-            safeDelete(tempDump);
-        }
 
-        ProcessBuilder restorePb = new ProcessBuilder(
-                "pg_restore",
-                "--no-owner",
-                "--role=" + dbUser,
-                "-h", dbHost,
-                "-p", String.valueOf(dbPort),
-                "-U", dbUser,
-                "-d", dbName,
-                tempDump.toString()
-        );
-        restorePb.environment().put("PGPASSWORD", dbPassword);
-        restorePb.redirectErrorStream(true);
+            // Restore from dump file
+            ProcessBuilder restorePb = new ProcessBuilder(
+                    "pg_restore",
+                    "--no-owner",
+                    "--clean",
+                    "--if-exists",
+                    "--role=" + dbUser,
+                    "-h", dbHost,
+                    "-p", String.valueOf(dbPort),
+                    "-U", dbUser,
+                    "-d", dbName,
+                    tempDump.toString()
+            );
+            restorePb.environment().put("PGPASSWORD", dbPassword);
+            restorePb.redirectErrorStream(true);
 
-        try {
-            Process proc = restorePb.start();
-            String output = new String(proc.getInputStream().readAllBytes());
-            int exitCode = proc.waitFor();
-            if (exitCode != 0) {
-                log.error("pg_restore warnings/errors: {}", output);
+            Process restoreProc = restorePb.start();
+            String restoreOutput = new String(restoreProc.getInputStream().readAllBytes());
+            int restoreExit = restoreProc.waitFor();
+            if (restoreExit != 0) {
+                log.error("pg_restore failed (exit {}): {}", restoreExit, restoreOutput);
+                throw new InternalServerException("Restore failed: " + restoreOutput);
             }
             log.info("Restore completed successfully");
         } catch (IOException | InterruptedException e) {
             throw new InternalServerException("Restore process failed: " + e.getMessage());
+        } finally {
+            safeDelete(tempDump);
+        }
+
+        // Close the connection pool so subsequent queries reconnect to the restored database.
+        // The container orchestrator (docker restart policy) will bring the API back up.
+        if (dataSource instanceof HikariDataSource hikari) {
+            hikari.close();
+            log.info("Connection pool closed after restore. API will recover on next request or restart.");
         }
     }
 
