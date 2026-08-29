@@ -331,22 +331,22 @@ public class StaffShiftsService {
                     CashDrawers drawer = drawerRepository.findByStaffShiftsId(shift.getId())
                             .stream().filter(d -> "OPEN".equals(d.getStatus()))
                             .findFirst().orElse(null);
-                    BigDecimal expectedCash = BigDecimal.ZERO;
                     if (drawer != null) {
                         BigDecimal cashSales = paymentRepository.sumCompletedCashForShift(shift.getId());
-                        expectedCash = drawer.getOpeningBalance()
+                        BigDecimal expectedCash = drawer.getOpeningBalance()
                                 .add(cashSales)
                                 .add(cashTransactionsRepository.sumNetCashForDrawer(drawer.getId()));
                         drawer.setExpectedClosingBalance(expectedCash);
-                        drawer.setActualClosingBalance(expectedCash);
-                        drawer.setVariance(BigDecimal.ZERO);
+                        // Do NOT set actualClosingBalance — manager must count physical cash
+                        // Do NOT set variance — cannot be calculated without actual count
                         drawer.setClosingTime(LocalTime.now());
-                        drawer.setStatus("CLOSED");
+                        drawer.setStatus("PENDING_RECONCILIATION");
                         drawerRepository.save(drawer);
                     }
                     shift.setStatus(StaffShifts.Status.CLOSED);
                     shift.setShiftEndTime(now);
-                    appendRemarks(shift, "Auto-closed at " + now + " (scheduled)");
+                    appendRemarks(shift, "Auto-closed at " + now
+                            + " (scheduled, requires manager reconciliation)");
                     shiftRepository.save(shift);
                     notifyBranch(shift.getBranch().getId(),
                             Notification.Type.SHIFT_REMINDER,
