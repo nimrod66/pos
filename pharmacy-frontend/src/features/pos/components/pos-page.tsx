@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { PrimaryButton } from "@/components/ui/buttons";
 import { FormError, Input, Select } from "@/components/ui/form-controls";
+import { uuid } from "@/lib/uuid";
 import { PERMISSIONS } from "@/features/auth/access-control";
 import { usePermission } from "@/features/auth/hooks/use-permission";
 import {
@@ -56,8 +57,13 @@ export function PosPage() {
   const categories = useWorkspaceQuery((state) => state.categories);
   const units = useWorkspaceQuery((state) => state.units);
   const currentShiftId = useWorkspaceQuery((state) => state.currentShiftId);
+  const shifts = useWorkspaceQuery((state) => state.shifts);
+  const sales = useWorkspaceQuery((state) => state.sales);
   const canApprovePrescription = usePermission(
     PERMISSIONS.PRESCRIPTION_APPROVE,
+  );
+  const canCloseShift = usePermission(
+    PERMISSIONS.SHIFT_CLOSE,
   );
   const lines = useCartStore((state) => state.lines);
   const customerId = useCartStore((state) => state.customerId);
@@ -111,6 +117,30 @@ export function PosPage() {
   const [pendingOfflineSales, setPendingOfflineSales] = useState(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const drugInteractions = useDrugInteractions();
+
+  // Shift summary data
+  const currentShift = shifts.find((s) => s.id === currentShiftId);
+  const shiftSales = sales.filter((s) => s.shiftId === currentShiftId && s.status === "COMPLETED");
+  const shiftTotal = shiftSales.reduce((sum, s) => sum + moneyToCents(s.total), 0);
+  const shiftItemCount = shiftSales.reduce((sum, s) => sum + s.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0);
+
+  // Quick items - top selling medicines by frequency
+  const quickItems = useMemo(() => {
+    const medicineFrequency = new Map<string, number>();
+    sales.slice(0, 100).forEach((sale) => {
+      sale.items.forEach((item) => {
+        medicineFrequency.set(item.medicineId, (medicineFrequency.get(item.medicineId) ?? 0) + item.quantity);
+      });
+    });
+    return medicines
+      .filter((m) => m.status === "ACTIVE" && medicineFrequency.has(m.id))
+      .sort((a, b) => (medicineFrequency.get(b.id) ?? 0) - (medicineFrequency.get(a.id) ?? 0))
+      .slice(0, 8);
+  }, [medicines, sales]);
+
+  // Suspended sales
+  const [suspendedSales, setSuspendedSales] = useState<Array<{ id: string; lines: typeof lines; customerId: string | null; timestamp: number }>>([]);
+  const [showSuspended, setShowSuspended] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -349,6 +379,48 @@ export function PosPage() {
     const medicine = medicines.find((item) => item.id === line.medicineId);
     return medicine ? [{ ...line, medicine, stock: stockForMedicine(batches, medicine.id) }] : [];
   });
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    function handleShortcuts(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
+      const isEditing = target?.matches(
+        "input, textarea, select, [contenteditable='true']",
+      );
+      if (isEditing) return;
+
+      // F1 - Focus search
+      if (event.key === "F1") {
+        event.preventDefault();
+        setMobileView("products");
+        requestAnimationFrame(() => searchInputRef.current?.focus());
+      }
+      // F2 - Suspend sale
+      if (event.key === "F2" && lines.length > 0) {
+        event.preventDefault();
+        suspendSale();
+      }
+      // F3 - Show suspended sales
+      if (event.key === "F3" && suspendedSales.length > 0) {
+        event.preventDefault();
+        setShowSuspended(true);
+      }
+      // F4 - Clear cart
+      if (event.key === "F4") {
+        event.preventDefault();
+        clear();
+      }
+      // F9 - Complete sale (if valid)
+      if (event.key === "F9" && !submitting && currentShiftId && detailedLines.length > 0) {
+        event.preventDefault();
+        void handleCheckout();
+      }
+    }
+
+    window.addEventListener("keydown", handleShortcuts);
+    return () => window.removeEventListener("keydown", handleShortcuts);
+  }, [lines, suspendedSales, submitting, currentShiftId, detailedLines.length]);
+
   function getMedicineUnits(med: { unitId: string }) {
     const baseUnit = units.find((u) => u.id === med.unitId);
     if (!baseUnit) return [];
@@ -452,6 +524,40 @@ export function PosPage() {
     } finally {
       setSearching(false);
     }
+  }
+
+  function suspendSale() {
+    if (lines.length === 0) return;
+    const suspended = {
+      id: uuid(),
+      lines: [...lines],
+      customerId,
+      timestamp: Date.now(),
+    };
+    setSuspendedSales((prev) => [...prev, suspended]);
+    clear();
+    setScanStatus("Sale suspended. Resume from the suspended sales list.");
+  }
+
+  function resumeSale(suspendedId: string) {
+    const suspended = suspendedSales.find((s) => s.id === suspendedId);
+    if (!suspended) return;
+    clear();
+    suspended.lines.forEach((line) => {
+      addItem(line.medicineId, line.sellingUnitId, line.unitConversion, line.unitPrice);
+      if (line.quantity > 1) {
+        setQuantity(line.medicineId, line.quantity);
+      }
+      if (line.discountPercent) {
+        setLineDiscount(line.medicineId, line.discountPercent);
+      }
+    });
+    if (suspended.customerId) {
+      setCustomerId(suspended.customerId);
+    }
+    setSuspendedSales((prev) => prev.filter((s) => s.id !== suspendedId));
+    setShowSuspended(false);
+    setScanStatus("Sale resumed.");
   }
 
   async function handleSearchKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
@@ -636,6 +742,81 @@ export function PosPage() {
           <span><strong>Offline mode</strong> — sales are queued and will sync automatically when you reconnect. Pending: {pendingOfflineSales}</span>
         </div>
       )}
+      {/* Shift summary bar */}
+      {currentShift && (
+        <div className="col-span-full flex items-center gap-4 border-b border-[var(--border)] bg-[var(--surface-muted)] px-4 py-2 text-xs">
+          <span className="font-semibold text-[var(--text-muted)]">Shift:</span>
+          <span className="font-medium">{currentShift.openedBy}</span>
+          <span className="text-[var(--text-muted)]">|</span>
+          <span>Sales: <span className="font-semibold">{shiftSales.length}</span></span>
+          <span className="text-[var(--text-muted)]">|</span>
+          <span>Items: <span className="font-semibold">{shiftItemCount}</span></span>
+          <span className="text-[var(--text-muted)]">|</span>
+          <span>Total: <span className="font-semibold text-[var(--brand-strong)]">{formatKes(centsToMoney(shiftTotal))}</span></span>
+          <span className="text-[var(--text-muted)]">|</span>
+          <span>Cash: <span className="font-semibold">{formatKes(currentShift.cashSales)}</span></span>
+          <span className="text-[var(--text-muted)]">|</span>
+          <span>M-Pesa: <span className="font-semibold">{formatKes(currentShift.mpesaSales)}</span></span>
+          {suspendedSales.length > 0 && (
+            <>
+              <span className="text-[var(--text-muted)]">|</span>
+              <button
+                type="button"
+                onClick={() => setShowSuspended(true)}
+                className="font-semibold text-[var(--warning)] hover:underline"
+              >
+                {suspendedSales.length} suspended
+              </button>
+            </>
+          )}
+          <div className="ml-auto flex items-center gap-2">
+            <Link
+              href="/shifts/current"
+              className="text-[var(--brand)] hover:underline"
+            >
+              Shift details
+            </Link>
+          </div>
+        </div>
+      )}
+      {/* Suspended sales modal */}
+      {showSuspended && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
+          <div className="w-full max-w-md rounded-md border border-[var(--border)] bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4">
+              <h2 className="text-base font-semibold">Suspended Sales</h2>
+              <button
+                type="button"
+                onClick={() => setShowSuspended(false)}
+                className="flex size-9 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--surface-muted)]"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="max-h-64 overflow-y-auto p-4">
+              {suspendedSales.length === 0 ? (
+                <p className="text-sm text-[var(--text-muted)]">No suspended sales.</p>
+              ) : (
+                <div className="space-y-2">
+                  {suspendedSales.map((s) => (
+                    <div key={s.id} className="flex items-center justify-between rounded-md border border-[var(--border)] p-3">
+                      <div>
+                        <p className="text-sm font-semibold">{s.lines.length} item(s)</p>
+                        <p className="text-xs text-[var(--text-muted)]">
+                          {new Date(s.timestamp).toLocaleTimeString()}
+                        </p>
+                      </div>
+                      <PrimaryButton onClick={() => resumeSale(s.id)}>
+                        Resume
+                      </PrimaryButton>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       <div className="sticky top-[6.25rem] z-20 col-span-full grid grid-cols-2 gap-1 border-b border-[var(--border)] bg-white p-2 xl:hidden">
         <button
           type="button"
@@ -682,6 +863,32 @@ export function PosPage() {
         </div>
         <FormError message={query.trim() ? lookupError : null} />
 
+        {/* Quick items panel */}
+        {quickItems.length > 0 && !query.trim() && (
+          <div className="mt-3">
+            <h3 className="mb-2 text-xs font-semibold text-[var(--text-muted)]">Quick Items</h3>
+            <div className="no-scrollbar flex gap-2 overflow-x-auto pb-2">
+              {quickItems.map((medicine) => {
+                const stock = stockForMedicine(batches, medicine.id);
+                const inCart = lines.find((line) => line.medicineId === medicine.id)?.quantity ?? 0;
+                return (
+                  <button
+                    type="button"
+                    key={medicine.id}
+                    disabled={stock === 0 || inCart >= stock}
+                    onClick={() => addMedicine(medicine.id, stock)}
+                    className="flex h-20 w-24 shrink-0 flex-col items-center justify-center rounded-md border border-[var(--border)] bg-white p-2 text-center transition hover:border-[var(--brand)] hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-55"
+                  >
+                    <span className="line-clamp-2 text-xs font-semibold">{medicine.brandName}</span>
+                    <span className="mt-1 text-[10px] text-[var(--brand-strong)]">{formatKes(medicine.sellingPrice)}</span>
+                    <span className={cn("text-[10px]", stock <= medicine.reorderLevel ? "text-[var(--danger)]" : "text-[var(--text-muted)]")}>{stock} left</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <div className="mt-5 flex items-center justify-between"><h1 className="text-lg font-semibold">Products</h1><span className="text-xs text-[var(--text-muted)]">{query.trim() && searching ? "Searching..." : `${products.length} results`}</span></div>
         {products.length ? (
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
@@ -703,7 +910,23 @@ export function PosPage() {
       </section>
 
       <aside className={cn("min-h-[620px] flex-col bg-white xl:sticky xl:top-[6.25rem] xl:flex xl:h-[calc(100vh-6.25rem)]", mobileView === "cart" ? "flex" : "hidden")}>
-        <div className="border-b border-[var(--border)] px-4 py-4 sm:px-5"><div className="flex items-center justify-between"><h2 className="text-base font-semibold">Current sale</h2><span className="text-xs text-[var(--text-muted)]">{itemCount} {itemCount === 1 ? "item" : "items"}</span></div></div>
+        <div className="border-b border-[var(--border)] px-4 py-4 sm:px-5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold">Current sale</h2>
+            <div className="flex items-center gap-2">
+              {lines.length > 0 && (
+                <button
+                  type="button"
+                  onClick={suspendSale}
+                  className="text-xs text-[var(--warning)] hover:underline"
+                >
+                  Suspend
+                </button>
+              )}
+              <span className="text-xs text-[var(--text-muted)]">{itemCount} {itemCount === 1 ? "item" : "items"}</span>
+            </div>
+          </div>
+        </div>
         <div className="min-h-48 flex-1 overflow-y-auto">
           {detailedLines.length ? (
             <div className="divide-y divide-[var(--border)]">
@@ -809,6 +1032,25 @@ export function PosPage() {
             </form>
           ) : null}
           {!currentShiftId ? <div className="mb-4 rounded-md border border-[var(--border)] bg-[var(--warning-soft)] p-3 text-sm text-[var(--warning)]">Checkout is locked. <Link href="/shifts/current" className="font-semibold underline">Open a shift</Link> to continue.</div> : null}
+          {/* Cash drawer quick actions */}
+          {currentShiftId && canCloseShift && (
+            <div className="mb-4 flex gap-2">
+              <Link
+                href="/shifts/current"
+                className="flex h-9 items-center gap-1.5 rounded-md border border-[var(--border)] px-3 text-xs font-medium text-[var(--text-muted)] hover:bg-[var(--surface-muted)]"
+              >
+                <Banknote aria-hidden="true" size={14} />
+                Cash In/Out
+              </Link>
+              <Link
+                href="/shifts/current"
+                className="flex h-9 items-center gap-1.5 rounded-md border border-[var(--border)] px-3 text-xs font-medium text-[var(--text-muted)] hover:bg-[var(--surface-muted)]"
+              >
+                <PackageSearch aria-hidden="true" size={14} />
+                Drawer Balance
+              </Link>
+            </div>
+          )}
           <label className="mb-3 block">
             <span className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold">
               <UserRound aria-hidden="true" size={15} /> Customer
