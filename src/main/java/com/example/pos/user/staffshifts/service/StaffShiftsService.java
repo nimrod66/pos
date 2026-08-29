@@ -7,7 +7,7 @@ import com.example.pos.common.exception.ForbiddenException;
 import com.example.pos.common.exception.ResourceNotFoundException;
 import com.example.pos.core.branch.model.Branch;
 import com.example.pos.core.systemsettings.SettingKeys;
-import com.example.pos.core.systemsettings.service.SystemSettingsService;
+import com.example.pos.core.systemsettings.repository.SystemSettingsRepository;
 import com.example.pos.notification.model.Notification;
 import com.example.pos.core.branch.repository.BranchRepository;
 import com.example.pos.finance.cashdrawers.model.CashDrawers;
@@ -47,7 +47,7 @@ public class StaffShiftsService {
     private final CashTransactionsRepository cashTransactionsRepository;
     private final BranchRepository branchRepository;
     private final com.example.pos.notification.repository.NotificationRepository notificationRepository;
-    private final SystemSettingsService settingsService;
+    private final SystemSettingsRepository settingsRepository;
     private final AuthenticatedUserContext current;
 
     public StaffShiftsService(StaffShiftsRepository shiftRepository,
@@ -56,7 +56,7 @@ public class StaffShiftsService {
                               CashTransactionsRepository cashTransactionsRepository,
                               BranchRepository branchRepository,
                               com.example.pos.notification.repository.NotificationRepository notificationRepository,
-                              SystemSettingsService settingsService,
+                              SystemSettingsRepository settingsRepository,
                               AuthenticatedUserContext current) {
         this.shiftRepository = shiftRepository;
         this.drawerRepository = drawerRepository;
@@ -64,7 +64,7 @@ public class StaffShiftsService {
         this.cashTransactionsRepository = cashTransactionsRepository;
         this.branchRepository = branchRepository;
         this.notificationRepository = notificationRepository;
-        this.settingsService = settingsService;
+        this.settingsRepository = settingsRepository;
         this.current = current;
     }
 
@@ -300,16 +300,17 @@ public class StaffShiftsService {
 
     /**
      * Auto-close shifts that have been open past the configured hour.
-     * Runs every 5 minutes. Reads shift.auto_close_hour from system settings per branch.
+     * Runs every 5 minutes. Reads shift.auto_close_hour from system settings directly.
      */
     @Scheduled(fixedRate = 300000, initialDelay = 60000)
     @Transactional
     public void autoCloseExpiredShifts() {
         int closeHour;
         try {
-            closeHour = Integer.parseInt(
-                    settingsService.resolveSettingValue(SettingKeys.Shift.AUTO_CLOSE_HOUR, null, null, "23"));
-        } catch (NumberFormatException e) {
+            String value = settingsRepository.findGlobalValue(SettingKeys.Shift.AUTO_CLOSE_HOUR)
+                    .orElse("23");
+            closeHour = Integer.parseInt(value);
+        } catch (Exception e) {
             closeHour = 23;
         }
         LocalTime threshold = LocalTime.of(closeHour, 0);

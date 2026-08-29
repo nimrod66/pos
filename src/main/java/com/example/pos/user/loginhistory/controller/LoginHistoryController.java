@@ -23,8 +23,10 @@ public class LoginHistoryController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<LoginHistoryResponseDto>>> getByUser(
-            @RequestParam UUID userId) {
-        List<LoginHistory> history = service.getByUser(userId);
+            @RequestParam(required = false) UUID userId) {
+        List<LoginHistory> history = userId != null
+                ? service.getByUser(userId)
+                : service.getAll();
         List<LoginHistoryResponseDto> response = history.stream()
                 .map(LoginHistoryResponseDto::from)
                 .toList();

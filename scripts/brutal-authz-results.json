@@ -1,0 +1,211 @@
+﻿{
+    "results":  [
+                    {
+                        "detail":  "",
+                        "status":  "PASS",
+                        "name":  "Authz1-Login-PharmacyA",
+                        "time":  "2026-08-29T19:58:25.3114834+03:00",
+                        "group":  null
+                    },
+                    {
+                        "detail":  "No second pharmacy found in DB",
+                        "status":  "BLOCKED",
+                        "name":  "Authz1-Find-PharmacyB",
+                        "time":  "2026-08-29T19:58:25.4865747+03:00",
+                        "group":  null
+                    },
+                    {
+                        "detail":  "",
+                        "status":  "PASS",
+                        "name":  "Authz2-CASHIER-Login",
+                        "time":  "2026-08-29T19:58:25.7332510+03:00",
+                        "group":  null
+                    },
+                    {
+                        "detail":  "Expected 403 but got status=500",
+                        "status":  "FAIL",
+                        "name":  "Authz2-CASHIER-ListUsers-Denied",
+                        "time":  "2026-08-29T19:58:25.8071689+03:00",
+                        "group":  "Authz2-RoleBoundaries"
+                    },
+                    {
+                        "detail":  "Expected 403 but got status=500",
+                        "status":  "FAIL",
+                        "name":  "Authz2-CASHIER-ViewSettings-Denied",
+                        "time":  "2026-08-29T19:58:25.8322803+03:00",
+                        "group":  "Authz2-RoleBoundaries"
+                    },
+                    {
+                        "detail":  "Expected 403 but got status=500",
+                        "status":  "FAIL",
+                        "name":  "Authz2-CASHIER-ViewAudit-Denied",
+                        "time":  "2026-08-29T19:58:25.8488137+03:00",
+                        "group":  "Authz2-RoleBoundaries"
+                    },
+                    {
+                        "detail":  "Expected 403 but got status=500",
+                        "status":  "FAIL",
+                        "name":  "Authz2-CASHIER-CreateUser-Denied",
+                        "time":  "2026-08-29T19:58:25.8737812+03:00",
+                        "group":  "Authz2-RoleBoundaries"
+                    },
+                    {
+                        "detail":  "",
+                        "status":  "PASS",
+                        "name":  "Authz2-STOREKEEPER-Login",
+                        "time":  "2026-08-29T19:58:26.1059726+03:00",
+                        "group":  null
+                    },
+                    {
+                        "detail":  "",
+                        "status":  "PASS",
+                        "name":  "Authz2-STOREKEEPER-ListExpenses-Denied",
+                        "time":  "2026-08-29T19:58:26.1397207+03:00",
+                        "group":  "Authz2-RoleBoundaries"
+                    },
+                    {
+                        "detail":  "",
+                        "status":  "PASS",
+                        "name":  "Authz2-STOREKEEPER-CreateExpense-Denied",
+                        "time":  "2026-08-29T19:58:26.1947427+03:00",
+                        "group":  "Authz2-RoleBoundaries"
+                    },
+                    {
+                        "detail":  "",
+                        "status":  "PASS",
+                        "name":  "Authz2-STOREKEEPER-ListCashDrawers-Denied",
+                        "time":  "2026-08-29T19:58:26.2305859+03:00",
+                        "group":  "Authz2-RoleBoundaries"
+                    },
+                    {
+                        "detail":  "",
+                        "status":  "PASS",
+                        "name":  "Authz2-PHARMACIST-Login",
+                        "time":  "2026-08-29T19:58:26.4145189+03:00",
+                        "group":  null
+                    },
+                    {
+                        "detail":  "Expected 403 but got status=500",
+                        "status":  "FAIL",
+                        "name":  "Authz2-PHARMACIST-ListUsers-Denied",
+                        "time":  "2026-08-29T19:58:26.4324263+03:00",
+                        "group":  "Authz2-RoleBoundaries"
+                    },
+                    {
+                        "detail":  "Expected 403 but got status=500",
+                        "status":  "FAIL",
+                        "name":  "Authz2-PHARMACIST-CreateUser-Denied",
+                        "time":  "2026-08-29T19:58:26.4511872+03:00",
+                        "group":  "Authz2-RoleBoundaries"
+                    },
+                    {
+                        "detail":  "",
+                        "status":  "PASS",
+                        "name":  "Authz2-MANAGER-Login",
+                        "time":  "2026-08-29T19:58:26.6696589+03:00",
+                        "group":  null
+                    },
+                    {
+                        "detail":  "Expected 403 but got status=500",
+                        "status":  "FAIL",
+                        "name":  "Authz2-MANAGER-CreateUser-Denied",
+                        "time":  "2026-08-29T19:58:26.6911253+03:00",
+                        "group":  "Authz2-RoleBoundaries"
+                    },
+                    {
+                        "detail":  "",
+                        "status":  "PASS",
+                        "name":  "Authz3-First-Login",
+                        "time":  "2026-08-29T19:58:26.8817625+03:00",
+                        "group":  null
+                    },
+                    {
+                        "detail":  "",
+                        "status":  "PASS",
+                        "name":  "Authz3-First-Session-Valid",
+                        "time":  "2026-08-29T19:58:26.9153821+03:00",
+                        "group":  "Authz3-SessionManagement"
+                    },
+                    {
+                        "detail":  "",
+                        "status":  "PASS",
+                        "name":  "Authz3-Second-Login",
+                        "time":  "2026-08-29T19:58:27.1114409+03:00",
+                        "group":  null
+                    },
+                    {
+                        "detail":  "",
+                        "status":  "PASS",
+                        "name":  "Authz3-Second-Session-Valid",
+                        "time":  "2026-08-29T19:58:27.1405167+03:00",
+                        "group":  "Authz3-SessionManagement"
+                    },
+                    {
+                        "detail":  "",
+                        "status":  "PASS",
+                        "name":  "Authz3-Old-Session-Evicted",
+                        "time":  "2026-08-29T19:58:27.1556852+03:00",
+                        "group":  "Authz3-SessionManagement"
+                    },
+                    {
+                        "detail":  "",
+                        "status":  "PASS",
+                        "name":  "Authz3-Single-Active-Session",
+                        "time":  "2026-08-29T19:58:27.2808935+03:00",
+                        "group":  "Authz3-SessionManagement"
+                    },
+                    {
+                        "detail":  "",
+                        "status":  "PASS",
+                        "name":  "Authz4-Login",
+                        "time":  "2026-08-29T19:58:27.4748242+03:00",
+                        "group":  null
+                    },
+                    {
+                        "detail":  "POST without CSRF token should be 403",
+                        "status":  "FAIL",
+                        "name":  "Authz4-POST-Without-CSRF-Blocked",
+                        "time":  "2026-08-29T19:58:27.5604470+03:00",
+                        "group":  "Authz4-CSRFProtection"
+                    },
+                    {
+                        "detail":  "",
+                        "status":  "PASS",
+                        "name":  "Authz4-GET-With-CSRF-Succeeds",
+                        "time":  "2026-08-29T19:58:27.5886062+03:00",
+                        "group":  "Authz4-CSRFProtection"
+                    }
+                ],
+    "timestamp":  "2026-08-29T19:58:27.6306884+03:00",
+    "passRate":  64,
+    "totalFail":  8,
+    "totalPass":  16,
+    "totalBlocked":  1,
+    "groups":  [
+                   {
+                       "group":  "Authz1-CrossTenantIsolation",
+                       "pass":  1,
+                       "fail":  0,
+                       "blocked":  1
+                   },
+                   {
+                       "group":  "Authz2-RoleBoundaries",
+                       "pass":  7,
+                       "fail":  7,
+                       "blocked":  0
+                   },
+                   {
+                       "group":  "Authz3-SessionManagement",
+                       "pass":  6,
+                       "fail":  0,
+                       "blocked":  0
+                   },
+                   {
+                       "group":  "Authz4-CSRFProtection",
+                       "pass":  2,
+                       "fail":  1,
+                       "blocked":  0
+                   }
+               ],
+    "total":  25
+}

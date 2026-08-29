@@ -1,0 +1,126 @@
+﻿{
+    "results":  [
+                    {
+                        "detail":  "",
+                        "status":  "PASS",
+                        "name":  "Rec1-Sales-Payments-Match",
+                        "time":  "2026-08-29T19:58:50.8175089+03:00",
+                        "group":  "Rec1-SalesVsPayments"
+                    },
+                    {
+                        "detail":  "Audited  sales",
+                        "status":  "PASS",
+                        "name":  "Rec1-Sales-Count",
+                        "time":  "2026-08-29T19:58:50.9431322+03:00",
+                        "group":  null
+                    },
+                    {
+                        "detail":  "",
+                        "status":  "PASS",
+                        "name":  "Rec2-Inventory-Movements-Match",
+                        "time":  "2026-08-29T19:58:51.0752932+03:00",
+                        "group":  "Rec2-InventoryVsMovements"
+                    },
+                    {
+                        "detail":  "Audited  medicines",
+                        "status":  "PASS",
+                        "name":  "Rec2-Medicine-Count",
+                        "time":  "2026-08-29T19:58:51.2011420+03:00",
+                        "group":  null
+                    },
+                    {
+                        "detail":  "",
+                        "status":  "PASS",
+                        "name":  "Rec3-Drawer-Transactions-Match",
+                        "time":  "2026-08-29T19:58:51.3413355+03:00",
+                        "group":  "Rec3-CashDrawerVsTransactions"
+                    },
+                    {
+                        "detail":  "Audited 0 closed shifts",
+                        "status":  "PASS",
+                        "name":  "Rec3-Shift-Count",
+                        "time":  "2026-08-29T19:58:51.3463041+03:00",
+                        "group":  null
+                    },
+                    {
+                        "detail":  "Audit count mismatch: API=146 DB=0",
+                        "status":  "FAIL",
+                        "name":  "Rec4-Audit-Count-Match",
+                        "time":  "2026-08-29T19:58:51.9135842+03:00",
+                        "group":  "Rec4-AuditTrailCompleteness"
+                    },
+                    {
+                        "detail":  "Missing audit actions: CREATE_SALE, OPEN_SHIFT, LOGIN",
+                        "status":  "FAIL",
+                        "name":  "Rec4-Required-Audit-Actions",
+                        "time":  "2026-08-29T19:58:52.0535526+03:00",
+                        "group":  "Rec4-AuditTrailCompleteness"
+                    },
+                    {
+                        "detail":  "Sales entries: , Shift entries: ",
+                        "status":  "PASS",
+                        "name":  "Rec4-Audit-Summary",
+                        "time":  "2026-08-29T19:58:52.3108399+03:00",
+                        "group":  null
+                    },
+                    {
+                        "detail":  "",
+                        "status":  "PASS",
+                        "name":  "Rec5-Dispensed-Have-Sales",
+                        "time":  "2026-08-29T19:58:52.4321608+03:00",
+                        "group":  "Rec5-PrescriptionConsistency"
+                    },
+                    {
+                        "detail":  "",
+                        "status":  "PASS",
+                        "name":  "Rec5-Prescription-Quantities-Valid",
+                        "time":  "2026-08-29T19:58:52.5564528+03:00",
+                        "group":  "Rec5-PrescriptionConsistency"
+                    },
+                    {
+                        "detail":  "Audited 10 dispensed prescriptions",
+                        "status":  "PASS",
+                        "name":  "Rec5-Prescription-Count",
+                        "time":  "2026-08-29T19:58:52.6791460+03:00",
+                        "group":  null
+                    }
+                ],
+    "timestamp":  "2026-08-29T19:58:52.7098039+03:00",
+    "passRate":  83.3,
+    "totalFail":  2,
+    "totalPass":  10,
+    "totalBlocked":  0,
+    "groups":  [
+                   {
+                       "group":  "Rec1-SalesVsPayments",
+                       "pass":  2,
+                       "fail":  0,
+                       "blocked":  0
+                   },
+                   {
+                       "group":  "Rec2-InventoryVsMovements",
+                       "pass":  2,
+                       "fail":  0,
+                       "blocked":  0
+                   },
+                   {
+                       "group":  "Rec3-CashDrawerVsTransactions",
+                       "pass":  2,
+                       "fail":  0,
+                       "blocked":  0
+                   },
+                   {
+                       "group":  "Rec4-AuditTrailCompleteness",
+                       "pass":  1,
+                       "fail":  2,
+                       "blocked":  0
+                   },
+                   {
+                       "group":  "Rec5-PrescriptionConsistency",
+                       "pass":  3,
+                       "fail":  0,
+                       "blocked":  0
+                   }
+               ],
+    "total":  12
+}

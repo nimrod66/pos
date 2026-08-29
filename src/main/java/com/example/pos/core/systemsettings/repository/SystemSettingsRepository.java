@@ -16,6 +16,10 @@ public interface SystemSettingsRepository extends JpaRepository<SystemSettings, 
            "AND s.pharmacy.id = :pharmacyId")
     Optional<SystemSettings> findSetting(String key, UUID branchId, UUID pharmacyId);
 
+    @Query("SELECT s.settingValue FROM SystemSettings s WHERE s.settingKey = :key " +
+           "AND s.branch IS NULL ORDER BY s.createdAt ASC LIMIT 1")
+    Optional<String> findGlobalValue(String key);
+
     boolean existsBySettingKeyAndPharmacyIdAndBranch(String key, UUID pharmacyId, Object branch);
 
     List<SystemSettings> findByPharmacyIdAndBranchIsNull(UUID pharmacyId);

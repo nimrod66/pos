@@ -2,6 +2,8 @@ package com.example.pos.user.loginhistory.service;
 
 import com.example.pos.user.loginhistory.model.LoginHistory;
 import com.example.pos.user.loginhistory.repository.LoginHistoryRepository;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,5 +22,10 @@ public class LoginHistoryService {
 
     public List<LoginHistory> getByUser(UUID userId) {
         return repo.findByUserIdOrderByLoginTimeDesc(userId);
+    }
+
+    public List<LoginHistory> getAll() {
+        return repo.findAll(PageRequest.of(0, 200, Sort.by(Sort.Direction.DESC, "loginTime")))
+                .getContent();
     }
 }
