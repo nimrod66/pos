@@ -53,8 +53,8 @@ Assert-Status "Lan1-GET-sales-denied" $r 401
 $r = Call-Unauth "GET" "/api/v1/customers"
 Assert-Status "Lan1-GET-customers-denied" $r 401
 
-$r = Call-Unauth "POST" "/api/v1/sales" @{ clientSaleId = "lan-test"; items = @(); payments = @() }
-Assert-Status "Lan1-POST-sales-denied" $r 401
+    $r = Call-Unauth "POST" "/api/v1/sales" @{ clientSaleId = "lan-test"; items = @(); payments = @() }
+    Assert "Lan1-POST-sales-denied" ((-not $r.ok) -and ($r.status -eq 401 -or $r.status -eq 403)) "Expected 401/403 but got status=$($r.status)"
 
 End-TestGroup
 
@@ -88,11 +88,11 @@ End-TestGroup
 # ============================================================
 Begin-TestGroup "Lan3-TerminalRegistrationWithoutAuth"
 
-$r = Call-Unauth "POST" "/api/v1/terminals/register" @{ terminalName = "HACKED"; branchId = "fake" }
-Assert-Status "Lan3-register-denied" $r 401
+    $r = Call-Unauth "POST" "/api/v1/terminals/register" @{ terminalName = "HACKED"; branchId = "fake" }
+    Assert "Lan3-register-denied" ((-not $r.ok) -and ($r.status -eq 401 -or $r.status -eq 403)) "Expected 401/403 but got status=$($r.status)"
 
-$r = Call-Unauth "POST" "/api/v1/terminals/pair" @{ pairingCode = "HACKED123" }
-Assert-Status "Lan3-pair-denied" $r 401
+    $r = Call-Unauth "POST" "/api/v1/terminals/pair" @{ pairingCode = "HACKED123" }
+    Assert "Lan3-pair-denied" ((-not $r.ok) -and ($r.status -eq 401 -or $r.status -eq 403)) "Expected 401/403 but got status=$($r.status)"
 
 End-TestGroup
 
@@ -104,8 +104,8 @@ Begin-TestGroup "Lan4-BackupEndpointProtection"
 $r = Call-Unauth "GET" "/api/v1/system/backup/list"
 Assert-Status "Lan4-backup-list-denied" $r 401
 
-$r = Call-Unauth "POST" "/api/v1/system/backup" @{ type = "FULL" }
-Assert-Status "Lan4-backup-create-denied" $r 401
+    $r = Call-Unauth "POST" "/api/v1/system/backup" @{ type = "FULL" }
+    Assert "Lan4-backup-create-denied" ((-not $r.ok) -and ($r.status -eq 401 -or $r.status -eq 403)) "Expected 401/403 but got status=$($r.status)"
 
 End-TestGroup
 

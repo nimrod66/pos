@@ -98,6 +98,10 @@ try {
         $shift = $shiftResp.data
     }
 
+    if (-not $shift) {
+        Assert "R4-sale-after-restart" $false "Could not get/create shift after restart"
+    } else {
+
     $medsResp = Call "GET" "/medicines?size=200" $ctx
     $med = @($medsResp.data.content | Where-Object { $_.brandName -like "*Paracetamol*" }) | Select-Object -First 1
     $price = if ($med.sellingPrice) { [double]$med.sellingPrice } else { 40.00 }
@@ -119,6 +123,7 @@ try {
         cashTendered = $price
     }
     Assert "R4-sale-after-restart" $saleResp.ok "Sale should work after restart"
+    }
 
 } catch {
     Assert "R4-unhandled-error" $false $_.Exception.Message

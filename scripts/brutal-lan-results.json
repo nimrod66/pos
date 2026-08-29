@@ -4,109 +4,109 @@
                         "detail":  "",
                         "status":  "PASS",
                         "name":  "Lan1-GET-users-denied",
-                        "time":  "2026-08-29T19:58:25.7034195+03:00",
+                        "time":  "2026-08-29T21:05:40.8308662+03:00",
                         "group":  "Lan1-UnauthenticatedAPIAccess"
                     },
                     {
                         "detail":  "",
                         "status":  "PASS",
                         "name":  "Lan1-GET-sales-denied",
-                        "time":  "2026-08-29T19:58:25.7262259+03:00",
+                        "time":  "2026-08-29T21:05:40.8553568+03:00",
                         "group":  "Lan1-UnauthenticatedAPIAccess"
                     },
                     {
                         "detail":  "",
                         "status":  "PASS",
                         "name":  "Lan1-GET-customers-denied",
-                        "time":  "2026-08-29T19:58:25.7468042+03:00",
+                        "time":  "2026-08-29T21:05:40.8812254+03:00",
                         "group":  "Lan1-UnauthenticatedAPIAccess"
                     },
                     {
                         "detail":  "Expected HTTP 401 but got 403",
                         "status":  "FAIL",
                         "name":  "Lan1-POST-sales-denied",
-                        "time":  "2026-08-29T19:58:25.8051672+03:00",
+                        "time":  "2026-08-29T21:05:40.9602799+03:00",
                         "group":  "Lan1-UnauthenticatedAPIAccess"
                     },
                     {
                         "detail":  "Health endpoint is publicly accessible (expected for health checks)",
                         "status":  "PASS",
                         "name":  "Lan2-actuator-health",
-                        "time":  "2026-08-29T19:58:25.8832994+03:00",
+                        "time":  "2026-08-29T21:05:41.0557942+03:00",
                         "group":  null
                     },
                     {
                         "detail":  "",
                         "status":  "PASS",
                         "name":  "Lan2-actuator-env-protected",
-                        "time":  "2026-08-29T19:58:25.8963551+03:00",
+                        "time":  "2026-08-29T21:05:41.0720611+03:00",
                         "group":  "Lan2-ActuatorEndpointProtection"
                     },
                     {
                         "detail":  "",
                         "status":  "PASS",
                         "name":  "Lan2-actuator-beans-protected",
-                        "time":  "2026-08-29T19:58:25.9056224+03:00",
+                        "time":  "2026-08-29T21:05:41.0891991+03:00",
                         "group":  "Lan2-ActuatorEndpointProtection"
                     },
                     {
                         "detail":  "",
                         "status":  "PASS",
                         "name":  "Lan2-actuator-configprops-protected",
-                        "time":  "2026-08-29T19:58:25.9186847+03:00",
+                        "time":  "2026-08-29T21:05:41.1007992+03:00",
                         "group":  "Lan2-ActuatorEndpointProtection"
                     },
                     {
                         "detail":  "Expected HTTP 401 but got 403",
                         "status":  "FAIL",
                         "name":  "Lan3-register-denied",
-                        "time":  "2026-08-29T19:58:25.9339407+03:00",
+                        "time":  "2026-08-29T21:05:41.1250163+03:00",
                         "group":  "Lan3-TerminalRegistrationWithoutAuth"
                     },
                     {
                         "detail":  "Expected HTTP 401 but got 403",
                         "status":  "FAIL",
                         "name":  "Lan3-pair-denied",
-                        "time":  "2026-08-29T19:58:25.9840894+03:00",
+                        "time":  "2026-08-29T21:05:41.1854432+03:00",
                         "group":  "Lan3-TerminalRegistrationWithoutAuth"
                     },
                     {
                         "detail":  "",
                         "status":  "PASS",
                         "name":  "Lan4-backup-list-denied",
-                        "time":  "2026-08-29T19:58:25.9958161+03:00",
+                        "time":  "2026-08-29T21:05:41.2029574+03:00",
                         "group":  "Lan4-BackupEndpointProtection"
                     },
                     {
                         "detail":  "Expected HTTP 401 but got 403",
                         "status":  "FAIL",
                         "name":  "Lan4-backup-create-denied",
-                        "time":  "2026-08-29T19:58:26.0135943+03:00",
+                        "time":  "2026-08-29T21:05:41.2215778+03:00",
                         "group":  "Lan4-BackupEndpointProtection"
                     },
                     {
                         "detail":  "",
                         "status":  "PASS",
                         "name":  "Lan5-search-sqli-no-sql-error",
-                        "time":  "2026-08-29T19:58:26.0650545+03:00",
+                        "time":  "2026-08-29T21:05:41.2749464+03:00",
                         "group":  "Lan5-SQLInjectionAttempts"
                     },
                     {
                         "detail":  "",
                         "status":  "PASS",
                         "name":  "Lan5-login-sqli-no-sql-error",
-                        "time":  "2026-08-29T19:58:26.0778138+03:00",
+                        "time":  "2026-08-29T21:05:41.2924846+03:00",
                         "group":  "Lan5-SQLInjectionAttempts"
                     },
                     {
                         "detail":  "",
                         "status":  "PASS",
                         "name":  "Lan5-login-sqli-not-500",
-                        "time":  "2026-08-29T19:58:26.0818504+03:00",
+                        "time":  "2026-08-29T21:05:41.2973364+03:00",
                         "group":  "Lan5-SQLInjectionAttempts"
                     }
                 ],
-    "timestamp":  "2026-08-29T19:58:26.1371718+03:00",
+    "timestamp":  "2026-08-29T21:05:41.3676990+03:00",
     "passRate":  73.3,
     "totalFail":  4,
     "totalPass":  11,

@@ -74,10 +74,10 @@ Begin-TestGroup "Authz2-RoleBoundaries"
 
 $roleTests = @(
     @{ role = "CASHIER"; email = "cashier@demo.com"; password = "cashier123"; endpoints = @(
-        @{ method = "GET"; path = "/admin/users"; name = "ListUsers" },
-        @{ method = "GET"; path = "/admin/settings"; name = "ViewSettings" },
-        @{ method = "GET"; path = "/admin/audit"; name = "ViewAudit" },
-        @{ method = "POST"; path = "/admin/users"; name = "CreateUser"; body = @{ email = "hack@test.com"; password = "test123"; firstName = "H"; lastName = "Attacker" } }
+        @{ method = "GET"; path = "/users"; name = "ListUsers" },
+        @{ method = "GET"; path = "/system-settings"; name = "ViewSettings" },
+        @{ method = "GET"; path = "/audit-logs"; name = "ViewAudit" },
+        @{ method = "POST"; path = "/users"; name = "CreateUser"; body = @{ email = "hack@test.com"; password = "test123"; firstName = "H"; lastName = "Attacker" } }
     )},
     @{ role = "STOREKEEPER"; email = "storekeeper@demo.com"; password = "stock1234"; endpoints = @(
         @{ method = "GET"; path = "/expenses"; name = "ListExpenses" },
@@ -85,11 +85,11 @@ $roleTests = @(
         @{ method = "GET"; path = "/cash-transactions"; name = "ListCashDrawers" }
     )},
     @{ role = "PHARMACIST"; email = "pharmacist@demo.com"; password = "pharmacist123"; endpoints = @(
-        @{ method = "GET"; path = "/admin/users"; name = "ListUsers" },
-        @{ method = "POST"; path = "/admin/users"; name = "CreateUser"; body = @{ email = "hack2@test.com"; password = "test123"; firstName = "H"; lastName = "Attacker" } }
+        @{ method = "GET"; path = "/users"; name = "ListUsers" },
+        @{ method = "POST"; path = "/users"; name = "CreateUser"; body = @{ email = "hack2@test.com"; password = "test123"; firstName = "H"; lastName = "Attacker" } }
     )},
     @{ role = "MANAGER"; email = "manager@demo.com"; password = "manager123"; endpoints = @(
-        @{ method = "POST"; path = "/admin/users"; name = "CreateUser"; body = @{ email = "hack3@test.com"; password = "test123"; firstName = "H"; lastName = "Attacker" } }
+        @{ method = "POST"; path = "/users"; name = "CreateUser"; body = @{ email = "hack3@test.com"; password = "test123"; firstName = "H"; lastName = "Attacker" } }
     )}
 )
 
