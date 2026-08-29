@@ -5,6 +5,7 @@ CREATE TABLE drug_interactions (
     severity VARCHAR(20) NOT NULL CHECK (severity IN ('MINOR', 'MODERATE', 'MAJOR', 'CONTRAINDICATED')),
     description VARCHAR(500),
     active BOOLEAN NOT NULL DEFAULT TRUE,
+    version BIGINT NOT NULL DEFAULT 0,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     CONSTRAINT uk_drug_interactions_pair UNIQUE (medicine_1_id, medicine_2_id),
