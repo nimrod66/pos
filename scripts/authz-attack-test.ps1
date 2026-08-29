@@ -57,22 +57,22 @@ Start-Sleep -Seconds 1
 Write-Host "-- T1: Cashier accessing admin endpoints --"
 $cashier = New-Login "cashier@demo.com" "cashier123"
 
-$r = Call GET "/admin/users" $cashier
+$r = Call GET "/users" $cashier
 if ($r.ok) { Bad "T1a-cashier-list-users" "should be 403 but got 200" } else { Ok "T1a-cashier-list-users-blocked" }
 
-$r = Call POST "/admin/users" $cashier (@{email="hack@test.com";password="test123";firstName="H";lastName="Attacker"})
+$r = Call POST "/users" $cashier (@{email="hack@test.com";password="test123";firstName="H";lastName="Attacker"})
 if ($r.ok) { Bad "T1b-cashier-create-user" "should be 403 but got 200" } else { Ok "T1b-cashier-create-user-blocked" }
 
-$r = Call GET "/admin/audit" $cashier
+$r = Call GET "/audit-logs" $cashier
 if ($r.ok) { Bad "T1c-cashier-view-audit" "should be 403 but got 200" } else { Ok "T1c-cashier-view-audit-blocked" }
 
-$r = Call GET "/admin/settings" $cashier
+$r = Call GET "/system-settings" $cashier
 if ($r.ok) { Bad "T1d-cashier-view-settings" "should be 403 but got 200" } else { Ok "T1d-cashier-view-settings-blocked" }
 
-$r = Call GET "/admin/branches" $cashier
+$r = Call GET "/branches" $cashier
 if ($r.ok) { Bad "T1e-cashier-list-branches" "should be 403 but got 200" } else { Ok "T1e-cashier-list-branches-blocked" }
 
-$r = Call GET "/admin/terminals" $cashier
+$r = Call GET "/terminals" $cashier
 if ($r.ok) { Bad "T1f-cashier-list-terminals" "should be 403 but got 200" } else { Ok "T1f-cashier-list-terminals-blocked" }
 
 # --- Test 2: Store keeper accessing finance/sales admin ---
@@ -85,10 +85,10 @@ if (-not $r.ok -and $r.status -eq 403) { Ok "T2a-storekeeper-financial-blocked" 
 elseif ($r.ok) { Ok "T2a-storekeeper-financial-allowed" }
 else { Ok "T2a-storekeeper-financial-error" }
 
-$r = Call POST "/admin/users" $storekeeper (@{email="hack2@test.com";password="test123";firstName="H";lastName="Attacker"})
+$r = Call POST "/users" $storekeeper (@{email="hack2@test.com";password="test123";firstName="H";lastName="Attacker"})
 if ($r.ok) { Bad "T2b-storekeeper-create-user" "should be 403 but got 200" } else { Ok "T2b-storekeeper-create-user-blocked" }
 
-$r = Call GET "/admin/audit" $storekeeper
+$r = Call GET "/audit-logs" $storekeeper
 if ($r.ok) { Bad "T2c-storekeeper-view-audit" "should be 403 but got 200" } else { Ok "T2c-storekeeper-view-audit-blocked" }
 
 # --- Test 3: Pharmacist cannot manage terminals ---
@@ -96,10 +96,10 @@ Write-Host ""
 Write-Host "-- T3: Pharmacist accessing terminal management --"
 $pharmacist = New-Login "pharmacist@demo.com" "pharmacist123"
 
-$r = Call GET "/admin/terminals" $pharmacist
+$r = Call GET "/terminals" $pharmacist
 if ($r.ok) { Bad "T3a-pharmacist-list-terminals" "should be 403 but got 200" } else { Ok "T3a-pharmacist-list-terminals-blocked" }
 
-$r = Call GET "/admin/settings" $pharmacist
+$r = Call GET "/system-settings" $pharmacist
 if ($r.ok) { Bad "T3b-pharmacist-view-settings" "should be 403 but got 200" } else { Ok "T3b-pharmacist-view-settings-blocked" }
 
 # --- Test 4: Manager can access sales/reports but not user management ---
@@ -113,10 +113,10 @@ $mgrBranchId = if ($mgrProfile.branch) { $mgrProfile.branch.id } else { (docker 
 $r = Call GET "/reports/sales-summary?branchId=$mgrBranchId&from=2026-01-01&to=2026-12-31" $manager
 if ($r.ok) { Ok "T4a-manager-view-sales-report" } else { Bad "T4a-manager-view-sales-report" "should succeed" }
 
-$r = Call GET "/admin/users" $manager
+$r = Call GET "/users" $manager
 if ($r.ok) { Bad "T4b-manager-list-users" "should be 403 but got 200" } else { Ok "T4b-manager-list-users-blocked" }
 
-$r = Call POST "/admin/users" $manager (@{email="hack3@test.com";password="test123";firstName="H";lastName="Attacker"})
+$r = Call POST "/users" $manager (@{email="hack3@test.com";password="test123";firstName="H";lastName="Attacker"})
 if ($r.ok) { Bad "T4c-manager-create-user" "should be 403 but got 200" } else { Ok "T4c-manager-create-user-blocked" }
 
 # --- Test 5: No session = 401 ---
@@ -127,7 +127,7 @@ $noAuth = @{ session = $null; headers = @{} }
 $r = Call GET "/medicines" $noAuth
 if ($r.ok) { Bad "T5a-unauth-list-medicines" "should be 401 but got 200" } else { Ok "T5a-unauth-list-medicines-blocked" }
 
-$r = Call GET "/admin/users" $noAuth
+$r = Call GET "/users" $noAuth
 if ($r.ok) { Bad "T5b-unauth-list-users" "should be 401 but got 200" } else { Ok "T5b-unauth-list-users-blocked" }
 
 $r = Call GET "/sales" $noAuth

@@ -35,6 +35,7 @@ import org.springframework.session.FindByIndexNameSessionRepository;
 import org.springframework.session.Session;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
@@ -118,7 +119,11 @@ public class AuthService {
             throw ex;
         }
 
-        revokePrincipalSessions(normalizedEmail);
+        try {
+            revokePrincipalSessionsInNewTransaction(normalizedEmail);
+        } catch (Exception ex) {
+            log.warn("Failed to revoke old sessions for {}: {}", normalizedEmail, ex.getMessage());
+        }
 
         HttpSession session = request.getSession(true);
         request.changeSessionId();
@@ -133,14 +138,18 @@ public class AuthService {
         User user = userRepository.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
 
-        LoginHistory history = LoginHistory.builder()
-                .user(user)
-                .loginTime(LocalDateTime.now())
-                .ipAddress(getClientIp(request))
-                .browser(getHeader(request, "User-Agent"))
-                .device(getHeader(request, "User-Agent"))
-                .build();
-        loginHistoryRepository.save(history);
+        try {
+            LoginHistory history = LoginHistory.builder()
+                    .user(user)
+                    .loginTime(LocalDateTime.now())
+                    .ipAddress(getClientIp(request))
+                    .browser(getHeader(request, "User-Agent"))
+                    .device(getHeader(request, "User-Agent"))
+                    .build();
+            loginHistoryRepository.save(history);
+        } catch (Exception ex) {
+            log.warn("Failed to record login history for {}: {}", normalizedEmail, ex.getMessage());
+        }
 
         user.setLastLogin(LocalDateTime.now());
         userRepository.save(user);
@@ -336,6 +345,17 @@ public class AuthService {
     private String getHeader(HttpServletRequest request, String name) {
         String value = request.getHeader(name);
         return value != null && value.length() > 200 ? value.substring(0, 200) : value;
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void revokePrincipalSessionsInNewTransaction(String principalName) {
+        try {
+            sessionRepository.findByPrincipalName(principalName)
+                    .keySet()
+                    .forEach(sessionRepository::deleteById);
+        } catch (Exception ex) {
+            log.warn("Failed to revoke sessions for {}: {}", principalName, ex.getMessage());
+        }
     }
 
     private void revokePrincipalSessions(String principalName) {
