@@ -6,6 +6,8 @@ import com.example.pos.common.exception.ConflictException;
 import com.example.pos.common.exception.ForbiddenException;
 import com.example.pos.common.exception.ResourceNotFoundException;
 import com.example.pos.core.branch.model.Branch;
+import com.example.pos.core.systemsettings.SettingKeys;
+import com.example.pos.core.systemsettings.service.SystemSettingsService;
 import com.example.pos.notification.model.Notification;
 import com.example.pos.core.branch.repository.BranchRepository;
 import com.example.pos.finance.cashdrawers.model.CashDrawers;
@@ -20,6 +22,9 @@ import com.example.pos.user.staffshifts.dto.UpdateShiftStatusDto;
 import com.example.pos.user.staffshifts.model.StaffShifts;
 import com.example.pos.user.staffshifts.repository.StaffShiftsRepository;
 import com.example.pos.user.users.model.User;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -34,12 +39,15 @@ import java.util.UUID;
 @Transactional
 public class StaffShiftsService {
 
+    private static final Logger log = LoggerFactory.getLogger(StaffShiftsService.class);
+
     private final StaffShiftsRepository shiftRepository;
     private final CashDrawersRepository drawerRepository;
     private final PaymentRepository paymentRepository;
     private final CashTransactionsRepository cashTransactionsRepository;
     private final BranchRepository branchRepository;
     private final com.example.pos.notification.repository.NotificationRepository notificationRepository;
+    private final SystemSettingsService settingsService;
     private final AuthenticatedUserContext current;
 
     public StaffShiftsService(StaffShiftsRepository shiftRepository,
@@ -48,6 +56,7 @@ public class StaffShiftsService {
                               CashTransactionsRepository cashTransactionsRepository,
                               BranchRepository branchRepository,
                               com.example.pos.notification.repository.NotificationRepository notificationRepository,
+                              SystemSettingsService settingsService,
                               AuthenticatedUserContext current) {
         this.shiftRepository = shiftRepository;
         this.drawerRepository = drawerRepository;
@@ -55,6 +64,7 @@ public class StaffShiftsService {
         this.cashTransactionsRepository = cashTransactionsRepository;
         this.branchRepository = branchRepository;
         this.notificationRepository = notificationRepository;
+        this.settingsService = settingsService;
         this.current = current;
     }
 
@@ -286,6 +296,69 @@ public class StaffShiftsService {
                 expectedCash,
                 actualCash,
                 variance);
+    }
+
+    /**
+     * Auto-close shifts that have been open past the configured hour.
+     * Runs every 5 minutes. Reads shift.auto_close_hour from system settings per branch.
+     */
+    @Scheduled(fixedRate = 300000, initialDelay = 60000)
+    @Transactional
+    public void autoCloseExpiredShifts() {
+        int closeHour;
+        try {
+            closeHour = Integer.parseInt(
+                    settingsService.resolveSettingValue(SettingKeys.Shift.AUTO_CLOSE_HOUR, null, null, "23"));
+        } catch (NumberFormatException e) {
+            closeHour = 23;
+        }
+        LocalTime threshold = LocalTime.of(closeHour, 0);
+        LocalDateTime now = LocalDateTime.now();
+
+        List<StaffShifts> activeShifts = shiftRepository.findByStatus(StaffShifts.Status.ACTIVE);
+        for (StaffShifts shift : activeShifts) {
+            if (shift.getShiftStartTime() == null) continue;
+            LocalTime openedTime = shift.getShiftStartTime().toLocalTime();
+            boolean pastThreshold = openedTime.isBefore(threshold) && now.toLocalTime().isAfter(threshold);
+            boolean openPastMidnight = openedTime.isAfter(threshold) && now.toLocalTime().isBefore(threshold)
+                    && shift.getShiftStartTime().toLocalDate().isBefore(now.toLocalDate());
+
+            if (pastThreshold || openPastMidnight) {
+                log.info("Auto-closing shift {} (opened at {}) past hour {}",
+                        shift.getId(), shift.getShiftStartTime(), closeHour);
+                try {
+                    CashDrawers drawer = drawerRepository.findByStaffShiftsId(shift.getId())
+                            .stream().filter(d -> "OPEN".equals(d.getStatus()))
+                            .findFirst().orElse(null);
+                    BigDecimal expectedCash = BigDecimal.ZERO;
+                    if (drawer != null) {
+                        BigDecimal cashSales = paymentRepository.sumCompletedCashForShift(shift.getId());
+                        expectedCash = drawer.getOpeningBalance()
+                                .add(cashSales)
+                                .add(cashTransactionsRepository.sumNetCashForDrawer(drawer.getId()));
+                        drawer.setExpectedClosingBalance(expectedCash);
+                        drawer.setActualClosingBalance(expectedCash);
+                        drawer.setVariance(BigDecimal.ZERO);
+                        drawer.setClosingTime(LocalTime.now());
+                        drawer.setStatus("CLOSED");
+                        drawerRepository.save(drawer);
+                    }
+                    shift.setStatus(StaffShifts.Status.CLOSED);
+                    shift.setShiftEndTime(now);
+                    appendRemarks(shift, "Auto-closed at " + now + " (scheduled)");
+                    shiftRepository.save(shift);
+                    notifyBranch(shift.getBranch().getId(),
+                            Notification.Type.SHIFT_REMINDER,
+                            "Shift auto-closed",
+                            "Shift opened by " + shift.getUser().getFirstName()
+                                    + " " + shift.getUser().getLastName()
+                                    + " was auto-closed at " + shift.getBranch().getBranchName()
+                                    + " past the configured hour (" + closeHour + ":00).");
+                } catch (Exception e) {
+                    log.error("Failed to auto-close shift {}: {}", shift.getId(), e.getMessage());
+                }
+            }
+        }
     }
 
     private StaffShifts getScopedShift(UUID id) {

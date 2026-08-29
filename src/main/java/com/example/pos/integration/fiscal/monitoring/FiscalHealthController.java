@@ -17,7 +17,7 @@ public class FiscalHealthController {
         this.fiscalHealthService = fiscalHealthService;
     }
 
-    @GetMapping("/fiscal")
+    @GetMapping("")
     public ResponseEntity<ApiResponse<FiscalHealthResponse>> fiscalHealth() {
         return ResponseEntity.ok(ApiResponse.ok(fiscalHealthService.check()));
     }
