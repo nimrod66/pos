@@ -63,6 +63,7 @@ import java.util.UUID;
 @Transactional
 public class SaleReturnsService {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(SaleReturnsService.class);
     private final SaleReturnsRepository returnsRepository;
     private final SalesRepository salesRepository;
     private final SaleItemsRepository saleItemsRepository;
@@ -393,6 +394,16 @@ public class SaleReturnsService {
                             UUID.fromString(key.getResourceId()), branchId)
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "SaleReturn", UUID.fromString(key.getResourceId())));
+        }
+        if (key.getStatus() == IdempotencyKey.Status.IN_PROGRESS) {
+            if (key.getCreatedAt() != null
+                    && key.getCreatedAt().isBefore(java.time.LocalDateTime.now().minusHours(1))) {
+                log.warn("Deleting stale IN_PROGRESS return idempotency key {} (created {})",
+                        keyValue, key.getCreatedAt());
+                idempotencyRepository.delete(key);
+                idempotencyRepository.flush();
+                return null;
+            }
         }
         throw new ConflictException("The return request is already in progress",
                 "IDEMPOTENCY_IN_PROGRESS");

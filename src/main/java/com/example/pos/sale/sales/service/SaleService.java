@@ -73,6 +73,7 @@ import java.util.UUID;
 @Transactional
 public class SaleService {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(SaleService.class);
     private static final BigDecimal HUNDRED = new BigDecimal("100");
     private static final String CURRENCY = "KES";
 
@@ -633,6 +634,19 @@ public SaleService(SalesRepository salesRepository,
         if (key.getStatus() == IdempotencyKey.Status.COMPLETED
                 && "SALE".equals(key.getResourceType()) && key.getResourceId() != null) {
             return findDetailedSale(UUID.fromString(key.getResourceId()), branch.getId());
+        }
+        if (key.getStatus() == IdempotencyKey.Status.IN_PROGRESS) {
+            // Check if the key is stale (created > 1 hour ago).
+            // A checkout should complete within seconds. A stale IN_PROGRESS key
+            // indicates the original transaction rolled back due to a crash.
+            if (key.getCreatedAt() != null
+                    && key.getCreatedAt().isBefore(java.time.LocalDateTime.now().minusHours(1))) {
+                log.warn("Deleting stale IN_PROGRESS idempotency key {} (created {})",
+                        idempotencyKey, key.getCreatedAt());
+                idempotencyRepository.delete(key);
+                idempotencyRepository.flush();
+                return null; // Allow retry
+            }
         }
         throw new ConflictException("The checkout request is already in progress",
                 "IDEMPOTENCY_IN_PROGRESS");
