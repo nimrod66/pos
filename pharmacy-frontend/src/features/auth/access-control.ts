@@ -42,6 +42,8 @@ export const PERMISSIONS = {
   STOCK_COUNT_WRITE: "stock_count.write",
   STOCK_TRANSFER_READ: "stock_transfer.read",
   STOCK_TRANSFER_WRITE: "stock_transfer.write",
+  CONTROLLED_DRUGS_READ: "controlled_drugs.read",
+  CONTROLLED_DRUGS_WRITE: "controlled_drugs.write",
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -117,6 +119,8 @@ export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
       PERMISSIONS.STOCK_COUNT_WRITE,
       PERMISSIONS.STOCK_TRANSFER_READ,
       PERMISSIONS.STOCK_TRANSFER_WRITE,
+      PERMISSIONS.CONTROLLED_DRUGS_READ,
+      PERMISSIONS.CONTROLLED_DRUGS_WRITE,
     ],
   },
   {
@@ -136,6 +140,8 @@ export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
       PERMISSIONS.SHIFT_CLOSE,
       PERMISSIONS.PRESCRIPTION_READ,
       PERMISSIONS.PRESCRIPTION_APPROVE,
+      PERMISSIONS.CONTROLLED_DRUGS_READ,
+      PERMISSIONS.CONTROLLED_DRUGS_WRITE,
     ],
   },
   {
@@ -336,6 +342,10 @@ const routeAccessRules: Array<{
   {
     path: "/admin/terminals",
     rule: { allOf: [PERMISSIONS.TERMINAL_READ] },
+  },
+  {
+    path: "/admin/controlled-drugs",
+    rule: { allOf: [PERMISSIONS.CONTROLLED_DRUGS_READ] },
   },
   {
     path: "/admin/settings",

@@ -6,6 +6,8 @@ import com.example.pos.common.exception.ConflictException;
 import com.example.pos.common.exception.ForbiddenException;
 import com.example.pos.common.exception.ResourceNotFoundException;
 import com.example.pos.core.branch.model.Branch;
+import com.example.pos.operations.model.OperationalMetricEvent;
+import com.example.pos.operations.service.OperationalMetricsService;
 import com.example.pos.sale.payment.service.MpesaSettings;
 import com.example.pos.core.branch.repository.BranchRepository;
 import com.example.pos.user.staffshifts.model.StaffShifts;
@@ -59,6 +61,7 @@ public class AuthService {
     private final MpesaSettings mpesaSettings;
     private final LoginLockoutService lockoutService;
     private final AuthFailedLoginRepository failedLoginRepository;
+    private final OperationalMetricsService metricsService;
 
     public AuthService(AuthenticationManager authenticationManager,
                        UserRepository userRepository,
@@ -73,7 +76,8 @@ public class AuthService {
                        @Value("${pos.security.absolute-session-timeout:12h}") Duration absoluteSessionTimeout,
                        MpesaSettings mpesaSettings,
                        LoginLockoutService lockoutService,
-                       AuthFailedLoginRepository failedLoginRepository) {
+                       AuthFailedLoginRepository failedLoginRepository,
+                       OperationalMetricsService metricsService) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.loginHistoryRepository = loginHistoryRepository;
@@ -88,6 +92,7 @@ public class AuthService {
         this.mpesaSettings = mpesaSettings;
         this.lockoutService = lockoutService;
         this.failedLoginRepository = failedLoginRepository;
+        this.metricsService = metricsService;
     }
 
     private static final int MAX_FAILED_LOGINS = 5;
@@ -102,8 +107,14 @@ public class AuthService {
             auth = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(normalizedEmail, password));
             lockoutService.clearFailures(normalizedEmail);
+            metricsService.record(OperationalMetricEvent.EventType.LOGIN,
+                    OperationalMetricEvent.EventStatus.SUCCESS, "LOGIN_SUCCESS", "auth-service",
+                    null, null, null, null, normalizedEmail);
         } catch (BadCredentialsException ex) {
             recordFailedLogin(normalizedEmail);
+            metricsService.record(OperationalMetricEvent.EventType.LOGIN,
+                    OperationalMetricEvent.EventStatus.FAILED, "BAD_CREDENTIALS", "auth-service",
+                    null, null, null, null, normalizedEmail);
             throw ex;
         }
 

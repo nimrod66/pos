@@ -2,6 +2,8 @@ package com.example.pos.sale.payment.service;
 
 import com.example.pos.common.exception.BadRequestException;
 import com.example.pos.common.exception.ResourceNotFoundException;
+import com.example.pos.operations.model.OperationalMetricEvent;
+import com.example.pos.operations.service.OperationalMetricsService;
 import com.example.pos.payment.gateway.PaymentGateway;
 import com.example.pos.payment.gateway.PaymentGatewayFactory;
 import com.example.pos.payment.gateway.PaymentGatewayRequest;
@@ -47,6 +49,7 @@ public class PaymentService {
     private final AuthenticatedUserContext current;
     private final SaleService saleService;
     private final MpesaSettings mpesaSettings;
+    private final OperationalMetricsService metricsService;
 
     @Value("${mpesa.callback-hmac-key:}")
     private String callbackHmacKey;
@@ -64,7 +67,8 @@ public class PaymentService {
                           TerminalConfig terminalConfig,
                           AuthenticatedUserContext current,
                           SaleService saleService,
-                          MpesaSettings mpesaSettings) {
+                          MpesaSettings mpesaSettings,
+                          OperationalMetricsService metricsService) {
         this.paymentRepository = paymentRepository;
         this.salesRepository = salesRepository;
         this.gatewayFactory = gatewayFactory;
@@ -73,6 +77,7 @@ public class PaymentService {
         this.current = current;
         this.saleService = saleService;
         this.mpesaSettings = mpesaSettings;
+        this.metricsService = metricsService;
     }
 
     public Payment addPayment(PaymentRequestDto dto) {
@@ -102,6 +107,10 @@ public class PaymentService {
         }
 
         PaymentGateway gateway = gatewayFactory.getGateway(payment.getPaymentMethod());
+        long started = System.nanoTime();
+        metricsService.record(OperationalMetricEvent.EventType.PAYMENT,
+                OperationalMetricEvent.EventStatus.ATTEMPTED, payment.getPaymentMethod().name(),
+                "payment-process", terminalConfig.getTerminalId(), payment.getId(), null, null, null);
 
         String email = payment.getSales() != null && payment.getSales().getCustomer() != null
                 ? payment.getSales().getCustomer().getEmail()
@@ -132,6 +141,9 @@ public class PaymentService {
                 payment.setPaymentDate(LocalDateTime.now());
                 saleService.finalizeOnlinePayment(payment.getSales().getId());
             }
+            metricsService.record(OperationalMetricEvent.EventType.PAYMENT,
+                    paymentStatus(response.getStatus()), response.getResponseCode(), "payment-process",
+                    terminalConfig.getTerminalId(), payment.getId(), null, elapsedMs(started), response.getResponseDescription());
         } else {
             boolean uncertain = "PROCESSING_ERROR".equalsIgnoreCase(response.getResponseCode());
             payment.setPaymentStatus(uncertain ? "UNKNOWN" : "FAILED");
@@ -141,6 +153,10 @@ public class PaymentService {
             if (uncertain) {
                 response.setStatus(PaymentGatewayResponse.Status.PENDING.name());
             }
+            metricsService.record(OperationalMetricEvent.EventType.PAYMENT,
+                    uncertain ? OperationalMetricEvent.EventStatus.PENDING : OperationalMetricEvent.EventStatus.FAILED,
+                    response.getResponseCode(), "payment-process", terminalConfig.getTerminalId(),
+                    payment.getId(), null, elapsedMs(started), response.getResponseDescription());
         }
 
         return response;
@@ -213,6 +229,9 @@ public class PaymentService {
         String callbackKey = merchantRequestId + ":" + checkoutRequestId;
         if (!PROCESSED_CALLBACKS.add(callbackKey)) {
             log.info("M-Pesa callback already processed: {}", callbackKey);
+            metricsService.record(OperationalMetricEvent.EventType.PAYMENT,
+                    OperationalMetricEvent.EventStatus.WARNING, "DUPLICATE_CALLBACK", "mpesa-callback",
+                    terminalConfig.getTerminalId(), null, null, null, callbackKey);
             return;
         }
 
@@ -227,11 +246,17 @@ public class PaymentService {
 
         if (payment == null) {
             log.warn("No payment found for MPesa MerchantRequestID: {}", merchantRequestId);
+            metricsService.record(OperationalMetricEvent.EventType.PAYMENT,
+                    OperationalMetricEvent.EventStatus.WARNING, "UNMATCHED_MPESA_CALLBACK", "mpesa-callback",
+                    terminalConfig.getTerminalId(), null, null, null, callbackKey);
             return;
         }
 
         if ("COMPLETED".equals(payment.getPaymentStatus()) || "FAILED".equals(payment.getPaymentStatus())) {
             log.info("Payment {} already finalized, ignoring callback", payment.getId());
+            metricsService.record(OperationalMetricEvent.EventType.PAYMENT,
+                    OperationalMetricEvent.EventStatus.WARNING, "ALREADY_FINALIZED_CALLBACK", "mpesa-callback",
+                    terminalConfig.getTerminalId(), payment.getId(), null, null, payment.getPaymentStatus());
             return;
         }
 
@@ -249,11 +274,17 @@ public class PaymentService {
                             + ",\"ref\":\"" + merchantRequestId + "\""
                             + ",\"saleId\":" + payment.getSales().getId()
                             + ",\"terminalId\":\"" + terminalConfig.getTerminalId() + "\"}");
+            metricsService.record(OperationalMetricEvent.EventType.PAYMENT,
+                    OperationalMetricEvent.EventStatus.SUCCESS, "MPESA_CALLBACK_COMPLETED", "mpesa-callback",
+                    terminalConfig.getTerminalId(), payment.getId(), null, null, merchantRequestId);
         } else {
             payment.setPaymentStatus("1032".equals(resultCode) ? "CANCELLED" : "FAILED");
             payment.setDescription("M-Pesa failed: " + stkCallback.get("ResultDesc"));
             paymentRepository.saveAndFlush(payment);
             saleService.failOnlinePayment(payment.getSales().getId());
+            metricsService.record(OperationalMetricEvent.EventType.PAYMENT,
+                    OperationalMetricEvent.EventStatus.FAILED, "MPESA_CALLBACK_" + resultCode, "mpesa-callback",
+                    terminalConfig.getTerminalId(), payment.getId(), null, null, String.valueOf(stkCallback.get("ResultDesc")));
         }
     }
 
@@ -420,6 +451,17 @@ public class PaymentService {
                 .responseDescription(payment.getDescription())
                 .timestamp(LocalDateTime.now())
                 .build();
+    }
+
+    private long elapsedMs(long started) {
+        return (System.nanoTime() - started) / 1_000_000;
+    }
+
+    private OperationalMetricEvent.EventStatus paymentStatus(String status) {
+        if ("COMPLETED".equalsIgnoreCase(status)) return OperationalMetricEvent.EventStatus.SUCCESS;
+        if ("FAILED".equalsIgnoreCase(status) || "CANCELLED".equalsIgnoreCase(status)) return OperationalMetricEvent.EventStatus.FAILED;
+        if ("PROCESSING".equalsIgnoreCase(status) || "PENDING".equalsIgnoreCase(status)) return OperationalMetricEvent.EventStatus.PENDING;
+        return OperationalMetricEvent.EventStatus.WARNING;
     }
 
     @SuppressWarnings("unchecked")

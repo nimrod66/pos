@@ -14,6 +14,7 @@ import {
   type Customer,
   operationsGateway,
 } from "@/features/operations/operations-gateway";
+import { recordOperationalEvent } from "@/features/operations/operational-metrics";
 import { useCartStore } from "@/features/pos/store/cart-store";
 import { medicineImage } from "@/features/medicines/lib/medicine-image";
 import { BarcodeScanner } from "@/features/pos/components/barcode-scanner";
@@ -42,7 +43,7 @@ import {
   workspaceGateway,
 } from "@/features/workspace/gateway/workspace-gateway";
 import { WorkspaceError } from "@/features/workspace/store/workspace-store";
-import type { PaymentCapabilities } from "@/features/workspace/types";
+import type { CheckoutInput, PaymentCapabilities } from "@/features/workspace/types";
 import type { PosLookupItem } from "@/features/workspace/types";
 import { cn } from "@/lib/cn";
 
@@ -79,6 +80,9 @@ export function PosPage() {
   const setCashTendered = useCartStore((state) => state.setCashTendered);
   const setCreditAmount = useCartStore((state) => state.setCreditAmount);
   const setCustomerId = useCartStore((state) => state.setCustomerId);
+  const payments = useCartStore((state) => state.payments);
+  const addPayment = useCartStore((state) => state.addPayment);
+  const removePayment = useCartStore((state) => state.removePayment);
   const setPrescriptionReferenceId = useCartStore(
     (state) => state.setPrescriptionReferenceId,
   );
@@ -125,19 +129,38 @@ export function PosPage() {
       setIsOnline(true);
       const raw = localStorage.getItem("pharmacy-pos:offline-queue");
       if (!raw) return;
-      let queue;
-      try { queue = JSON.parse(raw); } catch { return; }
+      let queue: CheckoutInput[];
+      try { queue = JSON.parse(raw) as CheckoutInput[]; } catch { return; }
       if (!queue.length) return;
-      const remaining: typeof queue = [];
+      await recordOperationalEvent({
+        eventType: "OFFLINE_QUEUE",
+        status: "ATTEMPTED",
+        reasonCode: "REPLAY_STARTED",
+        source: "pos-offline-queue",
+        details: `Replaying ${queue.length} queued sale(s).`,
+      });
+      const remaining: CheckoutInput[] = [];
       for (const sale of queue) {
         try {
-          const resp = await fetch("/api/v1/sales", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ...sale, cashTendered: sale.cashTendered || "0" }),
+          await workspaceGateway.completeSale(sale);
+          await recordOperationalEvent({
+            eventType: "OFFLINE_QUEUE",
+            status: "SUCCESS",
+            reasonCode: "SALE_REPLAYED",
+            source: "pos-offline-queue",
+            idempotencyKey: sale.idempotencyKey,
           });
-          if (!resp.ok) remaining.push(sale);
-        } catch { remaining.push(sale); }
+        } catch (error) {
+          remaining.push(sale);
+          await recordOperationalEvent({
+            eventType: "OFFLINE_QUEUE",
+            status: "FAILED",
+            reasonCode: error instanceof WorkspaceError ? error.code : "REPLAY_FAILED",
+            source: "pos-offline-queue",
+            idempotencyKey: sale.idempotencyKey,
+            details: error instanceof Error ? error.message : "Offline sale replay failed.",
+          });
+        }
       }
       if (remaining.length > 0) {
         localStorage.setItem("pharmacy-pos:offline-queue", JSON.stringify(remaining));
@@ -326,10 +349,13 @@ export function PosPage() {
   function getMedicineUnits(med: { unitId: string }) {
     const baseUnit = units.find((u) => u.id === med.unitId);
     if (!baseUnit) return [];
-    const chain: typeof units = [];
-    let current: (typeof units)[number] | undefined = baseUnit;
+    const chain: Array<typeof units[number] & { cumulativeFactor: number }> = [];
+    let current: typeof units[number] | undefined = baseUnit;
+    let cumulativeFactor = 1;
     while (current) {
-      chain.push(current);
+      chain.push({ ...current, cumulativeFactor });
+      const childFactor = current.conversionFactor ?? 1;
+      cumulativeFactor *= childFactor;
       current = current.parentUnitId ? units.find((u) => u.id === current!.parentUnitId) : undefined;
     }
     return chain;
@@ -509,9 +535,15 @@ export function PosPage() {
     setSubmitting(true);
     try {
       if (!isOnline) {
-        const offlineSale = {
+        if (paymentMethod === "MPESA" && mpesaMode === "STK") {
+          throw new WorkspaceError(
+            "OFFLINE_STK_UNAVAILABLE",
+            "M-Pesa STK cannot be queued while offline. Use cash, credit, or manual M-Pesa reference.",
+          );
+        }
+        const offlineSale: CheckoutInput = {
           idempotencyKey: prepareCheckoutKey(),
-          customerId: customerId,
+          customerId: customerId ?? undefined,
           items: detailedLines.map(({ lineId, medicineId, quantity, discountPercent, sellingUnitId, unitConversion }) => ({
             lineId, medicineId, quantity,
             discountPercent: discountPercent ?? 0,
@@ -532,6 +564,14 @@ export function PosPage() {
         queue.push(offlineSale);
         localStorage.setItem("pharmacy-pos:offline-queue", JSON.stringify(queue));
         setPendingOfflineSales(queue.length);
+        void recordOperationalEvent({
+          eventType: "OFFLINE_QUEUE",
+          status: "PENDING",
+          reasonCode: "SALE_QUEUED",
+          source: "pos-offline-queue",
+          idempotencyKey: offlineSale.idempotencyKey,
+          details: `Pending offline sales: ${queue.length}`,
+        });
         clear();
         setCheckoutError("You're offline — sale queued and will sync when connected.");
         setSubmitting(false);
@@ -558,6 +598,7 @@ export function PosPage() {
           ? prescriptionReferenceId.trim()
           : undefined,
         creditAmount: paymentMethod === "CREDIT" ? creditAmount || total : undefined,
+        payments: payments.length > 0 ? payments : undefined,
       });
       if (
         paymentMethod === "CASH" &&
@@ -686,11 +727,11 @@ export function PosPage() {
                           value={sellingUnitId ?? medicine.unitId}
                           onChange={(e) => {
                             const unit = availUnits.find((u) => u.id === e.target.value);
-                            if (unit) setLineUnit(medicine.id, unit.id, unit.conversionFactor ?? 1, multiplyMoney(medicine.sellingPrice, unit.conversionFactor ?? 1));
+                            if (unit) setLineUnit(medicine.id, unit.id, (unit as any).cumulativeFactor ?? unit.conversionFactor ?? 1, multiplyMoney(medicine.sellingPrice, (unit as any).cumulativeFactor ?? unit.conversionFactor ?? 1));
                           }}
                         >
                           {availUnits.map((u) => (
-                            <option key={u.id} value={u.id}>{u.name}{u.conversionFactor && u.conversionFactor > 1 ? ` (${u.conversionFactor}x)` : ""}</option>
+                            <option key={u.id} value={u.id}>{u.name}{(u as any).cumulativeFactor > 1 ? ` (${(u as any).cumulativeFactor}x)` : ""}</option>
                           ))}
                         </select>
                       ) : null}
@@ -837,6 +878,32 @@ export function PosPage() {
           ) : null}
           {paymentMethod === "CASH" ? <label className="mt-3 block"><span className="mb-1.5 block text-xs font-semibold">Cash tendered</span><Input inputMode="decimal" placeholder={total} value={cashTendered} onChange={(event) => setCashTendered(event.target.value.replace(/[^\d.]/g, ""))} />{cashTendered && validCashTendered && cashCoversTotal ? <span className="mt-1.5 block text-xs text-[var(--text-muted)]">Change due: {formatKes(changeDue)}</span> : null}</label> : null}
           {paymentMethod === "CREDIT" ? <label className="mt-3 block"><span className="mb-1.5 block text-xs font-semibold">Credit amount (max {formatKes(total)})</span><Input inputMode="decimal" placeholder={total} value={creditAmount} onChange={(event) => setCreditAmount(event.target.value.replace(/[^\d.]/g, ""))} />{creditAmount && validCreditAmount ? <span className="mt-1.5 block text-xs text-[var(--text-muted)]">Amount owed: {formatKes(centsToMoney(moneyToCents(total) - moneyToCents(creditAmount || "0")))}</span> : null}</label> : null}
+          {/* Split payment section */}
+          {payments.length > 0 ? (
+            <div className="mt-3 space-y-2">
+              <p className="text-xs font-semibold text-[var(--text-muted)]">Additional payments</p>
+              {payments.map((entry) => (
+                <div key={entry.id} className="flex items-center gap-2 rounded-md border border-[var(--border)] px-3 py-2 text-sm">
+                  <span className="font-medium">{entry.method === "CASH" ? "Cash" : entry.method === "CREDIT" ? "Credit" : "M-Pesa"}</span>
+                  <span className="text-[var(--text-muted)]">{formatKes(entry.amount)}</span>
+                  {entry.reference ? <span className="text-xs text-[var(--text-muted)]">({entry.reference})</span> : null}
+                  <button type="button" onClick={() => removePayment(entry.id)} className="ml-auto text-[var(--danger)] hover:underline text-xs">Remove</button>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => {
+              const remaining = centsToMoney(Math.max(0, moneyToCents(total) - moneyToCents(cashTendered || "0") - moneyToCents(creditAmount || "0") - payments.reduce((sum, p) => sum + moneyToCents(p.amount), 0)));
+              if (moneyToCents(remaining) > 0) {
+                addPayment(paymentMethod === "CASH" ? "MPESA" : "CASH", remaining);
+              }
+            }}
+            className="mt-2 text-xs text-[var(--brand)] hover:underline"
+          >
+            + Split payment
+          </button>
           {requiresApproval && canApprovePrescription ? <label className="mt-3 block rounded-md bg-[var(--accent-soft)] p-3 text-sm"><span className="mb-1.5 flex items-center gap-1.5 font-semibold"><ShieldCheck aria-hidden="true" size={16} /> Prescription</span><Select value={prescriptionReferenceId} onChange={(event) => setPrescriptionReferenceId(event.target.value)}><option value="">Select an active prescription</option>{prescriptionReferenceId && !prescriptions.some((item) => item.id === prescriptionReferenceId) ? <option value={prescriptionReferenceId}>Selected prescription</option> : null}{prescriptions.map((prescription) => <option key={prescription.id} value={prescription.id}>{prescription.prescriptionNumber} - {prescription.customerName}</option>)}</Select></label> : null}
           {requiresApproval && !canApprovePrescription ? <div className="mt-3 flex items-start gap-2.5 rounded-md bg-[var(--warning-soft)] p-3 text-sm text-[var(--warning)]"><ShieldCheck aria-hidden="true" className="mt-0.5 shrink-0" size={16} /><span><span className="block font-semibold">Pharmacist approval required</span><span className="mt-0.5 block text-xs">A staff member with prescription approval permission must complete this sale.</span></span></div> : null}
                       {moneyToCents(totalDiscount) > 0 ? (

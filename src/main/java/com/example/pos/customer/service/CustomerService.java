@@ -41,7 +41,12 @@ public class CustomerService {
                 .firstName(dto.getFirstName().trim()).lastName(trimToNull(dto.getLastName()))
                 .phoneNumber(trimToNull(dto.getPhoneNumber())).email(normalizeEmail(dto.getEmail()))
                 .kraPin(trimToNull(dto.getKraPin()))
-                .address(dto.getAddress()).notes(dto.getNotes()).build();
+                .address(dto.getAddress()).notes(dto.getNotes())
+                .dateOfBirth(dto.getDateOfBirth())
+                .bloodType(trimToNull(dto.getBloodType()))
+                .allergies(trimToNull(dto.getAllergies()))
+                .medicalHistory(trimToNull(dto.getMedicalHistory()))
+                .build();
         return repo.save(c);
     }
 
@@ -75,6 +80,10 @@ public class CustomerService {
         c.setPhoneNumber(trimToNull(dto.getPhoneNumber())); c.setKraPin(trimToNull(dto.getKraPin()));
         c.setEmail(normalizeEmail(dto.getEmail()));
         c.setAddress(dto.getAddress()); c.setNotes(dto.getNotes());
+        c.setDateOfBirth(dto.getDateOfBirth());
+        c.setBloodType(trimToNull(dto.getBloodType()));
+        c.setAllergies(trimToNull(dto.getAllergies()));
+        c.setMedicalHistory(trimToNull(dto.getMedicalHistory()));
         return repo.save(c);
     }
 

@@ -10,6 +10,7 @@ import jakarta.persistence.Table;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 @Entity
 @Getter
@@ -29,6 +30,10 @@ public class Customer extends BaseEntity {
     private String phoneNumber;
     private String email;
     private String address;
+    private LocalDate dateOfBirth;
+    private String bloodType;
+    private String allergies;
+    private String medicalHistory;
 
     @Builder.Default
     private Integer loyaltyPoints = 0;

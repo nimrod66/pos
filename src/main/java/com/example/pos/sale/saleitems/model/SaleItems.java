@@ -49,6 +49,15 @@ public class SaleItems extends BaseEntity {
     private BigDecimal tax;
     @Column(nullable = false)
     private BigDecimal total;
+
+    @Column(name = "selling_unit_id")
+    private java.util.UUID sellingUnitId;
+
+    @Column(name = "unit_conversion")
+    private Integer unitConversion;
+
+    @Column(name = "original_quantity")
+    private Integer originalQuantity;
 }
 
 

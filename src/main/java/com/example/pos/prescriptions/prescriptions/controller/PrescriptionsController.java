@@ -49,4 +49,13 @@ public class PrescriptionsController {
     public ResponseEntity<ApiResponse<PrescriptionResponseDto>> dispense(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.updated(service.toDto(service.dispense(id))));
     }
+
+    @PatchMapping("/{id}/cancel")
+    @PreAuthorize("hasAuthority('prescription.approve')")
+    public ResponseEntity<ApiResponse<PrescriptionResponseDto>> cancel(
+            @PathVariable UUID id,
+            @RequestBody(required = false) java.util.Map<String, String> body) {
+        String reason = body != null ? body.get("reason") : null;
+        return ResponseEntity.ok(ApiResponse.updated(service.toDto(service.cancel(id, reason))));
+    }
 }

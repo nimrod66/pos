@@ -241,6 +241,7 @@ export function InventoryPage() {
                     <th className="px-4 py-3 font-semibold">Expiry</th>
                     <th className="px-4 py-3 text-right font-semibold">Quantity</th>
                     <th className="px-4 py-3 text-right font-semibold">Unit cost</th>
+                    <th className="px-4 py-3 font-semibold">Shelf</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
@@ -261,6 +262,7 @@ export function InventoryPage() {
                         </td>
                         <td className="px-4 py-3.5 text-right font-semibold">{batch.quantity}</td>
                         <td className="px-4 py-3.5 text-right">{formatKes(batch.unitCost)}</td>
+                        <td className="px-4 py-3.5 text-xs text-[var(--text-muted)]">{batch.shelfLocation || "—"}</td>
                       </tr>
                     );
                   })}

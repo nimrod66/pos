@@ -1,5 +1,7 @@
 package com.example.pos.terminal.service;
 
+import com.example.pos.operations.model.OperationalMetricEvent;
+import com.example.pos.operations.service.OperationalMetricsService;
 import com.example.pos.terminal.dto.HeartbeatRequestDto;
 import com.example.pos.terminal.model.Terminal;
 import com.example.pos.terminal.model.TerminalHeartbeat;
@@ -23,6 +25,7 @@ public class TerminalHeartbeatService {
 
     private final TerminalHeartbeatRepository heartbeatRepository;
     private final TerminalRegistryRepository terminalRepository;
+    private final OperationalMetricsService metricsService;
 
     public void receiveHeartbeat(HeartbeatRequestDto request) {
         Terminal terminal = terminalRepository.findByTerminalId(request.getTerminalId())
@@ -45,7 +48,23 @@ public class TerminalHeartbeatService {
                 .build();
 
         heartbeatRepository.save(heartbeat);
+        recordPeripheralMetric(request, terminal);
         log.debug("Heartbeat received from terminal {}", terminal.getTerminalId());
+    }
+
+    private void recordPeripheralMetric(HeartbeatRequestDto request, Terminal terminal) {
+        String status = request.getPeripheralStatus();
+        if (status == null || status.isBlank()) return;
+        String normalized = status.toLowerCase();
+        if (normalized.contains("fail") || normalized.contains("error") || normalized.contains("down")) {
+            metricsService.record(OperationalMetricEvent.EventType.HARDWARE,
+                    OperationalMetricEvent.EventStatus.FAILED, "PERIPHERAL_FAILURE", "terminal-heartbeat",
+                    terminal.getTerminalId(), terminal.getId(), null, null, status);
+        } else if (normalized.contains("warn") || normalized.contains("degraded")) {
+            metricsService.record(OperationalMetricEvent.EventType.HARDWARE,
+                    OperationalMetricEvent.EventStatus.WARNING, "PERIPHERAL_DEGRADED", "terminal-heartbeat",
+                    terminal.getTerminalId(), terminal.getId(), null, null, status);
+        }
     }
 
     @Transactional(readOnly = true)

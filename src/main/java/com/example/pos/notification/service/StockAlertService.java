@@ -11,8 +11,11 @@ import com.example.pos.inventory.stock.model.Stock;
 import com.example.pos.inventory.stock.repository.StockRepository;
 import com.example.pos.masterdata.medicine.model.Medicine;
 import com.example.pos.masterdata.medicine.repository.MedicineRepository;
+import com.example.pos.notification.email.EmailService;
 import com.example.pos.notification.model.Notification;
 import com.example.pos.notification.repository.NotificationRepository;
+import com.example.pos.user.users.model.User;
+import com.example.pos.user.users.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -28,6 +31,7 @@ import java.util.UUID;
  * LOW_STOCK when sellable quantity falls to the reorder level, and
  * EXPIRY_WARNING inside each branch's configured expiry alert window.
  * Unread duplicates of the same type + reference are never recreated.
+ * Optionally sends email alerts to branch managers when SMTP is configured.
  */
 @Slf4j
 @Service
@@ -42,19 +46,25 @@ public class StockAlertService {
     private final MedicineRepository medicineRepository;
     private final SystemSettingsRepository settingsRepository;
     private final NotificationRepository notificationRepository;
+    private final UserRepository userRepository;
+    private final EmailService emailService;
 
     public StockAlertService(PharmacyRepository pharmacyRepository,
                              BranchRepository branchRepository,
                              StockRepository stockRepository,
                              MedicineRepository medicineRepository,
                              SystemSettingsRepository settingsRepository,
-                             NotificationRepository notificationRepository) {
+                             NotificationRepository notificationRepository,
+                             UserRepository userRepository,
+                             EmailService emailService) {
         this.pharmacyRepository = pharmacyRepository;
         this.branchRepository = branchRepository;
         this.stockRepository = stockRepository;
         this.medicineRepository = medicineRepository;
         this.settingsRepository = settingsRepository;
         this.notificationRepository = notificationRepository;
+        this.userRepository = userRepository;
+        this.emailService = emailService;
     }
 
     @Scheduled(fixedDelay = 900_000, initialDelay = 60_000)
@@ -151,6 +161,9 @@ public class StockAlertService {
                     .referenceId(medicine.getId())
                     .referenceType("MEDICINE")
                     .build());
+            sendEmailAlert(branch, "Low Stock Alert",
+                    String.format("%s is down to %d units (reorder level %d) at %s.",
+                            safeName(medicine), available, reorderLevel, branch.getBranchName()));
         }
     }
 
@@ -173,6 +186,28 @@ public class StockAlertService {
                 .referenceId(batch.getId())
                 .referenceType("BATCH")
                 .build());
+        sendEmailAlert(branch, "Expiry Warning",
+                String.format("Batch %s of %s expires on %s (%d units) at %s.",
+                        batch.getBatchNumber(), safeName(medicine),
+                        batch.getExpirationDate(), quantity, branch.getBranchName()));
+    }
+
+    private void sendEmailAlert(Branch branch, String subject, String body) {
+        try {
+            List<User> branchUsers = userRepository.findByBranchId(branch.getId());
+            for (User user : branchUsers) {
+                boolean isManager = user.getUserBranchRole() != null &&
+                        user.getUserBranchRole().stream()
+                                .anyMatch(ubr -> ubr.getRole() != null &&
+                                        (ubr.getRole().getRoleName().equals("BRANCH_MANAGER") ||
+                                         ubr.getRole().getRoleName().equals("OWNER")));
+                if (isManager && user.getEmail() != null && !user.getEmail().isBlank()) {
+                    emailService.sendStockAlert(user.getEmail(), user.getFirstName(), subject, body);
+                }
+            }
+        } catch (Exception ex) {
+            log.warn("Failed to send stock alert email for branch {}: {}", branch.getId(), ex.getMessage());
+        }
     }
 
     private int intSetting(String key, Branch branch, UUID pharmacyId, int fallback) {

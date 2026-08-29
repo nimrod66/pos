@@ -3,6 +3,8 @@ package com.example.pos.core.backup.controller;
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.core.backup.dto.BackupResponseDto;
 import com.example.pos.core.backup.service.BackupService;
+import com.example.pos.operations.model.OperationalMetricEvent;
+import com.example.pos.operations.service.OperationalMetricsService;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -23,15 +25,30 @@ import java.util.Map;
 public class BackupController {
 
     private final BackupService backupService;
+    private final OperationalMetricsService metricsService;
 
-    public BackupController(BackupService backupService) {
+    public BackupController(BackupService backupService, OperationalMetricsService metricsService) {
         this.backupService = backupService;
+        this.metricsService = metricsService;
     }
 
     @PostMapping
     public ResponseEntity<ApiResponse<BackupResponseDto>> createBackup() {
-        BackupResponseDto result = backupService.createBackup();
-        return ResponseEntity.ok(ApiResponse.ok(result));
+        long started = System.nanoTime();
+        metricsService.record(OperationalMetricEvent.EventType.BACKUP,
+                OperationalMetricEvent.EventStatus.ATTEMPTED, null, "backup-api", null, null, null, null, null);
+        try {
+            BackupResponseDto result = backupService.createBackup();
+            metricsService.record(OperationalMetricEvent.EventType.BACKUP,
+                    OperationalMetricEvent.EventStatus.SUCCESS, "BACKUP_CREATED", "backup-api", null,
+                    null, null, elapsedMs(started), result.getFilename());
+            return ResponseEntity.ok(ApiResponse.ok(result));
+        } catch (RuntimeException ex) {
+            metricsService.record(OperationalMetricEvent.EventType.BACKUP,
+                    OperationalMetricEvent.EventStatus.FAILED, ex.getClass().getSimpleName(), "backup-api", null,
+                    null, null, elapsedMs(started), ex.getMessage());
+            throw ex;
+        }
     }
 
     @GetMapping("/list")
@@ -58,13 +75,31 @@ public class BackupController {
             return ResponseEntity.badRequest().body(
                     ApiResponse.error("Set confirm=true to proceed with restore. This will REPLACE the current database."));
         }
+        long started = System.nanoTime();
+        metricsService.record(OperationalMetricEvent.EventType.RESTORE,
+                OperationalMetricEvent.EventStatus.ATTEMPTED, null, "backup-api", null, null, null, null, file.getOriginalFilename());
         try {
             backupService.restoreBackup(file.getInputStream());
+            metricsService.record(OperationalMetricEvent.EventType.RESTORE,
+                    OperationalMetricEvent.EventStatus.SUCCESS, "RESTORE_COMPLETED", "backup-api", null,
+                    null, null, elapsedMs(started), file.getOriginalFilename());
             return ResponseEntity.ok(ApiResponse.ok(null));
         } catch (IOException e) {
+            metricsService.record(OperationalMetricEvent.EventType.RESTORE,
+                    OperationalMetricEvent.EventStatus.FAILED, "RESTORE_UPLOAD_READ_FAILED", "backup-api", null,
+                    null, null, elapsedMs(started), e.getMessage());
             return ResponseEntity.badRequest().body(
                     ApiResponse.error("Failed to read uploaded file: " + e.getMessage()));
+        } catch (RuntimeException e) {
+            metricsService.record(OperationalMetricEvent.EventType.RESTORE,
+                    OperationalMetricEvent.EventStatus.FAILED, e.getClass().getSimpleName(), "backup-api", null,
+                    null, null, elapsedMs(started), e.getMessage());
+            throw e;
         }
+    }
+
+    private long elapsedMs(long started) {
+        return (System.nanoTime() - started) / 1_000_000;
     }
 
     @DeleteMapping("/{filename}")

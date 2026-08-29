@@ -103,6 +103,7 @@ export interface BackendStock {
   quantityAvailable: number;
   quantityQuarantined: number;
   reorderLevel: number;
+  shelfLocation: string | null;
   createdAt: string;
   updatedAt: string;
 }

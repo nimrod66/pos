@@ -271,6 +271,28 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
       ? Number(input.creditAmount ?? total.toFixed(2))
       : total;
 
+    // Build payments array: primary payment + any split payments
+    const paymentsList: Array<{ amount: number; method: string; reference: string | null }> = [
+      {
+        amount: paymentAmount,
+        method,
+        reference:
+          input.paymentMethod === "MPESA" && input.mpesaMode === "MANUAL"
+            ? input.mpesaReference.trim()
+            : null,
+      },
+    ];
+    if (input.payments) {
+      for (const extra of input.payments) {
+        const extraMethod = extra.method === "MPESA" ? "MPESA_MANUAL" : extra.method === "CREDIT" ? "CREDIT" : "CASH";
+        paymentsList.push({
+          amount: Number(extra.amount),
+          method: extraMethod,
+          reference: extra.reference || null,
+        });
+      }
+    }
+
     const response = await apiRequest<BackendSale>("/sales", {
       body: {
         cashTendered:
@@ -281,16 +303,7 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
         customerId: input.customerId || null,
         items: lines,
         note: null,
-        payments: [
-          {
-            amount: paymentAmount,
-            method,
-            reference:
-              input.paymentMethod === "MPESA" && input.mpesaMode === "MANUAL"
-                ? input.mpesaReference.trim()
-                : null,
-          },
-        ],
+        payments: paymentsList,
         prescriptionReferenceId: input.prescriptionReferenceId || null,
         shiftId: state.currentShiftId,
       },
@@ -1077,6 +1090,7 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
       medicineId: batch.medicineId,
       quantity: stockByBatch.get(batch.id)?.quantityAvailable ?? 0,
       receivedAt: batch.createdAt,
+      shelfLocation: stockByBatch.get(batch.id)?.shelfLocation ?? null,
       supplierId: supplierByBatch.get(batch.id) ?? "",
       unitCost: amount(batch.buyingPrice),
     }));
@@ -1132,6 +1146,7 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
       medicineId: item.medicineId,
       quantity: item.available,
       receivedAt: new Date().toISOString(),
+      shelfLocation: null,
       supplierId: "",
       unitCost: "0.00",
     }));
@@ -1255,10 +1270,12 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
       barcode: input.barcode.trim() || null,
       brandName: input.brandName.trim(),
       buyingPrice: Number(input.buyingPrice),
+      buyingUnitId: input.buyingUnitId || null,
       genericName: input.genericName.trim(),
       isControlledDrug: input.controlledDrug ?? false,
       manufacturerId: manufacturer.id,
       medicineCategoriesId: input.categoryId,
+      packSize: input.packSize || null,
       reorderLevel: input.reorderLevel,
       requiresPrescription: input.prescriptionRequired,
       requiresRefrigeration: false,

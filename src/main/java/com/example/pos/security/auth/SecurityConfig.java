@@ -18,6 +18,8 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import com.example.pos.operations.model.OperationalMetricEvent;
+import com.example.pos.operations.service.OperationalMetricsService;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
@@ -100,7 +102,8 @@ public class SecurityConfig {
                                            HttpSessionCsrfTokenRepository csrfTokenRepository,
                                            SecurityContextRepository securityContextRepository,
                                            ObjectMapper objectMapper,
-                                           AbsoluteSessionTimeoutFilter absoluteSessionTimeoutFilter) throws Exception {
+                                           AbsoluteSessionTimeoutFilter absoluteSessionTimeoutFilter,
+                                           OperationalMetricsService metricsService) throws Exception {
         CsrfTokenRequestAttributeHandler handler = new CsrfTokenRequestAttributeHandler();
         handler.setCsrfRequestAttributeName("_csrf");
 
@@ -138,6 +141,18 @@ public class SecurityConfig {
                     String message = "CSRF_VALIDATION_FAILED".equals(code)
                             ? "The secure request token is missing or invalid"
                             : "You do not have permission to perform this action";
+                    metricsService.record(
+                            "CSRF_VALIDATION_FAILED".equals(code)
+                                    ? OperationalMetricEvent.EventType.LOGIN
+                                    : OperationalMetricEvent.EventType.PERMISSION_DENIED,
+                            OperationalMetricEvent.EventStatus.FAILED,
+                            code,
+                            "security-filter",
+                            request.getHeader("X-Terminal-ID"),
+                            null,
+                            request.getHeader("Idempotency-Key"),
+                            null,
+                            request.getMethod() + " " + request.getRequestURI());
                     writeSecurityError(objectMapper, response, request.getRequestURI(),
                         HttpServletResponse.SC_FORBIDDEN, code, message);
                 }))

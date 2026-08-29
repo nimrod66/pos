@@ -24,6 +24,7 @@ import {
   RefreshCw,
   Settings2,
   ShoppingCart,
+  ShieldCheck,
   Truck,
   Users,
   Wallet,
@@ -179,6 +180,13 @@ export const appNavigation: NavigationItem[] = [
     icon: ClipboardList,
     label: "Insurance Claims",
     access: { allOf: [PERMISSIONS.INSURANCE_READ] },
+    section: "Operations",
+  },
+  {
+    href: "/admin/controlled-drugs",
+    icon: ShieldCheck,
+    label: "Controlled drugs",
+    access: { allOf: [PERMISSIONS.CONTROLLED_DRUGS_READ] },
     section: "Operations",
   },
   {

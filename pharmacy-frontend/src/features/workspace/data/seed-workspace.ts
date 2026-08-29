@@ -288,15 +288,15 @@ export function createSeedWorkspace(): WorkspaceSeed {
     },
   ];
   const batches: Batch[] = [
-    { id: "batch-pan-1", medicineId: "med-panadol", supplierId: "sup-medsource", batchNumber: "PAN24091", expiryDate: "2027-02-28", quantity: 118, unitCost: "8.00", receivedAt: "2026-06-20T09:00:00Z" },
-    { id: "batch-pan-2", medicineId: "med-panadol", supplierId: "sup-healthline", batchNumber: "PAN25014", expiryDate: "2027-08-31", quantity: 80, unitCost: "8.20", receivedAt: "2026-07-01T09:00:00Z" },
-    { id: "batch-bru-1", medicineId: "med-brufen", supplierId: "sup-medsource", batchNumber: "BRU1182", expiryDate: "2026-10-31", quantity: 22, unitCost: "9.50", receivedAt: "2026-06-18T09:00:00Z" },
-    { id: "batch-amox-1", medicineId: "med-amoxil", supplierId: "sup-healthline", batchNumber: "AMX5510", expiryDate: "2027-01-31", quantity: 48, unitCost: "18.00", receivedAt: "2026-06-22T09:00:00Z" },
-    { id: "batch-cet-1", medicineId: "med-cetrizine", supplierId: "sup-careplus", batchNumber: "CET9021", expiryDate: "2026-09-30", quantity: 18, unitCost: "4.50", receivedAt: "2026-06-15T09:00:00Z" },
-    { id: "batch-act-1", medicineId: "med-actal", supplierId: "sup-careplus", batchNumber: "ACT3307", expiryDate: "2027-04-30", quantity: 60, unitCost: "6.00", receivedAt: "2026-06-26T09:00:00Z" },
-    { id: "batch-ben-1", medicineId: "med-benylin", supplierId: "sup-medsource", batchNumber: "BEN4412", expiryDate: "2027-03-31", quantity: 5, unitCost: "210.00", receivedAt: "2026-06-24T09:00:00Z" },
-    { id: "batch-bet-1", medicineId: "med-betadine", supplierId: "sup-healthline", batchNumber: "BET7211", expiryDate: "2027-06-30", quantity: 12, unitCost: "160.00", receivedAt: "2026-06-30T09:00:00Z" },
-    { id: "batch-fun-1", medicineId: "med-funbact", supplierId: "sup-careplus", batchNumber: "FUN8004", expiryDate: "2026-08-31", quantity: 4, unitCost: "120.00", receivedAt: "2026-06-12T09:00:00Z" },
+    { id: "batch-pan-1", medicineId: "med-panadol", supplierId: "sup-medsource", batchNumber: "PAN24091", expiryDate: "2027-02-28", quantity: 118, unitCost: "8.00", receivedAt: "2026-06-20T09:00:00Z", shelfLocation: "A1-01" },
+    { id: "batch-pan-2", medicineId: "med-panadol", supplierId: "sup-healthline", batchNumber: "PAN25014", expiryDate: "2027-08-31", quantity: 80, unitCost: "8.20", receivedAt: "2026-07-01T09:00:00Z", shelfLocation: "A1-02" },
+    { id: "batch-bru-1", medicineId: "med-brufen", supplierId: "sup-medsource", batchNumber: "BRU1182", expiryDate: "2026-10-31", quantity: 22, unitCost: "9.50", receivedAt: "2026-06-18T09:00:00Z", shelfLocation: "A2-01" },
+    { id: "batch-amox-1", medicineId: "med-amoxil", supplierId: "sup-healthline", batchNumber: "AMX5510", expiryDate: "2027-01-31", quantity: 48, unitCost: "18.00", receivedAt: "2026-06-22T09:00:00Z", shelfLocation: "B1-01" },
+    { id: "batch-cet-1", medicineId: "med-cetrizine", supplierId: "sup-careplus", batchNumber: "CET9021", expiryDate: "2026-09-30", quantity: 18, unitCost: "4.50", receivedAt: "2026-06-15T09:00:00Z", shelfLocation: "B2-01" },
+    { id: "batch-act-1", medicineId: "med-actal", supplierId: "sup-careplus", batchNumber: "ACT3307", expiryDate: "2027-04-30", quantity: 60, unitCost: "6.00", receivedAt: "2026-06-26T09:00:00Z", shelfLocation: "B2-02" },
+    { id: "batch-ben-1", medicineId: "med-benylin", supplierId: "sup-medsource", batchNumber: "BEN4412", expiryDate: "2027-03-31", quantity: 5, unitCost: "210.00", receivedAt: "2026-06-24T09:00:00Z", shelfLocation: "C1-01" },
+    { id: "batch-bet-1", medicineId: "med-betadine", supplierId: "sup-healthline", batchNumber: "BET7211", expiryDate: "2027-06-30", quantity: 12, unitCost: "160.00", receivedAt: "2026-06-30T09:00:00Z", shelfLocation: "C1-02" },
+    { id: "batch-fun-1", medicineId: "med-funbact", supplierId: "sup-careplus", batchNumber: "FUN8004", expiryDate: "2026-08-31", quantity: 4, unitCost: "120.00", receivedAt: "2026-06-12T09:00:00Z", shelfLocation: "C2-01" },
   ];
   const shifts: Shift[] = [
     {

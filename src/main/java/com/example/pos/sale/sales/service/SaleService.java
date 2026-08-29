@@ -226,14 +226,18 @@ public SaleService(SalesRepository salesRepository,
             }
             validateRequestedBatch(line, stocks);
 
-            int remaining = requestedQuantity;
+            // Determine cumulative conversion factor for quantity conversion
+            int conversionFactor = cumulativeConversionFactor(medicine, line.getSellingUnitId());
+            int baseQuantity = requestedQuantity * conversionFactor;
+
+            BigDecimal unitPrice = requiredPrice(medicine, line.getExpectedUnitPrice(), line.getSellingUnitId());
+            int remaining = baseQuantity;
             for (Stock stock : stocks) {
                 if (remaining == 0) break;
                 int available = stock.getQuantityAvailable() == null ? 0 : stock.getQuantityAvailable();
                 if (available <= 0) continue;
 
                 MedicineBatches batch = stock.getMedicineBatches();
-                BigDecimal unitPrice = requiredPrice(medicine, line.getExpectedUnitPrice(), line.getSellingUnitId());
                 int allocatedQuantity = Math.min(available, remaining);
                 LineAmounts amounts = calculateLineAmounts(
                         unitPrice, allocatedQuantity, medicine.getTax(), discountPercent);
@@ -249,6 +253,9 @@ public SaleService(SalesRepository salesRepository,
                         .taxableAmount(amounts.taxableAmount())
                         .tax(amounts.tax())
                         .total(amounts.total())
+                        .sellingUnitId(line.getSellingUnitId())
+                        .unitConversion(conversionFactor)
+                        .originalQuantity(requestedQuantity)
                         .build();
                 sale.getSaleItems().add(saleItem);
 
@@ -264,7 +271,8 @@ public SaleService(SalesRepository salesRepository,
 
             if (remaining > 0) {
                 throw new ConflictException("Insufficient stock. Requested " + requestedQuantity
-                        + " but only " + (requestedQuantity - remaining) + " is available",
+                        + " " + (conversionFactor > 1 ? "selling units (" + baseQuantity + " base units)" : "units")
+                        + " but only " + (baseQuantity - remaining) + " base units are available",
                         "INSUFFICIENT_STOCK");
             }
         }
@@ -551,6 +559,9 @@ public SaleService(SalesRepository salesRepository,
                             .tax(money(BigDecimal.ZERO))
                             .total(money(BigDecimal.ZERO))
                             .lineTotal(money(BigDecimal.ZERO))
+                            .sellingUnitId(item.getSellingUnitId())
+                            .unitConversion(item.getUnitConversion())
+                            .originalQuantity(item.getOriginalQuantity())
                             .allocations(new ArrayList<>())
                             .build());
             int returnedQuantity = item.getSaleReturnItems().stream()
@@ -691,6 +702,25 @@ public SaleService(SalesRepository salesRepository,
                 "SELLING_UNIT_MISMATCH");
     }
 
+    private int cumulativeConversionFactor(Medicine medicine, UUID sellingUnitId) {
+        if (sellingUnitId == null) return 1;
+        com.example.pos.masterdata.units.model.Unit sellingUnit = unitRepository.findById(sellingUnitId).orElse(null);
+        if (sellingUnit == null) return 1;
+        // Walk from selling unit down to base unit, multiplying conversion factors
+        int total = 1;
+        com.example.pos.masterdata.units.model.Unit current = sellingUnit;
+        while (current != null) {
+            total *= current.getConversionFactor() != null ? current.getConversionFactor() : 1;
+            current = current.getParentUnit();
+        }
+        // Divide by base unit's own factor (which is always 1 for the base)
+        com.example.pos.masterdata.units.model.Unit base = medicine.getUnit();
+        if (base != null && base.getConversionFactor() != null && base.getConversionFactor() > 0) {
+            total /= base.getConversionFactor();
+        }
+        return total;
+    }
+
     private void validateRequestedBatch(SaleRequestDto.SaleItemDto line, List<Stock> stocks) {
         if (line.getRequestedBatchId() == null) return;
         UUID fefoBatchId = stocks.getFirst().getMedicineBatches().getId();
@@ -705,19 +735,21 @@ public SaleService(SalesRepository salesRepository,
             throw new ConflictException("Medicine " + medicine.getBrandName() + " has no selling price",
                     "SELLING_PRICE_MISSING");
         }
-        BigDecimal currentPrice = money(medicine.getSellingPrice());
-        BigDecimal convertedPrice = currentPrice;
-        if (sellingUnitId != null) {
-            Unit sellingUnit = unitRepository.findById(sellingUnitId).orElse(null);
-            if (sellingUnit != null && sellingUnit.getConversionFactor() != null && sellingUnit.getConversionFactor() > 1) {
-                convertedPrice = currentPrice.multiply(BigDecimal.valueOf(sellingUnit.getConversionFactor()));
+        BigDecimal basePrice = money(medicine.getSellingPrice());
+        int conversionFactor = cumulativeConversionFactor(medicine, sellingUnitId);
+        if (conversionFactor > 1) {
+            BigDecimal convertedPrice = basePrice.multiply(BigDecimal.valueOf(conversionFactor));
+            if (convertedPrice.compareTo(money(expectedPrice)) != 0) {
+                throw new ConflictException("The selling price changed to " + convertedPrice.toPlainString(),
+                        "PRICE_CHANGED");
+            }
+        } else {
+            if (basePrice.compareTo(money(expectedPrice)) != 0) {
+                throw new ConflictException("The selling price changed to " + basePrice.toPlainString(),
+                        "PRICE_CHANGED");
             }
         }
-        if (convertedPrice.compareTo(money(expectedPrice)) != 0) {
-            throw new ConflictException("The selling price changed to " + convertedPrice.toPlainString(),
-                    "PRICE_CHANGED");
-        }
-        return convertedPrice;
+        return basePrice;
     }
 
     private LineAmounts calculateLineAmounts(BigDecimal unitPrice, int quantity,

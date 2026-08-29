@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import java.util.UUID;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
@@ -29,6 +30,10 @@ public class CustomerResponseDto {
     private BigDecimal balance;
     private BigDecimal creditLimit;
     private String accountStatus;
+    private LocalDate dateOfBirth;
+    private String bloodType;
+    private String allergies;
+    private String medicalHistory;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -42,6 +47,10 @@ public class CustomerResponseDto {
                 .balance(c.getBalance())
                 .creditLimit(c.getCreditLimit())
                 .accountStatus(c.getAccountStatus())
+                .dateOfBirth(c.getDateOfBirth())
+                .bloodType(c.getBloodType())
+                .allergies(c.getAllergies())
+                .medicalHistory(c.getMedicalHistory())
                 .createdAt(c.getCreatedAt()).updatedAt(c.getUpdatedAt()).build();
     }
 }

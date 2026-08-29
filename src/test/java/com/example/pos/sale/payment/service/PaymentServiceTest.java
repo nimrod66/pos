@@ -5,6 +5,7 @@ import com.example.pos.sale.payment.repository.PaymentRepository;
 import com.example.pos.sale.sales.model.Sales;
 import com.example.pos.sale.sales.repository.SalesRepository;
 import com.example.pos.sale.sales.service.SaleService;
+import com.example.pos.operations.service.OperationalMetricsService;
 import com.example.pos.payment.gateway.PaymentGateway;
 import com.example.pos.payment.gateway.PaymentGatewayResponse;
 import com.example.pos.sync.config.TerminalConfig;
@@ -55,10 +56,13 @@ class PaymentServiceTest {
     @Mock
     private MpesaSettings mpesaSettings;
 
+    @Mock
+    private OperationalMetricsService metricsService;
+
     @Test
     void shouldKeepReservationWhenMpesaStatusIsTemporarilyUnavailable() {
         PaymentService paymentService = new PaymentService(paymentRepository, salesRepository, gatewayFactory,
-                syncService, terminalConfig, current, saleService, mpesaSettings);
+                syncService, terminalConfig, current, saleService, mpesaSettings, metricsService);
         UUID branchId = UUID.randomUUID();
         UUID saleId = UUID.randomUUID();
         UUID paymentId = UUID.randomUUID();
@@ -99,7 +103,7 @@ class PaymentServiceTest {
     @Test
     void shouldProcessSuccessfulMpesaCallback() {
         PaymentService paymentService = new PaymentService(paymentRepository, salesRepository, gatewayFactory,
-                syncService, terminalConfig, current, saleService, mpesaSettings);
+                syncService, terminalConfig, current, saleService, mpesaSettings, metricsService);
         when(terminalConfig.getTerminalId()).thenReturn("TERM-A");
 
         Sales sale = Sales.builder().build();
@@ -152,7 +156,7 @@ class PaymentServiceTest {
     @Test
     void shouldHandleFailedMpesaCallback() {
         PaymentService paymentService = new PaymentService(paymentRepository, salesRepository, gatewayFactory,
-                syncService, terminalConfig, current, saleService, mpesaSettings);
+                syncService, terminalConfig, current, saleService, mpesaSettings, metricsService);
 
         Sales sale = Sales.builder().build();
         sale.setTotal(new BigDecimal("50.00"));
@@ -187,7 +191,7 @@ class PaymentServiceTest {
     @Test
     void shouldIgnoreAlreadyFinalizedPayment() {
         PaymentService paymentService = new PaymentService(paymentRepository, salesRepository, gatewayFactory,
-                syncService, terminalConfig, current, saleService, mpesaSettings);
+                syncService, terminalConfig, current, saleService, mpesaSettings, metricsService);
 
         Payment payment = Payment.builder().build();
         payment.setPaymentStatus("COMPLETED");

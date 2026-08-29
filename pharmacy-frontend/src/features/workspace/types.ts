@@ -82,6 +82,7 @@ export interface Batch {
   quantity: number;
   unitCost: string;
   receivedAt: string;
+  shelfLocation: string | null;
 }
 
 export interface StockMovement {
@@ -249,6 +250,7 @@ export interface CheckoutInput {
   cashTendered?: string;
   prescriptionReferenceId?: string;
   creditAmount?: string;
+  payments?: Array<{ method: PaymentMethod; amount: string; reference?: string }>;
 }
 
 export interface PaymentCapabilities {

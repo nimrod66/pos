@@ -18,6 +18,15 @@ export interface CartLine {
   discountPercent?: number;
 }
 
+export interface PaymentEntry {
+  id: string;
+  method: PaymentMethod;
+  amount: string;
+  reference?: string;
+  mpesaMode?: "STK" | "MANUAL";
+  mpesaPhone?: string;
+}
+
 interface CartStore {
   cashTendered: string;
   checkoutKey: string | null;
@@ -28,9 +37,13 @@ interface CartStore {
   mpesaPhone: string;
   mpesaReference: string;
   paymentMethod: PaymentMethod;
+  payments: PaymentEntry[];
   pharmacistApproved: boolean;
   prescriptionReferenceId: string;
   addItem(medicineId: string, sellingUnitId?: string, unitConversion?: number, unitPrice?: string): void;
+  addPayment(method: PaymentMethod, amount: string, reference?: string): void;
+  removePayment(id: string): void;
+  updatePayment(id: string, updates: Partial<PaymentEntry>): void;
   clear(): void;
   prepareCheckoutKey(): string;
   removeItem(medicineId: string): void;
@@ -61,6 +74,7 @@ export const useCartStore = create<CartStore>()(
       mpesaPhone: "",
       mpesaReference: "",
       paymentMethod: "CASH",
+      payments: [],
       pharmacistApproved: false,
       prescriptionReferenceId: "",
       addItem(medicineId, sellingUnitId, unitConversion, unitPrice) {
@@ -86,6 +100,24 @@ export const useCartStore = create<CartStore>()(
               ],
         });
       },
+      addPayment(method, amount, reference) {
+        set({
+          checkoutKey: null,
+          payments: [...get().payments, { id: uuid(), method, amount, reference: reference || undefined }],
+        });
+      },
+      removePayment(id) {
+        set({
+          checkoutKey: null,
+          payments: get().payments.filter((p) => p.id !== id),
+        });
+      },
+      updatePayment(id, updates) {
+        set({
+          checkoutKey: null,
+          payments: get().payments.map((p) => p.id === id ? { ...p, ...updates } : p),
+        });
+      },
       clear() {
         set({
           checkoutKey: null,
@@ -97,6 +129,7 @@ export const useCartStore = create<CartStore>()(
           mpesaPhone: "",
           mpesaReference: "",
           paymentMethod: "CASH",
+          payments: [],
           pharmacistApproved: false,
           prescriptionReferenceId: "",
         });
@@ -192,6 +225,7 @@ export const useCartStore = create<CartStore>()(
         mpesaPhone: state.mpesaPhone,
         mpesaReference: state.mpesaReference,
         paymentMethod: state.paymentMethod,
+        payments: state.payments,
         prescriptionReferenceId: state.prescriptionReferenceId,
       }),
       skipHydration: true,

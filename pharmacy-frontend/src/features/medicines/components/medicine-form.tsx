@@ -2,13 +2,13 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { Resolver } from "react-hook-form";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Printer, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
-import { PrimaryButton, SecondaryLink } from "@/components/ui/buttons";
+import { PrimaryButton, SecondaryButton, SecondaryLink } from "@/components/ui/buttons";
 import {
   Field,
   FormError,
@@ -70,6 +70,11 @@ export function MedicineForm({ medicineId }: { medicineId?: string }) {
   const canWrite = usePermission(PERMISSIONS.MEDICINE_WRITE);
   const canSetPrice = usePermission(PERMISSIONS.MEDICINE_PRICE_WRITE);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [labelDialogOpen, setLabelDialogOpen] = useState(false);
+  const [labelTemplate, setLabelTemplate] = useState("STANDARD");
+  const [labelCopies, setLabelCopies] = useState(1);
+  const [labelRendering, setLabelRendering] = useState(false);
+  const [labelResult, setLabelResult] = useState<string | null>(null);
 
   const {
     control,
@@ -176,6 +181,32 @@ export function MedicineForm({ medicineId }: { medicineId?: string }) {
       setSubmitError(
         getWorkspaceErrorMessage(error, "The medicine could not be saved."),
       );
+    }
+  }
+
+  async function handlePrintLabel() {
+    if (!medicineId) return;
+    setLabelRendering(true);
+    setLabelResult(null);
+    try {
+      const response = await fetch("/api/v1/labels/render", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          medicineId,
+          templateSize: labelTemplate,
+          copies: labelCopies,
+        }),
+      });
+      if (!response.ok) throw new Error("Label rendering failed");
+      const body = await response.json();
+      setLabelResult(body.data.rendered);
+    } catch (error) {
+      setLabelResult(null);
+      setSubmitError(error instanceof Error ? error.message : "Label print failed");
+    } finally {
+      setLabelRendering(false);
     }
   }
 
@@ -354,12 +385,52 @@ export function MedicineForm({ medicineId }: { medicineId?: string }) {
 
         <div className="flex flex-wrap justify-end gap-2">
           <SecondaryLink href="/medicines">Cancel</SecondaryLink>
+          {medicineId ? (
+            <SecondaryButton type="button" onClick={() => setLabelDialogOpen(true)}>
+              <Printer aria-hidden="true" size={17} />
+              Print label
+            </SecondaryButton>
+          ) : null}
           <PrimaryButton type="submit" disabled={isSubmitting}>
             <Save aria-hidden="true" size={17} />
             {medicine ? "Save changes" : "Add medicine"}
           </PrimaryButton>
         </div>
       </form>
+
+      {labelDialogOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
+          <div role="dialog" aria-modal="true" aria-label="Print medicine label" className="w-full max-w-md rounded-md border border-[var(--border)] bg-white p-5 shadow-xl">
+            <h2 className="text-base font-semibold">Print label for {medicine?.brandName}</h2>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <Field label="Label size">
+                <Select value={labelTemplate} onChange={(e) => setLabelTemplate(e.target.value)}>
+                  <option value="SMALL">Small (25x15mm)</option>
+                  <option value="STANDARD">Standard (50x25mm)</option>
+                  <option value="LARGE">Large (75x50mm)</option>
+                  <option value="SHELF">Shelf (100x30mm)</option>
+                </Select>
+              </Field>
+              <Field label="Copies">
+                <Input type="number" min={1} max={50} value={labelCopies} onChange={(e) => setLabelCopies(Number(e.target.value))} />
+              </Field>
+            </div>
+            {labelResult ? (
+              <div className="mt-4 rounded-md bg-[var(--surface-muted)] p-3">
+                <p className="text-xs font-semibold text-[var(--text-muted)]">Rendered label (ZPL/TSPL):</p>
+                <pre className="mt-1 max-h-40 overflow-auto font-mono text-xs text-[var(--text)]">{labelResult}</pre>
+              </div>
+            ) : null}
+            <div className="mt-4 flex justify-end gap-2">
+              <SecondaryButton type="button" onClick={() => { setLabelDialogOpen(false); setLabelResult(null); }}>Close</SecondaryButton>
+              <PrimaryButton type="button" onClick={() => void handlePrintLabel()} disabled={labelRendering}>
+                <Printer aria-hidden="true" size={17} />
+                {labelRendering ? "Rendering..." : "Render label"}
+              </PrimaryButton>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

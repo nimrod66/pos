@@ -373,6 +373,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
                 quantity: input.quantity,
                 unitCost: input.unitCost,
                 receivedAt,
+                shelfLocation: null,
               },
               ...state.batches,
             ];
@@ -604,6 +605,11 @@ export const useWorkspaceStore = create<WorkspaceState>()(
                   ? input.mpesaReference.trim().toUpperCase()
                   : null,
             },
+            ...(input.payments ?? []).map((p) => ({
+              method: p.method,
+              amount: Number(p.amount).toFixed(2),
+              reference: p.reference || null,
+            })),
           ],
           subtotal: centsToMoney(totalCents - taxCents),
           taxTotal: centsToMoney(taxCents),

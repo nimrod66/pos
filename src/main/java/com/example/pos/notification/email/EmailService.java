@@ -70,4 +70,24 @@ public class EmailService {
         mailSender.send(msg);
         log.info("Password reset email sent to {}", to);
     }
+
+    public void sendStockAlert(String to, String firstName, String subject, String body) {
+        if (!enabled) {
+            log.info("Email disabled — would send stock alert '{}' to {}", subject, to);
+            return;
+        }
+        SimpleMailMessage msg = new SimpleMailMessage();
+        msg.setTo(to);
+        msg.setSubject("Pharmacy POS Alert: " + subject);
+        msg.setText(String.format("""
+                Hello %s,
+
+                %s
+
+                Regards,
+                Pharmacy POS Team
+                """, firstName, body));
+        mailSender.send(msg);
+        log.info("Stock alert email sent to {}: {}", to, subject);
+    }
 }

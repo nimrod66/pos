@@ -69,6 +69,9 @@ public class SaleResponseDto {
         private BigDecimal tax;
         private BigDecimal total;
         private BigDecimal lineTotal;
+        private UUID sellingUnitId;
+        private Integer unitConversion;
+        private Integer originalQuantity;
         private List<BatchAllocationResponse> allocations;
     }
 

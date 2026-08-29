@@ -161,6 +161,21 @@ public class PrescriptionsService {
         return repo.save(prescription);
     }
 
+    public Prescriptions cancel(UUID id, String reason) {
+        Prescriptions prescription = getById(id);
+        if ("DISPENSED".equalsIgnoreCase(prescription.getStatus())) {
+            throw new ConflictException("Cannot cancel a dispensed prescription", "PRESCRIPTION_ALREADY_DISPENSED");
+        }
+        if ("CANCELLED".equalsIgnoreCase(prescription.getStatus())) {
+            throw new ConflictException("Prescription is already cancelled", "PRESCRIPTION_ALREADY_CANCELLED");
+        }
+        prescription.setStatus("CANCELLED");
+        if (reason != null && !reason.isBlank()) {
+            prescription.setDiagnosis(trimToNull(reason));
+        }
+        return repo.save(prescription);
+    }
+
     @Transactional(readOnly = true)
     public PrescriptionResponseDto toDto(Prescriptions prescription) {
         Prescriptions detailed = getById(prescription.getId());

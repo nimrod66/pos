@@ -54,6 +54,7 @@ export interface PrescriptionInput {
 interface PrescriptionGateway {
   create(input: PrescriptionInput): Promise<Prescription>;
   dispense(id: string): Promise<Prescription>;
+  cancel(id: string, reason?: string): Promise<Prescription>;
   list(): Promise<Prescription[]>;
 }
 
@@ -71,6 +72,13 @@ class LivePrescriptionGateway implements PrescriptionGateway {
 
   async dispense(id: string) {
     return (await apiRequest<Prescription>(path(`/prescriptions/${id}/dispense`), {
+      method: "PATCH",
+    })).data;
+  }
+
+  async cancel(id: string, reason?: string) {
+    return (await apiRequest<Prescription>(path(`/prescriptions/${id}/cancel`), {
+      body: reason ? { reason } : {},
       method: "PATCH",
     })).data;
   }
@@ -140,6 +148,16 @@ class PreviewPrescriptionGateway implements PrescriptionGateway {
     prescription.status = "DISPENSED";
     prescription.dispensedAt = new Date().toISOString();
     prescription.updatedAt = prescription.dispensedAt;
+    savePreview(rows);
+    return prescription;
+  }
+
+  async cancel(id: string, _reason?: string) {
+    const rows = previewRows();
+    const prescription = rows.find((row) => row.id === id);
+    if (!prescription) throw new Error("Prescription not found.");
+    prescription.status = "CANCELLED";
+    prescription.updatedAt = new Date().toISOString();
     savePreview(rows);
     return prescription;
   }

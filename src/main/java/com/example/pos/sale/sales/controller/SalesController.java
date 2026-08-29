@@ -4,6 +4,9 @@ import java.util.UUID;
 
 import com.example.pos.common.dto.ApiResponse;
 import com.example.pos.common.dto.PagedResponse;
+import com.example.pos.common.exception.BaseException;
+import com.example.pos.operations.model.OperationalMetricEvent;
+import com.example.pos.operations.service.OperationalMetricsService;
 import com.example.pos.sale.sales.dto.SaleRequestDto;
 import com.example.pos.sale.sales.dto.SaleResponseDto;
 import com.example.pos.sale.sales.model.Sales;
@@ -25,9 +28,11 @@ import java.util.List;
 public class SalesController {
 
     private final SaleService saleService;
+    private final OperationalMetricsService metricsService;
 
-    public SalesController(SaleService saleService) {
+    public SalesController(SaleService saleService, OperationalMetricsService metricsService) {
         this.saleService = saleService;
+        this.metricsService = metricsService;
     }
 
     @PostMapping
@@ -35,9 +40,34 @@ public class SalesController {
     public ResponseEntity<ApiResponse<SaleResponseDto>> create(
             @RequestHeader("Idempotency-Key") String idempotencyKey,
             @RequestBody @Valid SaleRequestDto dto) {
-        Sales sale = saleService.createSale(dto, idempotencyKey);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.created(saleService.toResponseDto(sale)));
+        long started = System.nanoTime();
+        metricsService.record(OperationalMetricEvent.EventType.CHECKOUT,
+                OperationalMetricEvent.EventStatus.ATTEMPTED, null, "sales-api", null,
+                null, idempotencyKey, null, null);
+        try {
+            Sales sale = saleService.createSale(dto, idempotencyKey);
+            metricsService.record(OperationalMetricEvent.EventType.CHECKOUT,
+                    OperationalMetricEvent.EventStatus.SUCCESS, null, "sales-api", sale.getTerminalId(),
+                    sale.getId(), idempotencyKey, elapsedMs(started), null);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(ApiResponse.created(saleService.toResponseDto(sale)));
+        } catch (RuntimeException ex) {
+            metricsService.record(OperationalMetricEvent.EventType.CHECKOUT,
+                    OperationalMetricEvent.EventStatus.FAILED, reasonCode(ex), "sales-api", null,
+                    null, idempotencyKey, elapsedMs(started), ex.getMessage());
+            throw ex;
+        }
+    }
+
+    private long elapsedMs(long started) {
+        return (System.nanoTime() - started) / 1_000_000;
+    }
+
+    private String reasonCode(RuntimeException ex) {
+        if (ex instanceof BaseException base && base.getErrorCode() != null) {
+            return base.getErrorCode();
+        }
+        return ex.getClass().getSimpleName();
     }
 
     @GetMapping

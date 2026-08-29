@@ -22,6 +22,7 @@ import {
   Field,
   FormError,
   Input,
+  Select,
   Textarea,
 } from "@/components/ui/form-controls";
 import { PageHeader } from "@/components/ui/page-header";
@@ -44,6 +45,10 @@ const emptyInput: CustomerInput = {
   notes: null,
   phoneNumber: null,
   kraPin: null,
+  dateOfBirth: null,
+  bloodType: null,
+  allergies: null,
+  medicalHistory: null,
 };
 
 function errorMessage(error: unknown, fallback: string) {
@@ -107,6 +112,10 @@ export function CustomersPage() {
       kraPin: customer.kraPin,
       notes: customer.notes,
       phoneNumber: customer.phoneNumber,
+      dateOfBirth: customer.dateOfBirth ?? null,
+      bloodType: customer.bloodType ?? null,
+      allergies: customer.allergies ?? null,
+      medicalHistory: customer.medicalHistory ?? null,
     });
     setError(null);
     setFormOpen(true);
@@ -261,6 +270,44 @@ export function CustomersPage() {
                 onChange={(event) => update("notes", event.target.value)}
               />
             </Field>
+          </div>
+          <div className="mt-4 border-t border-[var(--border)] pt-4">
+            <h3 className="text-sm font-semibold text-[var(--text-muted)]">Medical Information</h3>
+            <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <Field label="Date of birth">
+                <Input
+                  type="date"
+                  value={draft.dateOfBirth ?? ""}
+                  onChange={(event) => update("dateOfBirth", event.target.value || null)}
+                />
+              </Field>
+              <Field label="Blood type">
+                <Select value={draft.bloodType ?? ""} onChange={(event) => update("bloodType", event.target.value || null)}>
+                  <option value="">Select</option>
+                  {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((bt) => (
+                    <option key={bt} value={bt}>{bt}</option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label="Allergies">
+                <Input
+                  placeholder="e.g. Penicillin, Sulfa"
+                  value={draft.allergies ?? ""}
+                  onChange={(event) => update("allergies", event.target.value)}
+                />
+              </Field>
+              <div className="sm:col-span-2">
+                <Field label="Medical history">
+                  <Textarea
+                    className="min-h-10"
+                    rows={2}
+                    placeholder="Chronic conditions, past surgeries, etc."
+                    value={draft.medicalHistory ?? ""}
+                    onChange={(event) => update("medicalHistory", event.target.value)}
+                  />
+                </Field>
+              </div>
+            </div>
           </div>
           <div className="mt-4">
             <FormError message={error} />

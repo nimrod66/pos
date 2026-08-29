@@ -23,6 +23,10 @@ export interface Customer {
   balance?: number;
   creditLimit?: number | null;
   accountStatus?: string;
+  dateOfBirth?: string | null;
+  bloodType?: string | null;
+  allergies?: string | null;
+  medicalHistory?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -30,7 +34,12 @@ export interface Customer {
 export type CustomerInput = Pick<
   Customer,
   "firstName" | "lastName" | "phoneNumber" | "email" | "address" | "notes" | "kraPin"
->;
+> & {
+  dateOfBirth?: string | null;
+  bloodType?: string | null;
+  allergies?: string | null;
+  medicalHistory?: string | null;
+};
 
 export interface PurchaseOrderItem {
   id: string;

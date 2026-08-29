@@ -8,6 +8,7 @@ import {
   ShieldCheck,
   ShoppingCart,
   Trash2,
+  XCircle,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -173,6 +174,16 @@ export function PrescriptionsPage() {
     }
   }
 
+  async function markCancelled(id: string) {
+    setError(null);
+    try {
+      await prescriptionGateway.cancel(id);
+      await load();
+    } catch (caught) {
+      setError(errorMessage(caught));
+    }
+  }
+
   return (
     <div className="max-w-7xl">
       <PageHeader
@@ -245,7 +256,7 @@ export function PrescriptionsPage() {
                 <table className="w-full min-w-[760px] text-left text-sm">
                   <thead className="bg-[var(--surface-muted)] text-xs text-[var(--text-muted)]"><tr><th className="px-4 py-3 font-semibold">Reference</th><th className="px-4 py-3 font-semibold">Patient</th><th className="px-4 py-3 font-semibold">Prescriber</th><th className="px-4 py-3 font-semibold">Issued</th><th className="px-4 py-3 font-semibold">Items</th><th className="px-4 py-3 font-semibold">Status</th><th className="px-4 py-3"><span className="sr-only">Actions</span></th></tr></thead>
                   <tbody className="divide-y divide-[var(--border)]">
-                    {filteredRows.map((row) => <tr key={row.id}><td className="px-4 py-3 font-mono text-xs font-semibold">{row.prescriptionNumber}</td><td className="px-4 py-3 font-medium">{row.customerName}</td><td className="px-4 py-3"><span className="block">{row.doctorName}</span><span className="text-xs text-[var(--text-muted)]">{row.doctorLicenseNumber}</span></td><td className="px-4 py-3 text-[var(--text-muted)]">{formatDate(row.issuedDate)}</td><td className="px-4 py-3">{row.items.length}</td><td className="px-4 py-3"><StatusBadge tone={row.status === "ACTIVE" ? "success" : "neutral"}>{row.status.toLowerCase()}</StatusBadge></td><td className="px-4 py-3 text-right"><div className="flex justify-end gap-2">{row.status === "ACTIVE" && canSell && canApprove ? <SecondaryButton type="button" onClick={() => sendToPos(row.id)}><ShoppingCart aria-hidden="true" size={15} /> Use in POS</SecondaryButton> : null}{row.status === "ACTIVE" && canApprove ? <SecondaryButton type="button" title="Mark this prescription as dispensed without a sale" onClick={() => void markDispensed(row.id)}>Mark dispensed</SecondaryButton> : null}</div></td></tr>)}
+                    {filteredRows.map((row) => <tr key={row.id}><td className="px-4 py-3 font-mono text-xs font-semibold">{row.prescriptionNumber}</td><td className="px-4 py-3 font-medium">{row.customerName}</td><td className="px-4 py-3"><span className="block">{row.doctorName}</span><span className="text-xs text-[var(--text-muted)]">{row.doctorLicenseNumber}</span></td><td className="px-4 py-3 text-[var(--text-muted)]">{formatDate(row.issuedDate)}</td><td className="px-4 py-3">{row.items.length}</td><td className="px-4 py-3"><StatusBadge tone={row.status === "ACTIVE" ? "success" : row.status === "CANCELLED" ? "danger" : "neutral"}>{row.status.toLowerCase()}</StatusBadge></td><td className="px-4 py-3 text-right"><div className="flex justify-end gap-2">{row.status === "ACTIVE" && canSell && canApprove ? <SecondaryButton type="button" onClick={() => sendToPos(row.id)}><ShoppingCart aria-hidden="true" size={15} /> Use in POS</SecondaryButton> : null}{row.status === "ACTIVE" && canApprove ? <SecondaryButton type="button" title="Mark this prescription as dispensed without a sale" onClick={() => void markDispensed(row.id)}>Mark dispensed</SecondaryButton> : null}{row.status === "ACTIVE" && canApprove ? <SecondaryButton type="button" title="Cancel this prescription" onClick={() => void markCancelled(row.id)}><XCircle aria-hidden="true" size={15} /></SecondaryButton> : null}</div></td></tr>)}
                   </tbody>
                 </table>
               </div>

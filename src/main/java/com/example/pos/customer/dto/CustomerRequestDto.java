@@ -5,6 +5,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -17,4 +19,8 @@ public class CustomerRequestDto {
     private String address;
     private String notes;
     private String kraPin;
+    private LocalDate dateOfBirth;
+    private String bloodType;
+    private String allergies;
+    private String medicalHistory;
 }
