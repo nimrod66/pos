@@ -24,6 +24,7 @@ import {
   useWorkspaceQuery,
   workspaceGateway,
 } from "@/features/workspace/gateway/workspace-gateway";
+import { apiRequest } from "@/lib/api-client";
 
 const medicineSchema = z.object({
   sku: z.string().trim().min(2, "Enter a SKU."),
@@ -189,19 +190,18 @@ export function MedicineForm({ medicineId }: { medicineId?: string }) {
     setLabelRendering(true);
     setLabelResult(null);
     try {
-      const response = await fetch("/api/v1/labels/render", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          medicineId,
-          templateSize: labelTemplate,
-          copies: labelCopies,
-        }),
-      });
-      if (!response.ok) throw new Error("Label rendering failed");
-      const body = await response.json();
-      setLabelResult(body.data.rendered);
+      const response = await apiRequest<{ rendered: string }>(
+        "/labels/render",
+        {
+          method: "POST",
+          body: {
+            medicineId,
+            templateSize: labelTemplate,
+            copies: labelCopies,
+          },
+        },
+      );
+      setLabelResult(response.data.rendered);
     } catch (error) {
       setLabelResult(null);
       setSubmitError(error instanceof Error ? error.message : "Label print failed");

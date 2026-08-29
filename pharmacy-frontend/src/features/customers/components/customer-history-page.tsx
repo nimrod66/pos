@@ -2,6 +2,7 @@
 
 import {
   ArrowLeft,
+  BadgeDollarSign,
   ChevronDown,
   ChevronRight,
   Clock,
@@ -162,10 +163,16 @@ export function CustomerHistoryPage({
             : undefined
         }
         actions={
-          <SecondaryLink href="/customers">
-            <ArrowLeft aria-hidden="true" size={17} />
-            Back to customers
-          </SecondaryLink>
+          <div className="flex items-center gap-2">
+            <SecondaryLink href={`/customers/${customerId}/credit`}>
+              <BadgeDollarSign aria-hidden="true" size={17} />
+              Manage Credit
+            </SecondaryLink>
+            <SecondaryLink href="/customers">
+              <ArrowLeft aria-hidden="true" size={17} />
+              Back to customers
+            </SecondaryLink>
+          </div>
         }
       />
 

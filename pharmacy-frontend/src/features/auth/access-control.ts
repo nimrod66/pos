@@ -302,12 +302,20 @@ const routeAccessRules: Array<{
     rule: { allOf: [PERMISSIONS.SUPPLIER_READ] },
   },
   {
+    path: "/suppliers/invoices",
+    rule: { allOf: [PERMISSIONS.SUPPLIER_READ] },
+  },
+  {
     path: "/procurement/purchase-orders",
     rule: { allOf: [PERMISSIONS.PURCHASE_ORDER_READ] },
   },
   {
     path: "/customers",
     rule: { allOf: [PERMISSIONS.CUSTOMER_READ] },
+  },
+  {
+    path: "/customers/*/credit",
+    rule: { allOf: [PERMISSIONS.CUSTOMER_ACCOUNT_READ] },
   },
   {
     path: "/sales",
@@ -344,6 +352,22 @@ const routeAccessRules: Array<{
     rule: { allOf: [PERMISSIONS.TERMINAL_READ] },
   },
   {
+    path: "/insurance/schemes",
+    rule: { allOf: [PERMISSIONS.INSURANCE_READ] },
+  },
+  {
+    path: "/insurance/batches",
+    rule: { allOf: [PERMISSIONS.INSURANCE_READ] },
+  },
+  {
+    path: "/insurance/payments",
+    rule: { allOf: [PERMISSIONS.INSURANCE_READ] },
+  },
+  {
+    path: "/insurance/reconciliation",
+    rule: { allOf: [PERMISSIONS.INSURANCE_READ] },
+  },
+  {
     path: "/admin/controlled-drugs",
     rule: { allOf: [PERMISSIONS.CONTROLLED_DRUGS_READ] },
   },
@@ -354,6 +378,26 @@ const routeAccessRules: Array<{
   {
     path: "/admin/audit",
     rule: { allOf: [PERMISSIONS.AUDIT_READ] },
+  },
+  {
+    path: "/admin/dosage-forms",
+    rule: { allOf: [PERMISSIONS.MEDICINE_READ] },
+  },
+  {
+    path: "/admin/tax-categories",
+    rule: { allOf: [PERMISSIONS.SETTINGS_MANAGE] },
+  },
+  {
+    path: "/admin/login-history",
+    rule: { allOf: [PERMISSIONS.USER_MANAGE] },
+  },
+  {
+    path: "/admin/drug-interactions",
+    rule: { allOf: [PERMISSIONS.MEDICINE_READ] },
+  },
+  {
+    path: "/admin/sync-queue",
+    rule: { allOf: [PERMISSIONS.SETTINGS_MANAGE] },
   },
   {
     path: "/system",

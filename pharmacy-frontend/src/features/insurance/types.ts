@@ -71,3 +71,124 @@ export interface CreateInsurerInput {
   maxClaimAmount?: number;
   status?: string;
 }
+
+export interface InsuranceScheme {
+  id: string;
+  insurerId: string;
+  insurerName: string | null;
+  name: string;
+  code: string;
+  schemeType: string | null;
+  coPayPercentage: number | null;
+  coPayFlat: number | null;
+  maxClaimAmount: number | null;
+  requiresPreauth: boolean;
+  status: string | null;
+}
+
+export interface CreateSchemeInput {
+  name: string;
+  code: string;
+  schemeType?: string;
+  coPayPercentage?: number;
+  coPayFlat?: number;
+  maxClaimAmount?: number;
+  requiresPreauth?: boolean;
+}
+
+export interface Authorization {
+  id: string;
+  insurerId: string | null;
+  insurerName: string | null;
+  memberId: string | null;
+  memberName: string | null;
+  membershipNumber: string | null;
+  authorizationCode: string | null;
+  authorizedAmount: number | null;
+  usedAmount: number | null;
+  remainingAmount: number | null;
+  validFrom: string | null;
+  validTo: string | null;
+  status: string | null;
+  notes: string | null;
+}
+
+export interface CreateAuthorizationInput {
+  memberId?: string;
+  authorizationCode?: string;
+  authorizedAmount?: number;
+  validFrom?: string;
+  validTo?: string;
+  notes?: string;
+}
+
+export interface ClaimBatch {
+  id: string;
+  insurerId: string | null;
+  insurerName: string | null;
+  batchReference: string | null;
+  claimCount: number | null;
+  totalAmount: number | null;
+  approvedAmount: number | null;
+  paidAmount: number | null;
+  status: string | null;
+  submittedAt: string | null;
+  createdAt: string | null;
+}
+
+export interface CreateBatchInput {
+  claimIds?: string[];
+  notes?: string;
+}
+
+export interface InsurancePayment {
+  id: string;
+  insurerId: string | null;
+  insurerName: string | null;
+  batchId: string | null;
+  batchRef: string | null;
+  paymentReference: string | null;
+  paymentAmount: number | null;
+  paymentDate: string | null;
+  paymentMethod: string | null;
+  linkedClaimCount: number | null;
+  status: string | null;
+  notes: string | null;
+  createdAt: string | null;
+}
+
+export interface CreatePaymentInput {
+  batchId?: string;
+  paymentReference?: string;
+  paymentAmount?: number;
+  paymentDate?: string;
+  paymentMethod?: string;
+  notes?: string;
+}
+
+export interface Reconciliation {
+  id: string;
+  insurerId: string | null;
+  insurerName: string | null;
+  periodFrom: string | null;
+  periodTo: string | null;
+  totalClaims: number | null;
+  totalClaimedAmount: number | null;
+  totalApprovedAmount: number | null;
+  totalPaidAmount: number | null;
+  outstandingAmount: number | null;
+  status: string | null;
+  createdAt: string | null;
+}
+
+export interface InsurerReport {
+  insurerId: string;
+  insurerName: string;
+  totalClaims: number;
+  totalClaimedAmount: number;
+  totalApprovedAmount: number;
+  totalPaidAmount: number;
+  totalRejectedAmount: number;
+  outstandingAmount: number;
+  claimsByStatus: Record<string, number>;
+}

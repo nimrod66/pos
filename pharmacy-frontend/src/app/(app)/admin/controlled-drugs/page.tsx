@@ -5,9 +5,9 @@ import { useEffect, useState } from "react";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
-import { StatusBadge } from "@/components/ui/status-badge";
 import { Input } from "@/components/ui/form-controls";
 import { useWorkspaceQuery } from "@/features/workspace/gateway/workspace-gateway";
+import { apiRequest } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/format";
 
 interface ControlledDrugRecord {
@@ -32,15 +32,15 @@ export default function ControlledDrugsPage() {
   async function load() {
     setLoading(true);
     try {
-      const response = await fetch("/api/v1/controlled-drugs", {
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Failed to load controlled drugs");
-      const body = await response.json();
-      setRecords(body.data ?? []);
+      const response = await apiRequest<ControlledDrugRecord[]>(
+        "/controlled-drugs",
+      );
+      setRecords(response.data ?? []);
       setError(null);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Failed to load");
+      setError(
+        caught instanceof Error ? caught.message : "Failed to load",
+      );
     } finally {
       setLoading(false);
     }
