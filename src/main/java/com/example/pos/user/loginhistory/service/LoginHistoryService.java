@@ -25,7 +25,7 @@ public class LoginHistoryService {
     }
 
     public List<LoginHistory> getAll() {
-        return repo.findAll(PageRequest.of(0, 200, Sort.by(Sort.Direction.DESC, "loginTime")))
+        return repo.findAllByOrderByLoginTimeDesc(PageRequest.of(0, 200))
                 .getContent();
     }
 }
