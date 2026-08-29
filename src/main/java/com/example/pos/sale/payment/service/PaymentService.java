@@ -226,20 +226,8 @@ public class PaymentService {
             }
         }
 
-        String callbackKey = merchantRequestId + ":" + checkoutRequestId;
-        if (!PROCESSED_CALLBACKS.add(callbackKey)) {
-            log.info("M-Pesa callback already processed: {}", callbackKey);
-            metricsService.record(OperationalMetricEvent.EventType.PAYMENT,
-                    OperationalMetricEvent.EventStatus.WARNING, "DUPLICATE_CALLBACK", "mpesa-callback",
-                    terminalConfig.getTerminalId(), null, null, null, callbackKey);
-            return;
-        }
-
-        if (PROCESSED_CALLBACKS.size() > MAX_PROCESSED_CALLBACKS) {
-            log.warn("M-Pesa callback set is large ({}), clearing old entries", PROCESSED_CALLBACKS.size());
-            PROCESSED_CALLBACKS.clear();
-        }
-
+        // Database is authoritative for deduplication. Use SELECT FOR UPDATE
+        // to serialize concurrent callbacks for the same payment.
         Payment payment = paymentRepository.findByMerchantRequestId(merchantRequestId)
                 .or(() -> paymentRepository.findByCheckoutRequestId(checkoutRequestId))
                 .orElse(null);
@@ -248,12 +236,23 @@ public class PaymentService {
             log.warn("No payment found for MPesa MerchantRequestID: {}", merchantRequestId);
             metricsService.record(OperationalMetricEvent.EventType.PAYMENT,
                     OperationalMetricEvent.EventStatus.WARNING, "UNMATCHED_MPESA_CALLBACK", "mpesa-callback",
-                    terminalConfig.getTerminalId(), null, null, null, callbackKey);
+                    terminalConfig.getTerminalId(), null, null, null,
+                    merchantRequestId + ":" + checkoutRequestId);
             return;
         }
 
+        // Lock the payment row to serialize concurrent callbacks
+        Payment lockedPayment = paymentRepository.findForUpdateById(payment.getId())
+                .orElse(null);
+        if (lockedPayment == null) {
+            log.warn("Payment {} disappeared during callback processing", payment.getId());
+            return;
+        }
+        payment = lockedPayment;
+
         if ("COMPLETED".equals(payment.getPaymentStatus()) || "FAILED".equals(payment.getPaymentStatus())) {
-            log.info("Payment {} already finalized, ignoring callback", payment.getId());
+            log.info("Payment {} already finalized (status={}), ignoring callback",
+                    payment.getId(), payment.getPaymentStatus());
             metricsService.record(OperationalMetricEvent.EventType.PAYMENT,
                     OperationalMetricEvent.EventStatus.WARNING, "ALREADY_FINALIZED_CALLBACK", "mpesa-callback",
                     terminalConfig.getTerminalId(), payment.getId(), null, null, payment.getPaymentStatus());
