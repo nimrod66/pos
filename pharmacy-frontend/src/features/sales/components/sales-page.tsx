@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input, Select } from "@/components/ui/form-controls";
+import { PaginationControls, usePagination } from "@/components/ui/pagination";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { addMoney, formatKes } from "@/features/workspace/lib/money";
@@ -36,6 +37,7 @@ export function SalesPage() {
     [normalized, payment, sales, status],
   );
   const completedSales = sales.filter((sale) => reportableStatuses.has(sale.status));
+  const salesPage = usePagination(visibleSales, 25);
   const netSales = addMoney(...completedSales.map((sale) => addMoney(sale.total, `-${sale.refundTotal}`)));
   const cashSales = addMoney(...completedSales.flatMap((sale) => sale.payments.filter((item) => item.method === "CASH").map((item) => item.amount)));
   const mpesaSales = addMoney(...completedSales.flatMap((sale) => sale.payments.filter((item) => item.method === "MPESA").map((item) => item.amount)));
@@ -58,7 +60,7 @@ export function SalesPage() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[940px] text-left text-sm">
               <thead className="bg-[var(--surface-muted)] text-xs uppercase text-[var(--text-muted)]"><tr><th className="px-4 py-3 font-semibold">Receipt</th><th className="px-4 py-3 font-semibold">Completed</th><th className="px-4 py-3 font-semibold">Cashier</th><th className="px-4 py-3 font-semibold">Payment</th><th className="px-4 py-3 text-right font-semibold">Items</th><th className="px-4 py-3 text-right font-semibold">Net total</th><th className="px-4 py-3 font-semibold">Status</th></tr></thead>
-              <tbody className="divide-y divide-[var(--border)]">{visibleSales.map((sale) => (
+              <tbody className="divide-y divide-[var(--border)]">{salesPage.pageRows.map((sale) => (
                 <tr key={sale.id} className="hover:bg-[var(--surface-muted)]/60">
                   <td className="px-4 py-3.5"><Link href={`/sales/${sale.id}`} className="font-semibold text-[var(--brand-strong)] hover:underline">{sale.receiptNumber}</Link></td>
                   <td className="whitespace-nowrap px-4 py-3.5 text-[var(--text-muted)]">{formatDateTime(sale.completedAt)}</td>
@@ -72,7 +74,13 @@ export function SalesPage() {
             </table>
           </div>
         ) : <EmptyState icon={ReceiptText} title="No sales found" description="Adjust the filters or complete a sale in the POS." />}
-        <div className="border-t border-[var(--border)] px-4 py-3 text-xs text-[var(--text-muted)]">Showing {visibleSales.length} of {sales.length} receipts</div>
+        <PaginationControls
+          page={salesPage.page}
+          pageCount={salesPage.pageCount}
+          total={salesPage.total}
+          pageSize={salesPage.pageSize}
+          onPage={salesPage.setPage}
+        />
       </section>
     </div>
   );

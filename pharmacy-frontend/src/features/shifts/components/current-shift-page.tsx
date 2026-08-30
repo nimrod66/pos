@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
 import { Field, FormError, Input } from "@/components/ui/form-controls";
+import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { PERMISSIONS } from "@/features/auth/access-control";
@@ -299,28 +300,31 @@ export function CurrentShiftPage() {
         </section>
       )}
 
-      {xReport ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4 print:static print:bg-white print:p-0">
-          <div className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-md border border-[var(--border)] bg-white p-5 shadow-xl print:border-0 print:shadow-none">
-            <div className="flex items-start justify-between gap-3 print:hidden">
-              <h2 className="text-base font-semibold">X report</h2>
-              <button type="button" aria-label="Close" onClick={() => setXReport(null)} className="text-sm text-[var(--text-muted)]">Close</button>
-            </div>
-            <dl className="mt-4 space-y-2 text-sm">
-              <p className="text-center text-sm font-bold uppercase">X daily report</p>
-              <div className="flex justify-between"><dt className="text-[var(--text-muted)]">Sales receipts</dt><dd>{String(xReport.salesCount ?? "-")}</dd></div>
-              <div className="flex justify-between"><dt>Total sales</dt><dd className="font-semibold">{formatKes(String(xReport.totalSales ?? "0"))}</dd></div>
-              <div className="flex justify-between"><dt>Cash payments</dt><dd>{formatKes(String(xReport.totalCashPayments ?? "0"))}</dd></div>
-              <div className="flex justify-between"><dt>M-Pesa payments</dt><dd>{formatKes(String(xReport.totalMpesaPayments ?? "0"))}</dd></div>
-              <div className="flex justify-between"><dt>Opening float</dt><dd>{formatKes(String(xReport.openingBalance ?? "0"))}</dd></div>
-              <div className="flex justify-between"><dt>Expected in drawer</dt><dd>{formatKes(String(xReport.expectedClosingBalance ?? "0"))}</dd></div>
-            </dl>
-            <div className="mt-5 flex justify-end print:hidden">
-              <PrimaryButton type="button" onClick={() => window.print()}>Print X report</PrimaryButton>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <Modal
+        open={xReport !== null}
+        onClose={() => setXReport(null)}
+        title="X report"
+        maxWidthClass="max-w-md"
+        overlayClassName="print:static print:bg-white print:p-0"
+        className="print:border-0 print:shadow-none"
+        headerClassName="print:hidden"
+        footerClassName="print:hidden"
+        footer={
+          <PrimaryButton type="button" onClick={() => window.print()}>
+            Print X report
+          </PrimaryButton>
+        }
+      >
+        <dl className="space-y-2 text-sm">
+          <p className="text-center text-sm font-bold uppercase">X daily report</p>
+          <div className="flex justify-between"><dt className="text-[var(--text-muted)]">Sales receipts</dt><dd>{String(xReport?.salesCount ?? "-")}</dd></div>
+          <div className="flex justify-between"><dt>Total sales</dt><dd className="font-semibold">{formatKes(String(xReport?.totalSales ?? "0"))}</dd></div>
+          <div className="flex justify-between"><dt>Cash payments</dt><dd>{formatKes(String(xReport?.totalCashPayments ?? "0"))}</dd></div>
+          <div className="flex justify-between"><dt>M-Pesa payments</dt><dd>{formatKes(String(xReport?.totalMpesaPayments ?? "0"))}</dd></div>
+          <div className="flex justify-between"><dt>Opening float</dt><dd>{formatKes(String(xReport?.openingBalance ?? "0"))}</dd></div>
+          <div className="flex justify-between"><dt>Expected in drawer</dt><dd>{formatKes(String(xReport?.expectedClosingBalance ?? "0"))}</dd></div>
+        </dl>
+      </Modal>
       <section className="mt-6 rounded-md border border-[var(--border)] bg-white">
         <div className="border-b border-[var(--border)] px-4 py-3.5"><h2 className="text-sm font-semibold">Shift history</h2></div>
         <div className="overflow-x-auto">

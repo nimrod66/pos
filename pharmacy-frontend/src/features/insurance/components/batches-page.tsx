@@ -27,7 +27,7 @@ function statusTone(status: string | null) {
   }
 }
 
-export function BatchesPage() {
+export function BatchesPage({ showHeader = true }: { showHeader?: boolean }) {
   const canRead = usePermission(PERMISSIONS.INSURANCE_READ);
   const canWrite = usePermission(PERMISSIONS.INSURANCE_WRITE);
 
@@ -86,10 +86,12 @@ export function BatchesPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Claim batches"
-        description="Group claims into batches for submission to insurers."
-      />
+      {showHeader ? (
+        <PageHeader
+          title="Claim batches"
+          description="Group claims into batches for submission to insurers."
+        />
+      ) : null}
 
       {error ? <div className="mb-4"><FormError message={error} /></div> : null}
 

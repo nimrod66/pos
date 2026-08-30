@@ -18,6 +18,7 @@ import { PrimaryLink } from "@/components/ui/buttons";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FormError, Input, Select } from "@/components/ui/form-controls";
+import { PaginationControls, usePagination } from "@/components/ui/pagination";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { PERMISSIONS } from "@/features/auth/access-control";
@@ -142,6 +143,8 @@ export function MedicinesPage() {
     });
   }, [categoryId, medicines, query, status]);
 
+  const medicinesPage = usePagination(visibleMedicines, 25);
+
   return (
     <div>
       <PageHeader
@@ -217,7 +220,7 @@ export function MedicinesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border)]">
-                {visibleMedicines.map((medicine) => {
+                {medicinesPage.pageRows.map((medicine) => {
                   const stock = stockForMedicine(batches, medicine.id);
                   const category = categories.find((item) => item.id === medicine.categoryId);
                   const unit = units.find((item) => item.id === medicine.unitId);
@@ -341,9 +344,13 @@ export function MedicinesPage() {
             </table>
           </div>
         )}
-        <div className="border-t border-[var(--border)] px-4 py-3 text-xs text-[var(--text-muted)]">
-          Showing {visibleMedicines.length} of {medicines.length} medicines
-        </div>
+        <PaginationControls
+          page={medicinesPage.page}
+          pageCount={medicinesPage.pageCount}
+          total={medicinesPage.total}
+          pageSize={medicinesPage.pageSize}
+          onPage={medicinesPage.setPage}
+        />
       </section>
 
       <ConfirmDialog

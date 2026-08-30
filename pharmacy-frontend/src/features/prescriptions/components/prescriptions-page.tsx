@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Field, FormError, Input, Select } from "@/components/ui/form-controls";
 import { PageHeader } from "@/components/ui/page-header";
@@ -81,6 +82,8 @@ export function PrescriptionsPage() {
   const [diagnosis, setDiagnosis] = useState("");
   const [issuedDate, setIssuedDate] = useState(today());
   const [items, setItems] = useState<DraftItem[]>([newItem()]);
+  const [dispenseTargetId, setDispenseTargetId] = useState<string | null>(null);
+  const [cancelTargetId, setCancelTargetId] = useState<string | null>(null);
 
   const rxMedicines = useMemo(
     () => medicines.filter((medicine) => medicine.prescriptionRequired),
@@ -256,7 +259,7 @@ export function PrescriptionsPage() {
                 <table className="w-full min-w-[760px] text-left text-sm">
                   <thead className="bg-[var(--surface-muted)] text-xs text-[var(--text-muted)]"><tr><th className="px-4 py-3 font-semibold">Reference</th><th className="px-4 py-3 font-semibold">Patient</th><th className="px-4 py-3 font-semibold">Prescriber</th><th className="px-4 py-3 font-semibold">Issued</th><th className="px-4 py-3 font-semibold">Items</th><th className="px-4 py-3 font-semibold">Status</th><th className="px-4 py-3"><span className="sr-only">Actions</span></th></tr></thead>
                   <tbody className="divide-y divide-[var(--border)]">
-                    {filteredRows.map((row) => <tr key={row.id}><td className="px-4 py-3 font-mono text-xs font-semibold">{row.prescriptionNumber}</td><td className="px-4 py-3 font-medium">{row.customerName}</td><td className="px-4 py-3"><span className="block">{row.doctorName}</span><span className="text-xs text-[var(--text-muted)]">{row.doctorLicenseNumber}</span></td><td className="px-4 py-3 text-[var(--text-muted)]">{formatDate(row.issuedDate)}</td><td className="px-4 py-3">{row.items.length}</td><td className="px-4 py-3"><StatusBadge tone={row.status === "ACTIVE" ? "success" : row.status === "CANCELLED" ? "danger" : "neutral"}>{row.status.toLowerCase()}</StatusBadge></td><td className="px-4 py-3 text-right"><div className="flex justify-end gap-2">{row.status === "ACTIVE" && canSell && canApprove ? <SecondaryButton type="button" onClick={() => sendToPos(row.id)}><ShoppingCart aria-hidden="true" size={15} /> Use in POS</SecondaryButton> : null}{row.status === "ACTIVE" && canApprove ? <SecondaryButton type="button" title="Mark this prescription as dispensed without a sale" onClick={() => void markDispensed(row.id)}>Mark dispensed</SecondaryButton> : null}{row.status === "ACTIVE" && canApprove ? <SecondaryButton type="button" title="Cancel this prescription" onClick={() => void markCancelled(row.id)}><XCircle aria-hidden="true" size={15} /></SecondaryButton> : null}</div></td></tr>)}
+                    {filteredRows.map((row) => <tr key={row.id}><td className="px-4 py-3 font-mono text-xs font-semibold">{row.prescriptionNumber}</td><td className="px-4 py-3 font-medium">{row.customerName}</td><td className="px-4 py-3"><span className="block">{row.doctorName}</span><span className="text-xs text-[var(--text-muted)]">{row.doctorLicenseNumber}</span></td><td className="px-4 py-3 text-[var(--text-muted)]">{formatDate(row.issuedDate)}</td><td className="px-4 py-3">{row.items.length}</td><td className="px-4 py-3"><StatusBadge tone={row.status === "ACTIVE" ? "success" : row.status === "CANCELLED" ? "danger" : "neutral"}>{row.status.toLowerCase()}</StatusBadge></td><td className="px-4 py-3 text-right"><div className="flex justify-end gap-2">{row.status === "ACTIVE" && canSell && canApprove ? <SecondaryButton type="button" onClick={() => sendToPos(row.id)}><ShoppingCart aria-hidden="true" size={15} /> Use in POS</SecondaryButton> : null}{row.status === "ACTIVE" && canApprove ? <SecondaryButton type="button" title="Mark this prescription as dispensed without a sale" onClick={() => setDispenseTargetId(row.id)}>Mark dispensed</SecondaryButton> : null}{row.status === "ACTIVE" && canApprove ? <SecondaryButton type="button" title="Cancel this prescription" onClick={() => setCancelTargetId(row.id)}><XCircle aria-hidden="true" size={15} /></SecondaryButton> : null}</div></td></tr>)}
                   </tbody>
                 </table>
               </div>
@@ -268,6 +271,30 @@ export function PrescriptionsPage() {
           {rxMedicines.length ? <div className="divide-y divide-[var(--border)]">{rxMedicines.map((medicine) => <div key={medicine.id} className="grid gap-2 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_160px_100px] sm:items-center"><div><p className="font-semibold">{medicine.brandName}</p><p className="mt-0.5 text-xs text-[var(--text-muted)]">{medicine.genericName} - {medicine.sku}</p></div><span className="text-xs text-[var(--text-muted)]">{medicine.manufacturer}</span><StatusBadge tone="warning">Rx required</StatusBadge></div>)}</div> : <EmptyState icon={ShieldCheck} title="No prescription medicines" description="Medicines marked as prescription-required will appear here." />}
         </section>
       )}
+
+      <ConfirmDialog
+        open={dispenseTargetId !== null}
+        title="Mark dispensed"
+        description="Mark this prescription as dispensed? This cannot be undone."
+        confirmLabel="Mark dispensed"
+        onCancel={() => setDispenseTargetId(null)}
+        onConfirm={() => {
+          if (dispenseTargetId) void markDispensed(dispenseTargetId);
+          setDispenseTargetId(null);
+        }}
+      />
+
+      <ConfirmDialog
+        open={cancelTargetId !== null}
+        title="Cancel prescription"
+        description="Cancel this prescription? It can no longer be dispensed."
+        confirmLabel="Cancel prescription"
+        onCancel={() => setCancelTargetId(null)}
+        onConfirm={() => {
+          if (cancelTargetId) void markCancelled(cancelTargetId);
+          setCancelTargetId(null);
+        }}
+      />
     </div>
   );
 }

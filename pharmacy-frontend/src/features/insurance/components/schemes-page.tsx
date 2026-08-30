@@ -16,7 +16,7 @@ import type { InsuranceScheme, Insurer, CreateSchemeInput } from "@/features/ins
 
 const SCHEME_TYPES = ["INDIVIDUAL", "FAMILY", "CORPORATE", "GROUP"];
 
-export function SchemesPage() {
+export function SchemesPage({ showHeader = true }: { showHeader?: boolean }) {
   const canRead = usePermission(PERMISSIONS.INSURANCE_READ);
   const canWrite = usePermission(PERMISSIONS.INSURANCE_WRITE);
 
@@ -89,17 +89,19 @@ export function SchemesPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Insurance schemes"
-        description="Manage insurance schemes offered by insurers."
-        actions={
-          canWrite ? (
-            <PrimaryButton type="button" onClick={() => { resetForm(); setShowForm(true); }}>
-              <Plus aria-hidden="true" size={16} /> Add scheme
-            </PrimaryButton>
-          ) : undefined
-        }
-      />
+      {showHeader ? (
+        <PageHeader
+          title="Insurance schemes"
+          description="Manage insurance schemes offered by insurers."
+          actions={
+            canWrite ? (
+              <PrimaryButton type="button" onClick={() => { resetForm(); setShowForm(true); }}>
+                <Plus aria-hidden="true" size={16} /> Add scheme
+              </PrimaryButton>
+            ) : undefined
+          }
+        />
+      ) : null}
 
       {error ? <div className="mb-4"><FormError message={error} /></div> : null}
 

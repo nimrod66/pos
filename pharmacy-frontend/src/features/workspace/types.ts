@@ -226,6 +226,14 @@ export interface SupplierInput {
   email: string;
 }
 
+export interface ReceiveStockLine {
+  medicineId: string;
+  batchNumber: string;
+  expiryDate: string;
+  quantity: number;
+  unitCost: string;
+}
+
 export interface ReceiveStockInput {
   idempotencyKey: string;
   supplierId: string;
@@ -234,6 +242,8 @@ export interface ReceiveStockInput {
   expiryDate: string;
   quantity: number;
   unitCost: string;
+  /** Multi-batch receiving: when present, takes precedence over the single fields. */
+  lines?: ReceiveStockLine[];
   supplierInvoiceNumber?: string;
   remarks?: string;
 }

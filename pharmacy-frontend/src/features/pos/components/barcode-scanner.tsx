@@ -1,9 +1,9 @@
 "use client";
 
+import { Camera, Check, X, Zap, ZapOff } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Camera, X, Zap, ZapOff } from "lucide-react";
 
-import { PrimaryButton } from "@/components/ui/buttons";
+import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
 import { FormError } from "@/components/ui/form-controls";
 import { cn } from "@/lib/cn";
 
@@ -18,8 +18,12 @@ export function BarcodeScanner({ onDetected, onClose }: BarcodeScannerProps) {
   const [error, setError] = useState<string | null>(null);
   const [torchOn, setTorchOn] = useState(false);
   const [torchSupported, setTorchSupported] = useState(false);
+  const [continuous, setContinuous] = useState(true);
+  const [lastAdded, setLastAdded] = useState("");
   const streamRef = useRef<MediaStream | null>(null);
   const lastScanRef = useRef<{ text: string; at: number }>({ text: "", at: 0 });
+  const continuousRef = useRef(continuous);
+  continuousRef.current = continuous;
 
   const startCamera = useCallback(async () => {
     try {
@@ -46,7 +50,10 @@ export function BarcodeScanner({ onDetected, onClose }: BarcodeScannerProps) {
         // Debounce: same barcode within 2s is a duplicate read
         if (text === lastScanRef.current.text && now - lastScanRef.current.at < 2000) return;
         lastScanRef.current = { text, at: now };
-        controls.stop();
+        setLastAdded(text);
+        if (!continuousRef.current) {
+          controls.stop();
+        }
         onDetected(text);
       });
       controlsRef.current = controls;
@@ -126,9 +133,30 @@ export function BarcodeScanner({ onDetected, onClose }: BarcodeScannerProps) {
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
           <div className="h-48 w-72 rounded-lg border-2 border-white/60 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]" />
         </div>
+        {lastAdded ? (
+          <div
+            role="status"
+            aria-live="polite"
+            className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-2 rounded-full bg-white/90 px-4 py-2 text-sm font-semibold text-black shadow"
+          >
+            <Check aria-hidden="true" size={16} className="text-[var(--success)]" />
+            <span className="max-w-56 truncate font-mono">{lastAdded}</span>
+          </div>
+        ) : null}
         <p className="absolute bottom-6 left-0 right-0 text-center text-xs text-white/70">
-          Point the camera at a product barcode
+          {continuous
+            ? "Continuous mode — keep scanning items; each read is added once"
+            : "Point the camera at a product barcode"}
         </p>
+      </div>
+      <div className="border-t border-white/10 p-3">
+        <SecondaryButton
+          type="button"
+          className={cn("w-full", continuous && "border-[var(--brand)] text-[var(--brand-strong)]")}
+          onClick={() => setContinuous((prev) => !prev)}
+        >
+          {continuous ? "Continuous scanning: ON" : "Continuous scanning: OFF"}
+        </SecondaryButton>
       </div>
       {error ? (
         <div className="p-4">

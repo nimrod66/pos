@@ -11,6 +11,7 @@ type AuthStatus = "checking" | "anonymous" | "authenticated";
 
 interface AuthStore {
   error: string | null;
+  expired: boolean;
   offline: boolean;
   session: AuthSession | null;
   status: AuthStatus;
@@ -55,6 +56,7 @@ function isNetworkFailure(error: unknown) {
 
 export const useAuthStore = create<AuthStore>((set, get) => ({
   error: null,
+  expired: false,
   offline: false,
   session: null,
   status: "checking",
@@ -63,11 +65,10 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   },
   expireSession() {
     const wasAuthenticated = get().status === "authenticated";
-    set({ error: null, offline: false, session: null, status: "anonymous" });
+    // The server session is already gone; calling logout() on a dead
+    // session only produces noise.
+    set({ error: null, expired: wasAuthenticated, offline: false, session: null, status: "anonymous" });
     writeCachedSession(null);
-    if (wasAuthenticated) {
-      void authGateway.logout().catch(() => undefined);
-    }
   },
   async restoreSession() {
     if (get().status !== "checking") {
@@ -79,6 +80,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       writeCachedSession(session);
       set({
         error: null,
+        expired: false,
         offline: false,
         session,
         status: session ? "authenticated" : "anonymous",
@@ -91,6 +93,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         if (cached) {
           set({
             error: null,
+            expired: false,
             offline: true,
             session: cached,
             status: "authenticated",
@@ -98,17 +101,17 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
           return;
         }
       }
-      set({ error: null, offline: false, session: null, status: "anonymous" });
+      set({ error: null, expired: false, offline: false, session: null, status: "anonymous" });
       writeCachedSession(null);
     }
   },
   async signIn(credentials: LoginCredentials) {
-    set({ error: null });
+    set({ error: null, expired: false });
 
     try {
       const session = await authGateway.login(credentials);
       writeCachedSession(session);
-      set({ error: null, offline: false, session, status: "authenticated" });
+      set({ error: null, expired: false, offline: false, session, status: "authenticated" });
       return session;
     } catch (error) {
       const message =
@@ -121,7 +124,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     try {
       await authGateway.logout();
     } finally {
-      set({ error: null, offline: false, session: null, status: "anonymous" });
+      set({ error: null, expired: false, offline: false, session: null, status: "anonymous" });
       writeCachedSession(null);
     }
   },
@@ -130,7 +133,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     try {
       const session = await authGateway.switchBranch(branchId);
       writeCachedSession(session);
-      set({ error: null, offline: false, session, status: "authenticated" });
+      set({ error: null, expired: false, offline: false, session, status: "authenticated" });
       return session;
     } catch (error) {
       set({

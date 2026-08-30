@@ -315,13 +315,10 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         const supplier = state.suppliers.find(
           (candidate) => candidate.id === input.supplierId,
         );
-        const medicine = state.medicines.find(
-          (candidate) => candidate.id === input.medicineId,
-        );
-        if (!supplier || !medicine) {
+        if (!supplier) {
           throw new WorkspaceError(
             "RESOURCE_NOT_FOUND",
-            "The selected supplier or medicine is unavailable.",
+            "The selected supplier is unavailable.",
           );
         }
         if (supplier.status !== "ACTIVE") {
@@ -330,53 +327,101 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             "The selected supplier is archived.",
           );
         }
-        if (medicine.status !== "ACTIVE") {
-          throw new WorkspaceError(
-            "RESOURCE_INACTIVE",
-            "The selected medicine is archived.",
-          );
-        }
-        if (input.quantity <= 0) {
-          throw new WorkspaceError(
-            "VALIDATION_FAILED",
-            "Received quantity must be greater than zero.",
-          );
-        }
-
-        const grnNumber = documentNumber("GRN", state.grnSequence);
-        const receivedAt = now();
-        const existingBatch = state.batches.find(
-          (batch) =>
-            batch.medicineId === input.medicineId &&
-            batch.batchNumber.toLowerCase() === input.batchNumber.toLowerCase(),
-        );
-        const batchId = existingBatch?.id ?? id("batch");
-        const batches = existingBatch
-          ? state.batches.map((batch) =>
-              batch.id === existingBatch.id
-                ? {
-                    ...batch,
-                    expiryDate: input.expiryDate,
-                    quantity: batch.quantity + input.quantity,
-                    supplierId: input.supplierId,
-                    unitCost: input.unitCost,
-                  }
-                : batch,
-            )
+        const lines = input.lines?.length
+          ? input.lines
           : [
               {
-                id: batchId,
                 medicineId: input.medicineId,
-                supplierId: input.supplierId,
                 batchNumber: input.batchNumber,
                 expiryDate: input.expiryDate,
                 quantity: input.quantity,
                 unitCost: input.unitCost,
+              },
+            ];
+        for (const line of lines) {
+          const medicine = state.medicines.find(
+            (candidate) => candidate.id === line.medicineId,
+          );
+          if (!medicine) {
+            throw new WorkspaceError(
+              "RESOURCE_NOT_FOUND",
+              "One of the selected medicines is unavailable.",
+            );
+          }
+          if (medicine.status !== "ACTIVE") {
+            throw new WorkspaceError(
+              "RESOURCE_INACTIVE",
+              "One of the selected medicines is archived.",
+            );
+          }
+          if (line.quantity <= 0) {
+            throw new WorkspaceError(
+              "VALIDATION_FAILED",
+              "Received quantity must be greater than zero.",
+            );
+          }
+        }
+
+        const grnNumber = documentNumber("GRN", state.grnSequence);
+        const receivedAt = now();
+        let batches = state.batches;
+        let movements = state.movements;
+        let totalCost = "0.00";
+        for (const line of lines) {
+          const existingBatch = batches.find(
+            (batch) =>
+              batch.medicineId === line.medicineId &&
+              batch.batchNumber.toLowerCase() === line.batchNumber.toLowerCase(),
+          );
+          let batchId: string;
+          if (existingBatch) {
+            batchId = existingBatch.id;
+            batches = batches.map((batch) =>
+              batch.id === existingBatch.id
+                ? {
+                    ...batch,
+                    expiryDate: line.expiryDate,
+                    quantity: batch.quantity + line.quantity,
+                    supplierId: input.supplierId,
+                    unitCost: line.unitCost,
+                  }
+                : batch,
+            );
+          } else {
+            batchId = id("batch");
+            batches = [
+              {
+                id: batchId,
+                medicineId: line.medicineId,
+                supplierId: input.supplierId,
+                batchNumber: line.batchNumber,
+                expiryDate: line.expiryDate,
+                quantity: line.quantity,
+                unitCost: line.unitCost,
                 receivedAt,
                 shelfLocation: null,
               },
-              ...state.batches,
+              ...batches,
             ];
+          }
+          totalCost = addMoney(
+            totalCost,
+            multiplyMoney(line.unitCost, line.quantity),
+          );
+          movements = [
+            {
+              id: id("movement"),
+              medicineId: line.medicineId,
+              batchId,
+              type: "PURCHASE" as const,
+              quantityDelta: line.quantity,
+              reference: grnNumber,
+              actor,
+              occurredAt: receivedAt,
+            },
+            ...movements,
+          ];
+        }
 
         set({
           batches,
@@ -386,25 +431,13 @@ export const useWorkspaceStore = create<WorkspaceState>()(
               number: grnNumber,
               supplierId: input.supplierId,
               receivedAt,
-              totalCost: multiplyMoney(input.unitCost, input.quantity),
-              itemCount: 1,
+              totalCost,
+              itemCount: lines.length,
             },
             ...state.goodsReceipts,
           ],
           grnSequence: state.grnSequence + 1,
-          movements: [
-            {
-              id: id("movement"),
-              medicineId: input.medicineId,
-              batchId,
-              type: "PURCHASE",
-              quantityDelta: input.quantity,
-              reference: grnNumber,
-              actor,
-              occurredAt: receivedAt,
-            },
-            ...state.movements,
-          ],
+          movements,
         });
         return grnNumber;
       },

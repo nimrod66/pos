@@ -26,7 +26,7 @@ function statusTone(status: string | null) {
   }
 }
 
-export function ClaimsPage() {
+export function ClaimsPage({ showHeader = true }: { showHeader?: boolean }) {
   const canRead = usePermission(PERMISSIONS.INSURANCE_READ);
   const canWrite = usePermission(PERMISSIONS.INSURANCE_WRITE);
 
@@ -78,10 +78,12 @@ export function ClaimsPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Insurance claims"
-        description="Track claims submitted to insurers and their settlement status."
-      />
+      {showHeader ? (
+        <PageHeader
+          title="Insurance claims"
+          description="Track claims submitted to insurers and their settlement status."
+        />
+      ) : null}
 
       {error ? <div className="mb-4"><FormError message={error} /></div> : null}
 

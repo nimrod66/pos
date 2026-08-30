@@ -7,19 +7,21 @@ export const controlClassName =
 
 export function Field({
   children,
+  className,
   error,
   hint,
   label,
   required,
 }: {
   children: ReactNode;
+  className?: string;
   error?: string;
   hint?: string;
   label: string;
   required?: boolean;
 }) {
   return (
-    <label className="block text-sm font-medium text-[var(--text)]">
+    <label className={cn("block text-sm font-medium text-[var(--text)]", className)}>
       <span className="mb-1.5 block">
         {label}
         {required ? <span className="text-[var(--danger)]"> *</span> : null}

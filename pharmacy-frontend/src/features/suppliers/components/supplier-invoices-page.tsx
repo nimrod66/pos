@@ -1,13 +1,8 @@
 "use client";
 
 import {
-  BadgeDollarSign,
-  CheckCircle2,
-  Clock,
-  DollarSign,
   FileText,
   Plus,
-  Search,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
@@ -20,6 +15,7 @@ import {
   Select,
   Textarea,
 } from "@/components/ui/form-controls";
+import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { PERMISSIONS } from "@/features/auth/access-control";
@@ -370,240 +366,192 @@ export function SupplierInvoicesPage() {
       )}
 
       {/* Create Invoice Dialog */}
-      {showCreateDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="New Supplier Invoice"
-            className="w-full max-w-lg rounded-md border border-[var(--border)] bg-white shadow-xl"
-          >
-            <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4">
-              <h2 className="text-base font-semibold">New Supplier Invoice</h2>
-              <button
-                type="button"
-                title="Close"
-                onClick={() => { setShowCreateDialog(false); setActionError(null); }}
-                className="flex size-9 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--surface-muted)]"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="grid gap-4 p-5">
-              {actionError && <FormError message={actionError} />}
-              <Field label="Supplier">
-                <Select
-                  value={newInvoice.supplierId}
-                  onChange={(e) =>
-                    setNewInvoice({ ...newInvoice, supplierId: e.target.value })
-                  }
-                >
-                  <option value="">Select supplier...</option>
-                  {suppliers.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Invoice Number">
-                <Input
-                  placeholder="INV-001"
-                  value={newInvoice.invoiceNumber}
-                  onChange={(e) =>
-                    setNewInvoice({ ...newInvoice, invoiceNumber: e.target.value })
-                  }
-                />
-              </Field>
-              <Field label="Total Amount (KES)">
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  value={newInvoice.totalAmount}
-                  onChange={(e) =>
-                    setNewInvoice({ ...newInvoice, totalAmount: e.target.value })
-                  }
-                />
-              </Field>
-              <Field label="Due Date (optional)">
-                <Input
-                  type="date"
-                  value={newInvoice.dueDate}
-                  onChange={(e) =>
-                    setNewInvoice({ ...newInvoice, dueDate: e.target.value })
-                  }
-                />
-              </Field>
-              <Field label="Notes (optional)">
-                <Textarea
-                  placeholder="Invoice notes..."
-                  value={newInvoice.notes}
-                  onChange={(e) =>
-                    setNewInvoice({ ...newInvoice, notes: e.target.value })
-                  }
-                />
-              </Field>
-            </div>
-            <div className="flex justify-end gap-2 border-t border-[var(--border)] px-5 py-4">
-              <SecondaryButton onClick={() => { setShowCreateDialog(false); setActionError(null); }}>
-                Cancel
-              </SecondaryButton>
-              <PrimaryButton disabled={actionLoading} onClick={handleCreateInvoice}>
-                {actionLoading ? "Creating..." : "Create Invoice"}
-              </PrimaryButton>
-            </div>
-          </div>
+      <Modal
+        open={showCreateDialog}
+        onClose={() => { setShowCreateDialog(false); setActionError(null); }}
+        title="New Supplier Invoice"
+        maxWidthClass="max-w-lg"
+      >
+        <div className="grid gap-4">
+          {actionError && <FormError message={actionError} />}
+          <Field label="Supplier">
+            <Select
+              value={newInvoice.supplierId}
+              onChange={(e) =>
+                setNewInvoice({ ...newInvoice, supplierId: e.target.value })
+              }
+            >
+              <option value="">Select supplier...</option>
+              {suppliers.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Invoice Number">
+            <Input
+              placeholder="INV-001"
+              value={newInvoice.invoiceNumber}
+              onChange={(e) =>
+                setNewInvoice({ ...newInvoice, invoiceNumber: e.target.value })
+              }
+            />
+          </Field>
+          <Field label="Total Amount (KES)">
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+              value={newInvoice.totalAmount}
+              onChange={(e) =>
+                setNewInvoice({ ...newInvoice, totalAmount: e.target.value })
+              }
+            />
+          </Field>
+          <Field label="Due Date (optional)">
+            <Input
+              type="date"
+              value={newInvoice.dueDate}
+              onChange={(e) =>
+                setNewInvoice({ ...newInvoice, dueDate: e.target.value })
+              }
+            />
+          </Field>
+          <Field label="Notes (optional)">
+            <Textarea
+              placeholder="Invoice notes..."
+              value={newInvoice.notes}
+              onChange={(e) =>
+                setNewInvoice({ ...newInvoice, notes: e.target.value })
+              }
+            />
+          </Field>
         </div>
-      )}
+        <div className="mt-4 flex justify-end gap-2">
+          <SecondaryButton onClick={() => { setShowCreateDialog(false); setActionError(null); }}>
+            Cancel
+          </SecondaryButton>
+          <PrimaryButton disabled={actionLoading} onClick={handleCreateInvoice}>
+            {actionLoading ? "Creating..." : "Create Invoice"}
+          </PrimaryButton>
+        </div>
+      </Modal>
 
       {/* Record Payment Dialog */}
-      {showPaymentDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Record Supplier Payment"
-            className="w-full max-w-md rounded-md border border-[var(--border)] bg-white shadow-xl"
-          >
-            <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4">
-              <h2 className="text-base font-semibold">Record Supplier Payment</h2>
-              <button
-                type="button"
-                title="Close"
-                onClick={() => { setShowPaymentDialog(false); setActionError(null); }}
-                className="flex size-9 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--surface-muted)]"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="grid gap-4 p-5">
-              {actionError && <FormError message={actionError} />}
-              <Field label="Amount (KES)">
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  value={payment.amount}
-                  onChange={(e) =>
-                    setPayment({ ...payment, amount: e.target.value })
-                  }
-                />
-              </Field>
-              <Field label="Payment Method">
-                <Select
-                  value={payment.paymentMethod}
-                  onChange={(e) =>
-                    setPayment({ ...payment, paymentMethod: e.target.value })
-                  }
-                >
-                  <option value="CASH">Cash</option>
-                  <option value="BANK_TRANSFER">Bank Transfer</option>
-                  <option value="MPESA">M-Pesa</option>
-                  <option value="CHEQUE">Cheque</option>
-                </Select>
-              </Field>
-              <Field label="Reference (optional)">
-                <Input
-                  placeholder="Transaction reference..."
-                  value={payment.reference}
-                  onChange={(e) =>
-                    setPayment({ ...payment, reference: e.target.value })
-                  }
-                />
-              </Field>
-              <Field label="Notes (optional)">
-                <Textarea
-                  placeholder="Payment notes..."
-                  value={payment.notes}
-                  onChange={(e) =>
-                    setPayment({ ...payment, notes: e.target.value })
-                  }
-                />
-              </Field>
-            </div>
-            <div className="flex justify-end gap-2 border-t border-[var(--border)] px-5 py-4">
-              <SecondaryButton onClick={() => { setShowPaymentDialog(false); setActionError(null); }}>
-                Cancel
-              </SecondaryButton>
-              <PrimaryButton disabled={actionLoading} onClick={handleRecordPayment}>
-                {actionLoading ? "Recording..." : "Record Payment"}
-              </PrimaryButton>
-            </div>
-          </div>
+      <Modal
+        open={showPaymentDialog}
+        onClose={() => { setShowPaymentDialog(false); setActionError(null); }}
+        title="Record Supplier Payment"
+      >
+        <div className="grid gap-4">
+          {actionError && <FormError message={actionError} />}
+          <Field label="Amount (KES)">
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+              value={payment.amount}
+              onChange={(e) =>
+                setPayment({ ...payment, amount: e.target.value })
+              }
+            />
+          </Field>
+          <Field label="Payment Method">
+            <Select
+              value={payment.paymentMethod}
+              onChange={(e) =>
+                setPayment({ ...payment, paymentMethod: e.target.value })
+              }
+            >
+              <option value="CASH">Cash</option>
+              <option value="BANK_TRANSFER">Bank Transfer</option>
+              <option value="MPESA">M-Pesa</option>
+              <option value="CHEQUE">Cheque</option>
+            </Select>
+          </Field>
+          <Field label="Reference (optional)">
+            <Input
+              placeholder="Transaction reference..."
+              value={payment.reference}
+              onChange={(e) =>
+                setPayment({ ...payment, reference: e.target.value })
+              }
+            />
+          </Field>
+          <Field label="Notes (optional)">
+            <Textarea
+              placeholder="Payment notes..."
+              value={payment.notes}
+              onChange={(e) =>
+                setPayment({ ...payment, notes: e.target.value })
+              }
+            />
+          </Field>
         </div>
-      )}
+        <div className="mt-4 flex justify-end gap-2">
+          <SecondaryButton onClick={() => { setShowPaymentDialog(false); setActionError(null); }}>
+            Cancel
+          </SecondaryButton>
+          <PrimaryButton disabled={actionLoading} onClick={handleRecordPayment}>
+            {actionLoading ? "Recording..." : "Record Payment"}
+          </PrimaryButton>
+        </div>
+      </Modal>
 
       {/* View Payments Dialog */}
-      {showPaymentsDialog && selectedInvoice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label={`Payments for ${selectedInvoice.invoiceNumber}`}
-            className="w-full max-w-lg rounded-md border border-[var(--border)] bg-white shadow-xl"
-          >
-            <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4">
-              <h2 className="text-base font-semibold">
-                Payments for {selectedInvoice.invoiceNumber}
-              </h2>
-              <button
-                type="button"
-                title="Close"
-                onClick={() => setShowPaymentsDialog(false)}
-                className="flex size-9 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--surface-muted)]"
-              >
-                ✕
-              </button>
+      {showPaymentsDialog && selectedInvoice ? (
+        <Modal
+          open={showPaymentsDialog}
+          onClose={() => setShowPaymentsDialog(false)}
+          title={`Payments for ${selectedInvoice.invoiceNumber}`}
+          maxWidthClass="max-w-lg"
+        >
+          {paymentsLoading ? (
+            <p className="text-sm text-[var(--text-muted)]">Loading payments...</p>
+          ) : invoicePayments.length ? (
+            <div className="max-h-64 overflow-y-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="text-xs text-[var(--text-muted)]">
+                  <tr>
+                    <th className="pb-2 font-semibold">Amount</th>
+                    <th className="pb-2 font-semibold">Method</th>
+                    <th className="pb-2 font-semibold">Reference</th>
+                    <th className="pb-2 font-semibold">Date</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border)]">
+                  {invoicePayments.map((p) => (
+                    <tr key={p.id}>
+                      <td className="py-2 font-semibold text-[var(--success)]">
+                        {formatKes(p.amount)}
+                      </td>
+                      <td className="py-2 text-[var(--text-muted)]">
+                        {p.paymentMethod}
+                      </td>
+                      <td className="py-2 text-[var(--text-muted)]">
+                        {p.reference ?? "—"}
+                      </td>
+                      <td className="py-2 text-[var(--text-muted)]">
+                        {formatDateTime(p.createdAt)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            <div className="p-5">
-              {paymentsLoading ? (
-                <p className="text-sm text-[var(--text-muted)]">Loading payments...</p>
-              ) : invoicePayments.length ? (
-                <div className="max-h-64 overflow-y-auto">
-                  <table className="w-full text-left text-sm">
-                    <thead className="text-xs text-[var(--text-muted)]">
-                      <tr>
-                        <th className="pb-2 font-semibold">Amount</th>
-                        <th className="pb-2 font-semibold">Method</th>
-                        <th className="pb-2 font-semibold">Reference</th>
-                        <th className="pb-2 font-semibold">Date</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[var(--border)]">
-                      {invoicePayments.map((p) => (
-                        <tr key={p.id}>
-                          <td className="py-2 font-semibold text-[var(--success)]">
-                            {formatKes(p.amount)}
-                          </td>
-                          <td className="py-2 text-[var(--text-muted)]">
-                            {p.paymentMethod}
-                          </td>
-                          <td className="py-2 text-[var(--text-muted)]">
-                            {p.reference ?? "—"}
-                          </td>
-                          <td className="py-2 text-[var(--text-muted)]">
-                            {formatDateTime(p.createdAt)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <p className="text-sm text-[var(--text-muted)]">No payments recorded yet.</p>
-              )}
-            </div>
-            <div className="flex justify-end border-t border-[var(--border)] px-5 py-4">
-              <SecondaryButton onClick={() => setShowPaymentsDialog(false)}>
-                Close
-              </SecondaryButton>
-            </div>
+          ) : (
+            <p className="text-sm text-[var(--text-muted)]">No payments recorded yet.</p>
+          )}
+          <div className="mt-4 flex justify-end">
+            <SecondaryButton onClick={() => setShowPaymentsDialog(false)}>
+              Close
+            </SecondaryButton>
           </div>
-        </div>
-      )}
+        </Modal>
+      ) : null}
     </div>
   );
 }

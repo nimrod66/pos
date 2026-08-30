@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { PrimaryButton } from "@/components/ui/buttons";
 import { FormError, Input, Select } from "@/components/ui/form-controls";
+import { Modal } from "@/components/ui/modal";
 import { uuid } from "@/lib/uuid";
 import { PERMISSIONS } from "@/features/auth/access-control";
 import { usePermission } from "@/features/auth/hooks/use-permission";
@@ -152,6 +153,7 @@ export function PosPage() {
   }
   const [suspendedSales, setSuspendedSales] = useState<SuspendedSale[]>([]);
   const [showSuspended, setShowSuspended] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   useEffect(() => {
     setSuspendedSales(loadSuspended());
@@ -453,6 +455,11 @@ export function PosPage() {
         event.preventDefault();
         void handleCheckout();
       }
+      // ? - Shortcut legend
+      if (event.key === "?" || (event.shiftKey && event.key === "/")) {
+        event.preventDefault();
+        setShowShortcuts(true);
+      }
     }
 
     window.addEventListener("keydown", handleShortcuts);
@@ -543,7 +550,7 @@ export function PosPage() {
   }
 
   async function handleCameraBarcode(barcode: string) {
-    setShowScanner(false);
+    // The scanner stays open in continuous mode; each read adds one unit.
     setSearching(true);
     setLookupError(null);
     try {
@@ -819,46 +826,69 @@ export function PosPage() {
               Shift details
             </Link>
           )}
+          <button
+            type="button"
+            onClick={() => setShowShortcuts(true)}
+            title="Keyboard shortcuts"
+            aria-label="Keyboard shortcuts"
+            className="rounded border border-[var(--border)] bg-white px-1.5 py-0.5 font-mono text-[10px] font-semibold text-[var(--text-muted)] hover:bg-[var(--surface-muted)]"
+          >
+            ?
+          </button>
         </div>
       </div>
       {/* Suspended sales modal */}
-      {showSuspended && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
-          <div className="w-full max-w-md rounded-md border border-[var(--border)] bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4">
-              <h2 className="text-base font-semibold">Suspended Sales</h2>
-              <button
-                type="button"
-                onClick={() => setShowSuspended(false)}
-                className="flex size-9 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--surface-muted)]"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="max-h-64 overflow-y-auto p-4">
-              {suspendedSales.length === 0 ? (
-                <p className="text-sm text-[var(--text-muted)]">No suspended sales.</p>
-              ) : (
-                <div className="space-y-2">
-                  {suspendedSales.map((s) => (
-                    <div key={s.id} className="flex items-center justify-between rounded-md border border-[var(--border)] p-3">
-                      <div>
-                        <p className="text-sm font-semibold">{s.lines.length} item(s)</p>
-                        <p className="text-xs text-[var(--text-muted)]">
-                          {new Date(s.timestamp).toLocaleTimeString()}
-                        </p>
-                      </div>
-                      <PrimaryButton onClick={() => resumeSale(s.id)}>
-                        Resume
-                      </PrimaryButton>
-                    </div>
-                  ))}
+      <Modal
+        open={showSuspended}
+        onClose={() => setShowSuspended(false)}
+        title="Suspended sales"
+        description="Resume a parked basket to continue serving that customer."
+      >
+        {suspendedSales.length === 0 ? (
+          <p className="text-sm text-[var(--text-muted)]">No suspended sales.</p>
+        ) : (
+          <div className="space-y-2">
+            {suspendedSales.map((s) => (
+              <div key={s.id} className="flex items-center justify-between rounded-md border border-[var(--border)] p-3">
+                <div>
+                  <p className="text-sm font-semibold">{s.lines.length} item(s)</p>
+                  <p className="text-xs text-[var(--text-muted)]">
+                    Suspended at {new Date(s.timestamp).toLocaleTimeString()}
+                  </p>
                 </div>
-              )}
-            </div>
+                <PrimaryButton onClick={() => resumeSale(s.id)}>
+                  Resume
+                </PrimaryButton>
+              </div>
+            ))}
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
+      {/* Keyboard shortcut legend */}
+      <Modal
+        open={showShortcuts}
+        onClose={() => setShowShortcuts(false)}
+        title="Keyboard shortcuts"
+        description="Press ? anywhere on the till to see this list."
+      >
+        <ul className="space-y-2 text-sm">
+          {[
+            ["/ or F1", "Focus product search"],
+            ["F2", "Suspend current sale"],
+            ["F3", "Show suspended sales"],
+            ["F4", "Clear the sale (asks first)"],
+            ["F9", "Complete the sale"],
+            ["?", "This shortcut list"],
+          ].map(([key, action]) => (
+            <li key={key} className="flex items-center justify-between gap-4">
+              <kbd className="rounded border border-[var(--border-strong)] bg-[var(--surface-muted)] px-2 py-0.5 font-mono text-xs font-semibold">
+                {key}
+              </kbd>
+              <span className="text-[var(--text-muted)]">{action}</span>
+            </li>
+          ))}
+        </ul>
+      </Modal>
       <div className="sticky top-[6.25rem] z-20 col-span-full grid grid-cols-2 gap-1 border-b border-[var(--border)] bg-white p-2 xl:hidden">
         <button
           type="button"
@@ -1033,10 +1063,34 @@ export function PosPage() {
                           ))}
                         </select>
                       ) : null}
-                      <div className="flex h-9 items-center rounded-md border border-[var(--border-strong)]">
-                        <button type="button" title="Decrease quantity" aria-label={`Decrease ${medicine.brandName} quantity`} onClick={() => setQuantity(medicine.id, quantity - 1)} className="flex size-8 items-center justify-center hover:bg-[var(--surface-muted)]"><Minus aria-hidden="true" size={15} /></button>
-                        <span className="w-10 text-center text-sm font-semibold">{quantity}</span>
-                        <button type="button" title="Increase quantity" aria-label={`Increase ${medicine.brandName} quantity`} disabled={quantity >= stock} onClick={() => setQuantity(medicine.id, Math.min(stock, quantity + 1))} className="flex size-8 items-center justify-center hover:bg-[var(--surface-muted)] disabled:opacity-40"><Plus aria-hidden="true" size={15} /></button>
+                      <div className="flex h-11 items-center rounded-md border border-[var(--border-strong)]">
+                        <button
+                          type="button"
+                          title="Decrease quantity"
+                          aria-label={`Decrease ${medicine.brandName} quantity`}
+                          onClick={() => {
+                            if (quantity > 1 || window.confirm(`Remove ${medicine.brandName} from the sale?`)) {
+                              setQuantity(medicine.id, quantity - 1);
+                            }
+                          }}
+                          className="flex size-11 items-center justify-center hover:bg-[var(--surface-muted)]"
+                        >
+                          <Minus aria-hidden="true" size={16} />
+                        </button>
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min={1}
+                          max={stock}
+                          aria-label={`Quantity for ${medicine.brandName}`}
+                          value={quantity}
+                          onChange={(event) => {
+                            const next = Math.floor(Number(event.target.value) || 0);
+                            setQuantity(medicine.id, Math.max(1, Math.min(stock, next)));
+                          }}
+                          className="w-12 border-0 bg-transparent p-0 text-center text-sm font-semibold outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                        />
+                        <button type="button" title="Increase quantity" aria-label={`Increase ${medicine.brandName} quantity`} disabled={quantity >= stock} onClick={() => setQuantity(medicine.id, Math.min(stock, quantity + 1))} className="flex size-11 items-center justify-center hover:bg-[var(--surface-muted)] disabled:opacity-40"><Plus aria-hidden="true" size={16} /></button>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -1045,7 +1099,7 @@ export function PosPage() {
                         <input
                           inputMode="numeric"
                           aria-label={`Discount percent for ${medicine.brandName}`}
-                          className="h-8 w-12 rounded-md border border-[var(--border-strong)] px-2 text-right text-sm"
+                          className="h-10 w-14 rounded-md border border-[var(--border-strong)] px-2 text-right text-sm"
                           value={discountPercent ?? 0}
                           onChange={(event) => {
                             const value = Math.max(0, Math.min(maxDiscountPercent, Number(event.target.value) || 0));
@@ -1053,7 +1107,19 @@ export function PosPage() {
                           }}
                         />
                       </label>
-                      <button type="button" title="Remove item" aria-label={`Remove ${medicine.brandName}`} onClick={() => removeItem(medicine.id)} className="flex size-9 items-center justify-center rounded-md text-[var(--danger)] hover:bg-[var(--danger-soft)]"><Trash2 aria-hidden="true" size={17} /></button>
+                      <button
+                        type="button"
+                        title="Remove item"
+                        aria-label={`Remove ${medicine.brandName}`}
+                        onClick={() => {
+                          if (quantity > 1 || window.confirm(`Remove ${medicine.brandName} from the sale?`)) {
+                            removeItem(medicine.id);
+                          }
+                        }}
+                        className="flex size-10 items-center justify-center rounded-md text-[var(--danger)] hover:bg-[var(--danger-soft)]"
+                      >
+                        <Trash2 aria-hidden="true" size={17} />
+                      </button>
                     </div>
                   </div>
                 );

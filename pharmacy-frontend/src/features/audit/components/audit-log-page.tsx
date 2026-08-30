@@ -14,6 +14,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FormError, Input, Select } from "@/components/ui/form-controls";
+import { PaginationControls, usePagination } from "@/components/ui/pagination";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { AccessRestricted } from "@/features/auth/components/access-restricted";
@@ -197,6 +198,8 @@ export function AuditLogPage() {
     });
   }, [action, entries, entity, from, query, to]);
 
+  const auditPage = usePagination(filtered, 25);
+
   function exportCsv() {
     const header = ["Time", "User", "Action", "Entity", "Record ID", "Old", "New"];
     const rows = filtered.map((entry) => [
@@ -329,7 +332,7 @@ export function AuditLogPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border)]">
-                {filtered.map((entry) => (
+                {auditPage.pageRows.map((entry) => (
                   <tr key={entry.id} className="hover:bg-[var(--surface-muted)]/60">
                     <td className="whitespace-nowrap px-4 py-3 text-xs text-[var(--text-muted)]">
                       {formatDateTime(entry.createdAt)}
@@ -376,10 +379,14 @@ export function AuditLogPage() {
             }
           />
         )}
+        <PaginationControls
+          page={auditPage.page}
+          pageCount={auditPage.pageCount}
+          total={auditPage.total}
+          pageSize={auditPage.pageSize}
+          onPage={auditPage.setPage}
+        />
       </section>
-      <p className="mt-3 text-right text-xs text-[var(--text-muted)]">
-        {filtered.length} of {entries.length} entries
-      </p>
     </div>
   );
 }

@@ -747,9 +747,16 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
   }
 
   async receiveStock(input: ReceiveStockInput) {
-    const response = await apiRequest<BackendGoodsReceipt>("/goods-received", {
-      body: {
-        lines: [
+    const lines = input.lines?.length
+      ? input.lines.map((line) => ({
+          batchNumber: line.batchNumber.trim(),
+          expiryDate: line.expiryDate,
+          medicineId: line.medicineId,
+          purchaseOrderLineId: null,
+          quantity: line.quantity,
+          unitCost: Number(line.unitCost),
+        }))
+      : [
           {
             batchNumber: input.batchNumber.trim(),
             expiryDate: input.expiryDate,
@@ -758,7 +765,10 @@ export class LiveWorkspaceGateway implements WorkspaceGateway {
             quantity: input.quantity,
             unitCost: Number(input.unitCost),
           },
-        ],
+        ];
+    const response = await apiRequest<BackendGoodsReceipt>("/goods-received", {
+      body: {
+        lines,
         purchaseOrdersId: null,
         receivedAt: localDateTime(),
         remarks: input.remarks?.trim() || null,

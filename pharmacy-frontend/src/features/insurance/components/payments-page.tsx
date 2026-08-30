@@ -27,7 +27,7 @@ function statusTone(status: string | null) {
 
 const PAYMENT_METHODS = ["BANK_TRANSFER", "CHEQUE", "CASH", "MOBILE_MONEY"];
 
-export function PaymentsPage() {
+export function PaymentsPage({ showHeader = true }: { showHeader?: boolean }) {
   const canRead = usePermission(PERMISSIONS.INSURANCE_READ);
   const canWrite = usePermission(PERMISSIONS.INSURANCE_WRITE);
 
@@ -131,17 +131,19 @@ export function PaymentsPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Insurance payments"
-        description="Record and track payments received from insurers."
-        actions={
-          canWrite ? (
-            <PrimaryButton type="button" onClick={() => { resetForm(); setShowForm(true); }}>
-              <Plus aria-hidden="true" size={16} /> Record payment
-            </PrimaryButton>
-          ) : undefined
-        }
-      />
+      {showHeader ? (
+        <PageHeader
+          title="Insurance payments"
+          description="Record and track payments received from insurers."
+          actions={
+            canWrite ? (
+              <PrimaryButton type="button" onClick={() => { resetForm(); setShowForm(true); }}>
+                <Plus aria-hidden="true" size={16} /> Record payment
+              </PrimaryButton>
+            ) : undefined
+          }
+        />
+      ) : null}
 
       {error ? <div className="mb-4"><FormError message={error} /></div> : null}
 

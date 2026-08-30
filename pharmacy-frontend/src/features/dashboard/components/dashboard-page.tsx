@@ -12,6 +12,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { FormError } from "@/components/ui/form-controls";
+import { PageHeader } from "@/components/ui/page-header";
 import { PERMISSIONS } from "@/features/auth/access-control";
 import { useAuthStore } from "@/features/auth/store/auth-store";
 import { usePermission } from "@/features/auth/hooks/use-permission";
@@ -68,7 +69,14 @@ export function DashboardPage() {
       reportableSaleStatuses.has(sale.status) &&
       sale.completedAt.slice(0, 10) === today,
   );
-  const summary = [
+  const summary: Array<{
+    detail: string;
+    href?: string;
+    icon: typeof Banknote;
+    label: string;
+    tone: string;
+    value: string;
+  }> = [
     ...(canViewSales
       ? [
           {
@@ -84,6 +92,7 @@ export function DashboardPage() {
             detail: report?.pharmacyWide
               ? `${report.completedSalesCount ?? 0} receipts across all branches`
               : `${report?.completedSalesCount ?? 0} receipt${report?.completedSalesCount === 1 ? "" : "s"} issued`,
+            href: "/sales",
             icon: ReceiptText,
             label: "Transactions",
             tone: "var(--accent)",
@@ -93,6 +102,7 @@ export function DashboardPage() {
       : []),
     {
       detail: "At or below reorder level",
+      href: "/inventory?tab=alerts",
       icon: CircleAlert,
       label: "Low stock",
       tone: "var(--warning)",
@@ -102,6 +112,7 @@ export function DashboardPage() {
       detail: report?.pharmacyWide
         ? "Using each branch's alert window"
         : `Next ${report?.nearExpiryDays ?? 90} days`,
+      href: "/inventory?tab=alerts",
       icon: CalendarClock,
       label: "Near expiry",
       tone: "var(--danger)",
@@ -111,44 +122,58 @@ export function DashboardPage() {
 
   return (
     <div>
-      <header className="mb-7 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-        <div>
-          <p className="mb-1 text-sm text-[var(--text-muted)]">
-            Welcome back, {session.user.displayName}
-          </p>
-          <h1 className="text-2xl font-semibold">Dashboard</h1>
-        </div>
-        <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
-          <Clock3 aria-hidden="true" size={16} />
-          <span>{currentShift ? "Shift open" : "Shift not open"}</span>
-        </div>
-      </header>
+      <PageHeader
+        eyebrow={`Welcome back, ${session.user.displayName}`}
+        title="Dashboard"
+        description="Today's trading summary and stock attention for the active branch."
+        actions={
+          <span className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
+            <Clock3 aria-hidden="true" size={16} />
+            <span>{currentShift ? "Shift open" : "Shift not open"}</span>
+          </span>
+        }
+      />
       <FormError message={reportError} />
 
       <section
         aria-label="Today's summary"
         className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
       >
-        {summary.map(({ detail, icon: Icon, label, tone, value }) => (
-          <article
-            key={label}
-            className="min-h-32 rounded-md border border-[var(--border)] bg-white p-4"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm text-[var(--text-muted)]">{label}</p>
-                <p className="mt-3 text-2xl font-semibold">{value}</p>
+        {summary.map(({ detail, href, icon: Icon, label, tone, value }) => {
+          const body = (
+            <>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm text-[var(--text-muted)]">{label}</p>
+                  <p className="mt-3 text-2xl font-semibold">{value}</p>
+                </div>
+                <span
+                  className="flex size-9 items-center justify-center rounded-md bg-[var(--surface-muted)]"
+                  style={{ color: tone }}
+                >
+                  <Icon aria-hidden="true" size={18} />
+                </span>
               </div>
-              <span
-                className="flex size-9 items-center justify-center rounded-md bg-[var(--surface-muted)]"
-                style={{ color: tone }}
-              >
-                <Icon aria-hidden="true" size={18} />
-              </span>
-            </div>
-            <p className="mt-2 text-xs text-[var(--text-subtle)]">{detail}</p>
-          </article>
-        ))}
+              <p className="mt-2 text-xs text-[var(--text-subtle)]">{detail}</p>
+            </>
+          );
+          return href ? (
+            <Link
+              key={label}
+              href={href}
+              className="min-h-32 rounded-md border border-[var(--border)] bg-white p-4 transition hover:border-[var(--brand)] hover:shadow-sm"
+            >
+              {body}
+            </Link>
+          ) : (
+            <article
+              key={label}
+              className="min-h-32 rounded-md border border-[var(--border)] bg-white p-4"
+            >
+              {body}
+            </article>
+          );
+        })}
       </section>
 
       <div
@@ -258,15 +283,27 @@ export function DashboardPage() {
           </section>
 
           <section className="rounded-md border border-[var(--border)] bg-white p-4">
-            <div className="flex items-center gap-2">
-              <PackageSearch
-                aria-hidden="true"
-                className="text-[var(--brand)]"
-                size={18}
-              />
-              <h2 className="text-sm font-semibold">Stock attention</h2>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <PackageSearch
+                  aria-hidden="true"
+                  className="text-[var(--brand)]"
+                  size={18}
+                />
+                <h2 className="text-sm font-semibold">Stock attention</h2>
+              </div>
+              <Link
+                href="/inventory?tab=alerts"
+                className="text-xs font-medium text-[var(--brand)] hover:underline"
+              >
+                Open alerts
+              </Link>
             </div>
             <dl className="mt-4 divide-y divide-[var(--border)] text-sm">
+              <div className="flex h-10 items-center justify-between">
+                <dt className="text-[var(--text-muted)]">Expired batches</dt>
+                <dd className="font-semibold">{report?.expiredCount ?? "-"}</dd>
+              </div>
               <div className="flex h-10 items-center justify-between">
                 <dt className="text-[var(--text-muted)]">Low stock</dt>
                 <dd className="font-semibold">{report?.lowStockCount ?? "-"}</dd>
@@ -274,10 +311,6 @@ export function DashboardPage() {
               <div className="flex h-10 items-center justify-between">
                 <dt className="text-[var(--text-muted)]">Near expiry</dt>
                 <dd className="font-semibold">{report?.nearExpiryCount ?? "-"}</dd>
-              </div>
-              <div className="flex h-10 items-center justify-between">
-                <dt className="text-[var(--text-muted)]">Expired</dt>
-                <dd className="font-semibold">{report?.expiredCount ?? "-"}</dd>
               </div>
             </dl>
           </section>

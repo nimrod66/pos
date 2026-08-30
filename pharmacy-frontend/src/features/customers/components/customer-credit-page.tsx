@@ -22,6 +22,7 @@ import {
   Select,
   Textarea,
 } from "@/components/ui/form-controls";
+import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { PERMISSIONS } from "@/features/auth/access-control";
@@ -418,162 +419,117 @@ export function CustomerCreditPage({
       ) : null}
 
       {/* Record Payment Dialog */}
-      {showPaymentDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Record Payment"
-            className="w-full max-w-md rounded-md border border-[var(--border)] bg-white shadow-xl"
-          >
-            <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4">
-              <h2 className="text-base font-semibold">Record Payment</h2>
-              <button
-                type="button"
-                title="Close"
-                onClick={() => { setShowPaymentDialog(false); setActionError(null); }}
-                className="flex size-9 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--surface-muted)]"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="p-5 space-y-3">
-              {actionError && <FormError message={actionError} />}
-              <Field label="Amount (KES)">
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  value={paymentAmount}
-                  onChange={(e) => setPaymentAmount(e.target.value)}
-                />
-              </Field>
-              <Field label="Notes (optional)">
-                <Textarea
-                  placeholder="Payment notes..."
-                  value={paymentNotes}
-                  onChange={(e) => setPaymentNotes(e.target.value)}
-                />
-              </Field>
-            </div>
-            <div className="flex justify-end gap-2 border-t border-[var(--border)] px-5 py-4">
-              <SecondaryButton onClick={() => { setShowPaymentDialog(false); setActionError(null); }}>
-                Cancel
-              </SecondaryButton>
-              <PrimaryButton disabled={actionLoading} onClick={handleRecordPayment}>
-                {actionLoading ? "Recording..." : "Record Payment"}
-              </PrimaryButton>
-            </div>
-          </div>
+      <Modal
+        open={showPaymentDialog}
+        onClose={() => { setShowPaymentDialog(false); setActionError(null); }}
+        title="Record payment"
+        description="Record a payment received against this customer's account."
+      >
+        <div className="space-y-3">
+          {actionError && <FormError message={actionError} />}
+          <Field label="Amount (KES)">
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+              value={paymentAmount}
+              onChange={(e) => setPaymentAmount(e.target.value)}
+            />
+          </Field>
+          <Field label="Notes (optional)">
+            <Textarea
+              placeholder="Payment notes..."
+              value={paymentNotes}
+              onChange={(e) => setPaymentNotes(e.target.value)}
+            />
+          </Field>
         </div>
-      )}
+        <div className="mt-4 flex justify-end gap-2">
+          <SecondaryButton onClick={() => { setShowPaymentDialog(false); setActionError(null); }}>
+            Cancel
+          </SecondaryButton>
+          <PrimaryButton disabled={actionLoading} onClick={handleRecordPayment}>
+            {actionLoading ? "Recording..." : "Record Payment"}
+          </PrimaryButton>
+        </div>
+      </Modal>
 
       {/* Adjustment Dialog */}
-      {showAdjustDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Manual Adjustment"
-            className="w-full max-w-md rounded-md border border-[var(--border)] bg-white shadow-xl"
-          >
-            <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4">
-              <h2 className="text-base font-semibold">Manual Adjustment</h2>
-              <button
-                type="button"
-                title="Close"
-                onClick={() => { setShowAdjustDialog(false); setActionError(null); }}
-                className="flex size-9 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--surface-muted)]"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="p-5 space-y-3">
-              {actionError && <FormError message={actionError} />}
-              <Field label="Type">
-                <Select
-                  value={adjustType}
-                  onChange={(e) => setAdjustType(e.target.value)}
-                >
-                  <option value="DEBIT">Debit (increase balance owed)</option>
-                  <option value="CREDIT">Credit (reduce balance owed)</option>
-                </Select>
-              </Field>
-              <Field label="Amount (KES)">
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  value={adjustAmount}
-                  onChange={(e) => setAdjustAmount(e.target.value)}
-                />
-              </Field>
-              <Field label="Reason (required)">
-                <Textarea
-                  placeholder="Reason for adjustment..."
-                  value={adjustNotes}
-                  onChange={(e) => setAdjustNotes(e.target.value)}
-                />
-              </Field>
-            </div>
-            <div className="flex justify-end gap-2 border-t border-[var(--border)] px-5 py-4">
-              <SecondaryButton onClick={() => { setShowAdjustDialog(false); setActionError(null); }}>
-                Cancel
-              </SecondaryButton>
-              <PrimaryButton disabled={actionLoading} onClick={handleAdjust}>
-                {actionLoading ? "Applying..." : "Apply Adjustment"}
-              </PrimaryButton>
-            </div>
-          </div>
+      <Modal
+        open={showAdjustDialog}
+        onClose={() => { setShowAdjustDialog(false); setActionError(null); }}
+        title="Manual adjustment"
+        description="Correct the customer's account balance with an audit note."
+      >
+        <div className="space-y-3">
+          {actionError && <FormError message={actionError} />}
+          <Field label="Type">
+            <Select
+              value={adjustType}
+              onChange={(e) => setAdjustType(e.target.value)}
+            >
+              <option value="DEBIT">Debit (increase balance owed)</option>
+              <option value="CREDIT">Credit (reduce balance owed)</option>
+            </Select>
+          </Field>
+          <Field label="Amount (KES)">
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+              value={adjustAmount}
+              onChange={(e) => setAdjustAmount(e.target.value)}
+            />
+          </Field>
+          <Field label="Reason (required)">
+            <Textarea
+              placeholder="Reason for adjustment..."
+              value={adjustNotes}
+              onChange={(e) => setAdjustNotes(e.target.value)}
+            />
+          </Field>
         </div>
-      )}
+        <div className="mt-4 flex justify-end gap-2">
+          <SecondaryButton onClick={() => { setShowAdjustDialog(false); setActionError(null); }}>
+            Cancel
+          </SecondaryButton>
+          <PrimaryButton disabled={actionLoading} onClick={handleAdjust}>
+            {actionLoading ? "Applying..." : "Apply Adjustment"}
+          </PrimaryButton>
+        </div>
+      </Modal>
 
       {/* Credit Limit Dialog */}
-      {showCreditLimitDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Update Credit Limit"
-            className="w-full max-w-md rounded-md border border-[var(--border)] bg-white shadow-xl"
-          >
-            <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4">
-              <h2 className="text-base font-semibold">Update Credit Limit</h2>
-              <button
-                type="button"
-                title="Close"
-                onClick={() => { setShowCreditLimitDialog(false); setActionError(null); }}
-                className="flex size-9 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--surface-muted)]"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="p-5 space-y-3">
-              {actionError && <FormError message={actionError} />}
-              <Field label="Credit Limit (KES)">
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  value={newCreditLimit}
-                  onChange={(e) => setNewCreditLimit(e.target.value)}
-                />
-              </Field>
-            </div>
-            <div className="flex justify-end gap-2 border-t border-[var(--border)] px-5 py-4">
-              <SecondaryButton onClick={() => { setShowCreditLimitDialog(false); setActionError(null); }}>
-                Cancel
-              </SecondaryButton>
-              <PrimaryButton disabled={actionLoading} onClick={handleUpdateCreditLimit}>
-                {actionLoading ? "Saving..." : "Save"}
-              </PrimaryButton>
-            </div>
-          </div>
+      <Modal
+        open={showCreditLimitDialog}
+        onClose={() => { setShowCreditLimitDialog(false); setActionError(null); }}
+        title="Update credit limit"
+        description="Maximum balance this customer may owe at any time."
+      >
+        <div className="space-y-3">
+          {actionError && <FormError message={actionError} />}
+          <Field label="Credit Limit (KES)">
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+              value={newCreditLimit}
+              onChange={(e) => setNewCreditLimit(e.target.value)}
+            />
+          </Field>
         </div>
-      )}
+        <div className="mt-4 flex justify-end gap-2">
+          <SecondaryButton onClick={() => { setShowCreditLimitDialog(false); setActionError(null); }}>
+            Cancel
+          </SecondaryButton>
+          <PrimaryButton disabled={actionLoading} onClick={handleUpdateCreditLimit}>
+            {actionLoading ? "Saving..." : "Save"}
+          </PrimaryButton>
+        </div>
+      </Modal>
     </div>
   );
 }

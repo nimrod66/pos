@@ -18,6 +18,7 @@ import { useCallback, useEffect, useState } from "react";
 import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
+import { PaginationControls, usePagination } from "@/components/ui/pagination";
 import {
   Field,
   FormError,
@@ -74,6 +75,7 @@ export function CustomersPage() {
   const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [draft, setDraft] = useState<CustomerInput>(emptyInput);
+  const customersPage = usePagination(customers, 25);
 
   const loadCustomers = useCallback(async (search = "") => {
     setLoading(true);
@@ -368,7 +370,7 @@ export function CustomersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border)]">
-                {customers.map((customer) => (
+                {customersPage.pageRows.map((customer) => (
                   <tr key={customer.id} className="hover:bg-[var(--surface-muted)]/60">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
@@ -460,6 +462,13 @@ export function CustomersPage() {
             }
           />
         )}
+        <PaginationControls
+          page={customersPage.page}
+          pageCount={customersPage.pageCount}
+          total={customersPage.total}
+          pageSize={customersPage.pageSize}
+          onPage={customersPage.setPage}
+        />
       </section>
 
       <ConfirmDialog

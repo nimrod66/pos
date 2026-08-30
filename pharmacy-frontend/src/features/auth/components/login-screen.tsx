@@ -51,6 +51,7 @@ export function LoginScreen() {
   const signIn = useAuthStore((state) => state.signIn);
   const session = useAuthStore((state) => state.session);
   const status = useAuthStore((state) => state.status);
+  const sessionExpired = useAuthStore((state) => state.expired);
   const {
     formState: { errors, isSubmitting },
     handleSubmit,
@@ -121,6 +122,15 @@ export function LoginScreen() {
           </div>
 
           <form className="space-y-5" onSubmit={handleSubmit(submit)} noValidate>
+            {sessionExpired ? (
+              <div
+                role="status"
+                className="rounded-md bg-[var(--warning-soft)] px-3 py-2.5 text-sm text-[var(--warning)]"
+              >
+                Your session expired. Sign in again to continue — any saved till
+                draft is still here.
+              </div>
+            ) : null}
             {showDemoAccounts ? (
               <div>
                 <label

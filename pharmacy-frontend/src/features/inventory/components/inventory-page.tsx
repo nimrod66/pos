@@ -2,11 +2,13 @@
 
 import { AlertTriangle, Boxes, ClipboardList, Layers3, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { PrimaryButton, PrimaryLink, SecondaryButton } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Field, FormError, Input, Select } from "@/components/ui/form-controls";
+import { Modal } from "@/components/ui/modal";
+import { PaginationControls, usePagination } from "@/components/ui/pagination";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { PERMISSIONS } from "@/features/auth/access-control";
@@ -17,7 +19,10 @@ import {
   daysUntil,
   stockForMedicine,
 } from "@/features/workspace/lib/workspace-helpers";
-import { useWorkspaceQuery } from "@/features/workspace/gateway/workspace-gateway";
+import {
+  useWorkspaceQuery,
+  workspaceGateway,
+} from "@/features/workspace/gateway/workspace-gateway";
 import { apiRequest } from "@/lib/api-client";
 import { cn } from "@/lib/cn";
 
@@ -38,6 +43,7 @@ function expiryTone(days: number, nearExpiryDays: number) {
 
 export function InventoryPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const medicines = useWorkspaceQuery((state) => state.medicines);
   const batches = useWorkspaceQuery((state) => state.batches);
   const suppliers = useWorkspaceQuery((state) => state.suppliers);
@@ -46,7 +52,12 @@ export function InventoryPage() {
   const settings = useWorkspaceQuery((state) => state.settings);
   const canReceiveStock = usePermission(PERMISSIONS.INVENTORY_RECEIVE);
   const canWriteOff = usePermission(PERMISSIONS.INVENTORY_ADJUST_APPROVE);
-  const [tab, setTab] = useState<InventoryTab>("stock");
+  const requestedTab = searchParams.get("tab");
+  const [tab, setTab] = useState<InventoryTab>(
+    tabs.some((item) => item.id === requestedTab)
+      ? (requestedTab as InventoryTab)
+      : "stock",
+  );
   const [query, setQuery] = useState("");
   const [writeOffTarget, setWriteOffTarget] = useState<{
     batch: { id: string; batchNumber: string; quantity: number };
@@ -73,7 +84,7 @@ export function InventoryPage() {
         },
       });
       setWriteOffTarget(null);
-      window.location.reload();
+      await workspaceGateway.hydrate();
     } catch (caught) {
       setWriteOffError(
         caught instanceof Error ? caught.message : "The write-off could not be recorded.",
@@ -128,6 +139,9 @@ export function InventoryPage() {
   const lowStock = stockRows.filter(
     ({ medicine, stock }) => medicine.status === "ACTIVE" && stock <= medicine.reorderLevel,
   );
+  const overviewPage = usePagination(stockRows, 25);
+  const batchesPage = usePagination(visibleBatches, 25);
+  const movementsPage = usePagination(visibleMovements, 25);
   const expiryAlerts = visibleBatches.filter(
     (batch) => daysUntil(batch.expiryDate) <= settings.nearExpiryDays,
   );
@@ -182,7 +196,8 @@ export function InventoryPage() {
         </div>
 
         {tab === "stock" ? (
-          stockRows.length ? (
+          <>
+          {stockRows.length ? (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[760px] text-left text-sm">
                 <thead className="bg-[var(--surface-muted)] text-xs uppercase text-[var(--text-muted)]">
@@ -195,7 +210,7 @@ export function InventoryPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
-                  {stockRows.map(({ batches: batchCount, medicine, stock }) => {
+                  {overviewPage.pageRows.map(({ batches: batchCount, medicine, stock }) => {
                     const unit = units.find((item) => item.id === medicine.unitId);
                     const isLow = stock <= medicine.reorderLevel;
                     return (
@@ -226,11 +241,17 @@ export function InventoryPage() {
             </div>
           ) : (
             <EmptyState icon={Boxes} title="No stock records found" description="Try a different search." />
-          )
-        ) : null}
-
-        {tab === "batches" ? (
-          visibleBatches.length ? (
+          )}
+          <PaginationControls
+            page={overviewPage.page}
+            pageCount={overviewPage.pageCount}
+            total={overviewPage.total}
+            pageSize={overviewPage.pageSize}
+            onPage={overviewPage.setPage}
+          />
+        </>) : null}
+        {tab === "batches" ? (<>
+          {visibleBatches.length ? (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[980px] text-left text-sm">
                 <thead className="bg-[var(--surface-muted)] text-xs uppercase text-[var(--text-muted)]">
@@ -245,7 +266,7 @@ export function InventoryPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
-                  {visibleBatches.map((batch) => {
+                  {batchesPage.pageRows.map((batch) => {
                     const medicine = medicines.find((item) => item.id === batch.medicineId);
                     const supplier = suppliers.find((item) => item.id === batch.supplierId);
                     const expiryDays = daysUntil(batch.expiryDate);
@@ -271,11 +292,18 @@ export function InventoryPage() {
             </div>
           ) : (
             <EmptyState icon={Layers3} title="No batches found" description="Try a different search or receive new stock." />
-          )
-        ) : null}
+          )}
+          <PaginationControls
+            page={batchesPage.page}
+            pageCount={batchesPage.pageCount}
+            total={batchesPage.total}
+            pageSize={batchesPage.pageSize}
+            onPage={batchesPage.setPage}
+          />
+        </>) : null}
 
-        {tab === "movements" ? (
-          visibleMovements.length ? (
+        {tab === "movements" ? (<>
+          {visibleMovements.length ? (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[900px] text-left text-sm">
                 <thead className="bg-[var(--surface-muted)] text-xs uppercase text-[var(--text-muted)]">
@@ -289,7 +317,7 @@ export function InventoryPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
-                  {visibleMovements.map((movement) => {
+                  {movementsPage.pageRows.map((movement) => {
                     const medicine = medicines.find((item) => item.id === movement.medicineId);
                     return (
                       <tr key={movement.id}>
@@ -309,8 +337,15 @@ export function InventoryPage() {
             </div>
           ) : (
             <EmptyState icon={ClipboardList} title="No movements found" description="Try a different search." />
-          )
-        ) : null}
+          )}
+          <PaginationControls
+            page={movementsPage.page}
+            pageCount={movementsPage.pageCount}
+            total={movementsPage.total}
+            pageSize={movementsPage.pageSize}
+            onPage={movementsPage.setPage}
+          />
+        </>) : null}
 
         {tab === "alerts" ? (
           <div className="grid gap-6 p-4 lg:grid-cols-2 lg:p-6">
@@ -392,16 +427,13 @@ export function InventoryPage() {
       </section>
 
       {writeOffTarget ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
-          <form
-            onSubmit={submitWriteOff}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Write off expired stock"
-            className="w-full max-w-md rounded-md border border-[var(--border)] bg-white p-5 shadow-xl"
-          >
-            <h2 className="text-base font-semibold">Write off expired stock</h2>
-            <p className="mt-1 text-sm text-[var(--text-muted)]">
+        <Modal
+          open
+          onClose={() => setWriteOffTarget(null)}
+          title="Write off expired stock"
+        >
+          <form onSubmit={submitWriteOff}>
+            <p className="text-sm text-[var(--text-muted)]">
               {writeOffTarget.medicineName} · batch {writeOffTarget.batch.batchNumber} ·{" "}
               {writeOffTarget.batch.quantity} units on hand. This removes units from
               sellable stock permanently and records a regulatory disposal log.
@@ -450,7 +482,7 @@ export function InventoryPage() {
               </PrimaryButton>
             </div>
           </form>
-        </div>
+        </Modal>
       ) : null}
     </div>
   );

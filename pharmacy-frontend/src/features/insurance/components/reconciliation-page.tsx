@@ -25,7 +25,7 @@ function statusTone(status: string | null) {
   }
 }
 
-export function ReconciliationPage() {
+export function ReconciliationPage({ showHeader = true }: { showHeader?: boolean }) {
   const canRead = usePermission(PERMISSIONS.INSURANCE_READ);
   const canWrite = usePermission(PERMISSIONS.INSURANCE_WRITE);
 
@@ -97,17 +97,19 @@ export function ReconciliationPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Reconciliation"
-        description="Reconcile insurance claims with payments received from insurers."
-        actions={
-          canWrite ? (
-            <PrimaryButton type="button" onClick={() => { resetForm(); setShowForm(true); }}>
-              <Plus aria-hidden="true" size={16} /> Run reconciliation
-            </PrimaryButton>
-          ) : undefined
-        }
-      />
+      {showHeader ? (
+        <PageHeader
+          title="Reconciliation"
+          description="Reconcile insurance claims with payments received from insurers."
+          actions={
+            canWrite ? (
+              <PrimaryButton type="button" onClick={() => { resetForm(); setShowForm(true); }}>
+                <Plus aria-hidden="true" size={16} /> Run reconciliation
+              </PrimaryButton>
+            ) : undefined
+          }
+        />
+      ) : null}
 
       {error ? <div className="mb-4"><FormError message={error} /></div> : null}
 

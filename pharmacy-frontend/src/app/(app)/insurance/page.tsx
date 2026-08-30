@@ -1,5 +1,5 @@
-import { InsurersPage } from "@/features/insurance/components/insurers-page";
+import { InsuranceHubPage } from "@/features/insurance/components/insurance-hub-page";
 
 export default function Page() {
-  return <InsurersPage />;
+  return <InsuranceHubPage />;
 }

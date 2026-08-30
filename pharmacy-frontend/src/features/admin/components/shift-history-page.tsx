@@ -17,6 +17,10 @@ import {
 } from "@/features/terminals/terminal-gateway";
 import { formatDateTime } from "@/lib/format";
 import { ApiClientError, apiRequest } from "@/lib/api-client";
+import {
+  centsToMoney,
+  formatKes,
+} from "@/features/workspace/lib/money";
 
 interface ShiftRow {
   id: string;
@@ -60,7 +64,7 @@ interface ZReport {
 }
 
 function money(value: number) {
-  return value.toFixed(2);
+  return formatKes(centsToMoney(Math.round(value * 100)));
 }
 
 export function ShiftHistoryPage() {

@@ -16,7 +16,7 @@ import type { Insurer, CreateInsurerInput } from "@/features/insurance/types";
 
 const TYPES = ["GOVERNMENT", "PRIVATE", "CORPORATE", "SELF_PAY"];
 
-export function InsurersPage() {
+export function InsurersPage({ showHeader = true }: { showHeader?: boolean }) {
   const canRead = usePermission(PERMISSIONS.INSURANCE_READ);
   const canWrite = usePermission(PERMISSIONS.INSURANCE_WRITE);
 
@@ -115,17 +115,19 @@ export function InsurersPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Insurance providers"
-        description="Manage insurers, schemes, and patient enrollment."
-        actions={
-          canWrite ? (
-            <PrimaryButton type="button" onClick={() => { resetForm(); setShowForm(true); }}>
-              <Plus aria-hidden="true" size={16} /> Add insurer
-            </PrimaryButton>
-          ) : undefined
-        }
-      />
+      {showHeader ? (
+        <PageHeader
+          title="Insurance providers"
+          description="Manage insurers, schemes, and patient enrollment."
+          actions={
+            canWrite ? (
+              <PrimaryButton type="button" onClick={() => { resetForm(); setShowForm(true); }}>
+                <Plus aria-hidden="true" size={16} /> Add insurer
+              </PrimaryButton>
+            ) : undefined
+          }
+        />
+      ) : null}
 
       {error ? <div className="mb-4"><FormError message={error} /></div> : null}
 
