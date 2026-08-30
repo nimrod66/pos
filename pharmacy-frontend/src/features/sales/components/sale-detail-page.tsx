@@ -1,12 +1,19 @@
 "use client";
 
-import { ArrowLeft, CheckCircle2, Printer, RotateCcw } from "lucide-react";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  Printer,
+  RotateCcw,
+  ShoppingCart,
+} from "lucide-react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import {
   PrimaryButton,
+  PrimaryLink,
   SecondaryButton,
   SecondaryLink,
 } from "@/components/ui/buttons";
@@ -160,6 +167,12 @@ export function SaleDetailPage() {
           description={`Completed ${formatDateTime(sale.completedAt)} by ${sale.cashierName}.`}
           actions={
             <>
+              {canSell ? (
+                <PrimaryLink href="/pos">
+                  <ShoppingCart aria-hidden="true" size={17} />
+                  New sale
+                </PrimaryLink>
+              ) : null}
               {canPrintReceipt ? (
                 <SecondaryButton type="button" onClick={printReceipt}>
                   <Printer aria-hidden="true" size={17} />

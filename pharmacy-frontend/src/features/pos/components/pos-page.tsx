@@ -111,6 +111,7 @@ export function PosPage() {
   const [lookupResults, setLookupResults] = useState<PosLookupItem[]>([]);
   const [searching, setSearching] = useState(false);
   const [scanStatus, setScanStatus] = useState("");
+  const [scanTone, setScanTone] = useState<"info" | "success" | "warn" | "error">("info");
   const [showScanner, setShowScanner] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -138,9 +139,40 @@ export function PosPage() {
       .slice(0, 8);
   }, [medicines, sales]);
 
-  // Suspended sales
-  const [suspendedSales, setSuspendedSales] = useState<Array<{ id: string; lines: typeof lines; customerId: string | null; timestamp: number }>>([]);
+  // Suspended sales - persisted so a refresh never loses a parked basket
+  interface SuspendedSale {
+    id: string;
+    lines: typeof lines;
+    customerId: string | null;
+    timestamp: number;
+  }
+  const SUSPENDED_KEY = "pharmacy-pos:suspended-sales";
+  function loadSuspended(): SuspendedSale[] {
+    try { return JSON.parse(localStorage.getItem(SUSPENDED_KEY) ?? "[]") as SuspendedSale[]; } catch { return []; }
+  }
+  const [suspendedSales, setSuspendedSales] = useState<SuspendedSale[]>([]);
   const [showSuspended, setShowSuspended] = useState(false);
+
+  useEffect(() => {
+    setSuspendedSales(loadSuspended());
+    if (!localStorage.getItem(SUSPENDED_KEY)) {
+      localStorage.setItem(SUSPENDED_KEY, "[]");
+    }
+  }, []);
+
+  function persistSuspended(next: SuspendedSale[]) {
+    setSuspendedSales(next);
+    localStorage.setItem(SUSPENDED_KEY, JSON.stringify(next));
+  }
+
+  // Visible, auto-dismissing feedback for scans and cart actions.
+  const notifyRef = useRef<number | null>(null);
+  function notify(message: string, tone: "info" | "success" | "warn" | "error" = "info") {
+    setScanStatus(message);
+    setScanTone(tone);
+    if (notifyRef.current !== null) window.clearTimeout(notifyRef.current);
+    notifyRef.current = window.setTimeout(() => setScanStatus(""), 4000);
+  }
 
   useEffect(() => {
     let active = true;
@@ -405,10 +437,16 @@ export function PosPage() {
         event.preventDefault();
         setShowSuspended(true);
       }
-      // F4 - Clear cart
-      if (event.key === "F4") {
+      // F4 - Clear cart (guarded: never wipe a basket by accident)
+      if (event.key === "F4" && detailedLines.length > 0) {
         event.preventDefault();
-        clear();
+        const confirmed = window.confirm(
+          "Clear the current sale? The cart, customer, and tendered cash will be discarded.",
+        );
+        if (confirmed) {
+          clear();
+          notify("Sale cleared.", "warn");
+        }
       }
       // F9 - Complete sale (if valid)
       if (event.key === "F9" && !submitting && currentShiftId && detailedLines.length > 0) {
@@ -492,13 +530,14 @@ export function PosPage() {
     const stock = availableStock ?? stockForMedicine(batches, medicineId);
     if (existing < stock) {
       addItem(medicineId);
-      setScanStatus(`${medicine?.brandName ?? "Product"} added to the cart.`);
+      notify(`${medicine?.brandName ?? "Product"} added to the cart.`, "success");
       return true;
     }
-    setScanStatus(
+    notify(
       stock === 0
         ? `${medicine?.brandName ?? "Product"} is out of stock.`
         : `All available ${medicine?.brandName ?? "product"} units are already in the cart.`,
+      stock === 0 ? "error" : "warn",
     );
     return false;
   }
@@ -517,7 +556,7 @@ export function PosPage() {
       if (exact) {
         addMedicine(exact.id, exact.stockAvailable);
       } else {
-        setScanStatus(`No product found for barcode ${barcode}.`);
+        notify(`No product found for barcode ${barcode}.`, "error");
       }
     } catch (error) {
       setLookupError(getWorkspaceErrorMessage(error, "Product lookup failed."));
@@ -534,9 +573,9 @@ export function PosPage() {
       customerId,
       timestamp: Date.now(),
     };
-    setSuspendedSales((prev) => [...prev, suspended]);
+    persistSuspended([...suspendedSales, suspended]);
     clear();
-    setScanStatus("Sale suspended. Resume from the suspended sales list.");
+    notify("Sale suspended. Resume from the suspended sales list.", "warn");
   }
 
   function resumeSale(suspendedId: string) {
@@ -555,9 +594,9 @@ export function PosPage() {
     if (suspended.customerId) {
       setCustomerId(suspended.customerId);
     }
-    setSuspendedSales((prev) => prev.filter((s) => s.id !== suspendedId));
+    persistSuspended(suspendedSales.filter((s) => s.id !== suspendedId));
     setShowSuspended(false);
-    setScanStatus("Sale resumed.");
+    notify("Sale resumed.", "success");
   }
 
   async function handleSearchKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
@@ -588,7 +627,7 @@ export function PosPage() {
       addMedicine(exact.id, exact.stockAvailable);
       setQuery("");
     } else {
-      setScanStatus("No exact SKU or barcode was found.");
+      notify("No exact SKU or barcode was found.", "error");
     }
   }
 
@@ -611,17 +650,17 @@ export function PosPage() {
             item.sku.toLowerCase() === barcode.toLowerCase(),
         );
         if (!exact) {
-          setScanStatus(`No exact product was found for ${barcode}.`);
+          notify(`No exact product was found for ${barcode}.`, "error");
           return;
         }
         const medicine = medicines.find((item) => item.id === exact.id);
         const existing = lines.find((line) => line.medicineId === exact.id)?.quantity ?? 0;
         if (existing >= exact.stockAvailable) {
-          setScanStatus(`${medicine?.brandName ?? "Product"} has no more sellable stock.`);
+          notify(`${medicine?.brandName ?? "Product"} has no more sellable stock.`, "warn");
           return;
         }
         addItem(exact.id);
-        setScanStatus(`${medicine?.brandName ?? "Product"} added to the cart.`);
+        notify(`${medicine?.brandName ?? "Product"} added to the cart.`, "success");
       } catch {
         // The health bar reports connector failures without interrupting checkout.
       } finally {
@@ -743,42 +782,45 @@ export function PosPage() {
         </div>
       )}
       {/* Shift summary bar */}
-      {currentShift && (
-        <div className="col-span-full flex items-center gap-4 border-b border-[var(--border)] bg-[var(--surface-muted)] px-4 py-2 text-xs">
-          <span className="font-semibold text-[var(--text-muted)]">Shift:</span>
-          <span className="font-medium">{currentShift.openedBy}</span>
-          <span className="text-[var(--text-muted)]">|</span>
-          <span>Sales: <span className="font-semibold">{shiftSales.length}</span></span>
-          <span className="text-[var(--text-muted)]">|</span>
-          <span>Items: <span className="font-semibold">{shiftItemCount}</span></span>
-          <span className="text-[var(--text-muted)]">|</span>
-          <span>Total: <span className="font-semibold text-[var(--brand-strong)]">{formatKes(centsToMoney(shiftTotal))}</span></span>
-          <span className="text-[var(--text-muted)]">|</span>
-          <span>Cash: <span className="font-semibold">{formatKes(currentShift.cashSales)}</span></span>
-          <span className="text-[var(--text-muted)]">|</span>
-          <span>M-Pesa: <span className="font-semibold">{formatKes(currentShift.mpesaSales)}</span></span>
-          {suspendedSales.length > 0 && (
-            <>
-              <span className="text-[var(--text-muted)]">|</span>
-              <button
-                type="button"
-                onClick={() => setShowSuspended(true)}
-                className="font-semibold text-[var(--warning)] hover:underline"
-              >
-                {suspendedSales.length} suspended
-              </button>
-            </>
-          )}
-          <div className="ml-auto flex items-center gap-2">
+      <div className="col-span-full flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-[var(--border)] bg-[var(--surface-muted)] px-4 py-2 text-xs">
+        {currentShift ? (
+          <>
+            <span className="font-semibold text-[var(--text-muted)]">Shift:</span>
+            <span className="font-medium">{currentShift.openedBy}</span>
+            <span className="text-[var(--text-muted)]">|</span>
+            <span>Sales: <span className="font-semibold">{shiftSales.length}</span></span>
+            <span className="text-[var(--text-muted)]">|</span>
+            <span>Items: <span className="font-semibold">{shiftItemCount}</span></span>
+            <span className="text-[var(--text-muted)]">|</span>
+            <span>Total: <span className="font-semibold text-[var(--brand-strong)]">{formatKes(centsToMoney(shiftTotal))}</span></span>
+            <span className="text-[var(--text-muted)]">|</span>
+            <span>Cash: <span className="font-semibold">{formatKes(currentShift.cashSales)}</span></span>
+            <span className="text-[var(--text-muted)]">|</span>
+            <span>M-Pesa: <span className="font-semibold">{formatKes(currentShift.mpesaSales)}</span></span>
+          </>
+        ) : (
+          <span className="font-medium text-[var(--warning)]">No open shift — checkout locked.</span>
+        )}
+        {suspendedSales.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setShowSuspended(true)}
+            className="rounded bg-[var(--warning-soft)] px-2 py-1 font-semibold text-[var(--warning)] hover:underline"
+          >
+            {suspendedSales.length} suspended
+          </button>
+        )}
+        <div className="ml-auto flex items-center gap-2">
+          {currentShift && (
             <Link
               href="/shifts/current"
               className="text-[var(--brand)] hover:underline"
             >
               Shift details
             </Link>
-          </div>
+          )}
         </div>
-      )}
+      </div>
       {/* Suspended sales modal */}
       {showSuspended && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
@@ -859,7 +901,23 @@ export function PosPage() {
             <button type="button" onClick={() => setCategoryId("ALL")} className={cn("h-10 shrink-0 rounded-md px-3 text-sm font-medium", categoryId === "ALL" ? "bg-[var(--brand)] text-white" : "bg-white text-[var(--text-muted)] hover:bg-[var(--surface-muted)]")}>All</button>
             {categories.map((category) => <button type="button" key={category.id} onClick={() => setCategoryId(category.id)} className={cn("h-10 shrink-0 rounded-md px-3 text-sm font-medium", categoryId === category.id ? "bg-[var(--brand)] text-white" : "bg-white text-[var(--text-muted)] hover:bg-[var(--surface-muted)]")}>{category.name}</button>)}
           </div>
-          <p className="sr-only" role="status" aria-live="polite">{scanStatus}</p>
+          {scanStatus ? (
+            <div
+              role="status"
+              aria-live="polite"
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium",
+                scanTone === "success" && "bg-[var(--success-soft)] text-[var(--success)]",
+                scanTone === "error" && "bg-[var(--danger-soft)] text-[var(--danger)]",
+                scanTone === "warn" && "bg-[var(--warning-soft)] text-[var(--warning)]",
+                scanTone === "info" && "bg-[var(--brand-soft)] text-[var(--brand-strong)]",
+              )}
+            >
+              {scanStatus}
+            </div>
+          ) : (
+            <p className="sr-only" role="status" aria-live="polite" />
+          )}
         </div>
         <FormError message={query.trim() ? lookupError : null} />
 
@@ -913,15 +971,29 @@ export function PosPage() {
         <div className="border-b border-[var(--border)] px-4 py-4 sm:px-5">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-semibold">Current sale</h2>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               {lines.length > 0 && (
-                <button
-                  type="button"
-                  onClick={suspendSale}
-                  className="text-xs text-[var(--warning)] hover:underline"
-                >
-                  Suspend
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={suspendSale}
+                    className="text-xs font-medium text-[var(--warning)] hover:underline"
+                  >
+                    Suspend
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm("Clear the current sale? The cart, customer, and tendered cash will be discarded.")) {
+                        clear();
+                        notify("Sale cleared.", "warn");
+                      }
+                    }}
+                    className="text-xs font-medium text-[var(--danger)] hover:underline"
+                  >
+                    Clear
+                  </button>
+                </>
               )}
               <span className="text-xs text-[var(--text-muted)]">{itemCount} {itemCount === 1 ? "item" : "items"}</span>
             </div>
@@ -1151,15 +1223,8 @@ export function PosPage() {
           </button>
           {requiresApproval && canApprovePrescription ? <label className="mt-3 block rounded-md bg-[var(--accent-soft)] p-3 text-sm"><span className="mb-1.5 flex items-center gap-1.5 font-semibold"><ShieldCheck aria-hidden="true" size={16} /> Prescription</span><Select value={prescriptionReferenceId} onChange={(event) => setPrescriptionReferenceId(event.target.value)}><option value="">Select an active prescription</option>{prescriptionReferenceId && !prescriptions.some((item) => item.id === prescriptionReferenceId) ? <option value={prescriptionReferenceId}>Selected prescription</option> : null}{prescriptions.map((prescription) => <option key={prescription.id} value={prescription.id}>{prescription.prescriptionNumber} - {prescription.customerName}</option>)}</Select></label> : null}
           {requiresApproval && !canApprovePrescription ? <div className="mt-3 flex items-start gap-2.5 rounded-md bg-[var(--warning-soft)] p-3 text-sm text-[var(--warning)]"><ShieldCheck aria-hidden="true" className="mt-0.5 shrink-0" size={16} /><span><span className="block font-semibold">Pharmacist approval required</span><span className="mt-0.5 block text-xs">A staff member with prescription approval permission must complete this sale.</span></span></div> : null}
-                      {moneyToCents(totalDiscount) > 0 ? (
-              <div className="my-2 flex items-center justify-between text-xs text-[var(--success)]">
-                <span>Discount applied</span>
-                <span>-{formatKes(totalDiscount)}</span>
-              </div>
-            ) : null}
-            <div className="my-4 flex items-center justify-between"><span className="text-sm text-[var(--text-muted)]">Total due</span><span className="text-2xl font-semibold">{formatKes(total)}</span></div>
           {drugInteractions.length > 0 ? (
-            <div className="mb-3 space-y-2">
+            <div className="mb-3 mt-3 space-y-2">
               {drugInteractions.map((di) => {
                 const styles = SEVERITY_STYLES[di.severity];
                 return (
@@ -1174,8 +1239,21 @@ export function PosPage() {
               })}
             </div>
           ) : null}
-          <FormError message={checkoutError} />
-          <PrimaryButton type="button" onClick={() => void handleCheckout()} disabled={submitting || !currentShiftId || detailedLines.length === 0 || (paymentMethod === "MPESA" && (mpesaMode === "STK" ? !paymentCapabilities?.mpesaStkConfigured || !validMpesaPhone : !mpesaReference.trim())) || (paymentMethod === "CASH" && (!validCashTendered || !cashCoversTotal)) || (paymentMethod === "CREDIT" && !creditAmountValid) || (requiresApproval && (!canApprovePrescription || !prescriptionReferenceId.trim()))} className="mt-3 h-12 w-full text-base">{submitting ? paymentMethod === "MPESA" && mpesaMode === "STK" ? "Waiting for M-Pesa..." : "Completing sale..." : paymentMethod === "MPESA" && mpesaMode === "STK" ? `Send STK Push - ${formatKes(total)}` : `Complete sale - ${formatKes(total)}`}</PrimaryButton>
+          {moneyToCents(totalDiscount) > 0 ? (
+            <div className="mb-2 flex items-center justify-between text-xs text-[var(--success)]">
+              <span>Discount applied</span>
+              <span>-{formatKes(totalDiscount)}</span>
+            </div>
+          ) : null}
+          {/* Sticky total + CTA so checkout is always reachable, especially on mobile */}
+          <div className="sticky bottom-0 z-10 -mx-4 mt-3 bg-white px-4 pb-4 pt-3 sm:-mx-5 sm:px-5 sm:pb-5 xl:static xl:mx-0 xl:bg-transparent xl:px-0 xl:pb-0">
+            <div className="mb-3 flex items-center justify-between">
+              <span className="text-sm text-[var(--text-muted)]">Total due</span>
+              <span className="text-2xl font-semibold">{formatKes(total)}</span>
+            </div>
+            <FormError message={checkoutError} />
+            <PrimaryButton type="button" onClick={() => void handleCheckout()} disabled={submitting || !currentShiftId || detailedLines.length === 0 || (paymentMethod === "MPESA" && (mpesaMode === "STK" ? !paymentCapabilities?.mpesaStkConfigured || !validMpesaPhone : !mpesaReference.trim())) || (paymentMethod === "CASH" && (!validCashTendered || !cashCoversTotal)) || (paymentMethod === "CREDIT" && !creditAmountValid) || (requiresApproval && (!canApprovePrescription || !prescriptionReferenceId.trim()))} className="h-12 w-full text-base">{submitting ? paymentMethod === "MPESA" && mpesaMode === "STK" ? "Waiting for M-Pesa..." : "Completing sale..." : paymentMethod === "MPESA" && mpesaMode === "STK" ? `Send STK Push - ${formatKes(total)}` : `Complete sale - ${formatKes(total)}`}</PrimaryButton>
+          </div>
         </div>
       </aside>
 
