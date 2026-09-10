@@ -41,6 +41,10 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { BrandMark } from "@/components/brand-mark";
+import { CommandPalette } from "@/components/ui/command-palette";
+import { PageTransition } from "@/components/ui/page-transition";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { AccessRestricted } from "@/features/auth/components/access-restricted";
 import {
   canAccess,
@@ -292,12 +296,11 @@ export function visibleNavigation(
 function LoadingWorkspace() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[var(--surface-muted)]">
-      <div className="flex items-center gap-3 text-sm text-[var(--text-muted)]">
-        <span
-          className="size-4 animate-spin rounded-full border-2 border-[var(--border-strong)] border-t-[var(--brand)]"
-          aria-hidden="true"
-        />
-        Restoring workspace
+      <div className="w-full max-w-sm space-y-4 rounded-md border border-[var(--border)] bg-[var(--surface-raised)] p-5">
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-9 w-4/5" />
+        <p className="text-sm text-[var(--text-muted)]">Restoring workspace</p>
       </div>
     </div>
   );
@@ -410,7 +413,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-[var(--border)] bg-white transition-transform print:hidden lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-[var(--border)] bg-[var(--surface-raised)] transition-transform print:hidden lg:translate-x-0",
           navigationOpen
             ? "visible translate-x-0"
             : "invisible -translate-x-full lg:visible",
@@ -486,7 +489,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="min-h-screen print:min-h-0 print:pl-0 lg:pl-64">
-        <header className="sticky top-0 z-20 flex h-16 items-center border-b border-[var(--border)] bg-white px-4 print:hidden sm:px-6">
+        <header className="sticky top-0 z-20 flex h-16 items-center border-b border-[var(--border)] bg-[var(--surface-raised)] px-4 print:hidden sm:px-6">
           <button
             type="button"
             aria-label="Open navigation"
@@ -538,7 +541,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="ml-auto flex items-center gap-3">
+            <CommandPalette items={navigation} />
             <NotificationMenu branchId={session.user.activeBranch.id} />
+            <ThemeToggle />
             {shiftAccess ? (
               <Link
                 href="/shifts/current"
@@ -572,7 +577,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   size={15}
                 />
               </summary>
-              <div className="absolute right-0 mt-2 w-60 rounded-md border border-[var(--border)] bg-white p-2 shadow-lg">
+              <div className="absolute right-0 mt-2 w-60 rounded-md border border-[var(--border)] bg-[var(--surface-raised)] p-2 shadow-lg">
                 <div className="border-b border-[var(--border)] px-2 py-2.5">
                   <p className="truncate text-sm font-semibold">
                     {session.user.displayName}
@@ -646,7 +651,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           ) : null}
           {routeAllowed ? (
-            children
+            <PageTransition routeKey={pathname}>{children}</PageTransition>
           ) : (
             <AccessRestricted
               homePath={(() => {

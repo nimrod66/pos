@@ -3,7 +3,7 @@ import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
 export const controlClassName =
-  "min-h-10 w-full rounded-md border border-[var(--border-strong)] bg-white px-3 text-sm text-[var(--text)] outline-none transition focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-ring)] disabled:cursor-not-allowed disabled:bg-[var(--surface-muted)] disabled:text-[var(--text-subtle)]";
+  "min-h-10 w-full rounded-md border border-[var(--border-strong)] bg-[var(--surface-raised)] px-3 text-sm text-[var(--text)] outline-none transition focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-ring)] disabled:cursor-not-allowed disabled:bg-[var(--surface-muted)] disabled:text-[var(--text-subtle)]";
 
 export function Field({
   children,

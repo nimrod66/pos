@@ -105,7 +105,7 @@ export function Modal({
         className={cn(
           "w-full",
           maxWidthClass,
-          "rounded-md border border-[var(--border)] bg-white shadow-xl",
+          "rounded-md border border-[var(--border)] bg-[var(--surface-raised)] shadow-xl",
           className,
         )}
       >

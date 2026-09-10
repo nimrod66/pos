@@ -13,6 +13,15 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 import { FormError, Input } from "@/components/ui/form-controls";
 import { PageHeader } from "@/components/ui/page-header";
@@ -236,11 +245,14 @@ export function ReportsPage() {
     ),
     1,
   );
-  const maxRevenue = Math.max(
-    ...(salesReport?.topProducts.map((product) =>
-      moneyToCents(product.netRevenue),
-    ) ?? []),
-    1,
+  const topProductChartData = useMemo(
+    () =>
+      (salesReport?.topProducts ?? []).slice(0, 8).map((product) => ({
+        name: product.medicineName,
+        quantity: product.quantity,
+        revenue: moneyToCents(product.netRevenue) / 100,
+      })),
+    [salesReport],
   );
 
   if (!canViewSales && !canViewInventory) {
@@ -413,37 +425,50 @@ export function ReportsPage() {
         <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
           <section className="rounded-md border border-[var(--border)] bg-white p-4 sm:p-6">
             <h2 className="text-sm font-semibold">Top products by net revenue</h2>
-            {salesReport?.topProducts.length ? (
-              <div className="mt-5 space-y-4">
-                {salesReport.topProducts.map((product, index) => {
-                  const revenue = moneyToCents(product.netRevenue);
-                  return (
-                    <div key={product.medicineId}>
-                      <div className="mb-1.5 flex items-center justify-between gap-4 text-sm">
-                        <span className="truncate">
-                          <span className="mr-2 text-xs text-[var(--text-subtle)]">
-                            {index + 1}
-                          </span>
-                          <strong>{product.medicineName}</strong>{" "}
-                          <span className="text-xs text-[var(--text-muted)]">
-                            - {product.quantity} net sold
-                          </span>
-                        </span>
-                        <span className="shrink-0 font-semibold">
-                          {formatKes(product.netRevenue)}
-                        </span>
-                      </div>
-                      <div className="h-2 overflow-hidden rounded-full bg-[var(--surface-muted)]">
-                        <div
-                          className="h-full rounded-full bg-[var(--brand)]"
-                          style={{
-                            width: `${Math.max(5, (Math.max(0, revenue) / maxRevenue) * 100)}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
+            {topProductChartData.length ? (
+              <div className="mt-5 h-72" aria-label="Top products by net revenue chart">
+                <ResponsiveContainer height="100%" width="100%">
+                  <BarChart
+                    data={topProductChartData}
+                    layout="vertical"
+                    margin={{ bottom: 4, left: 12, right: 12, top: 4 }}
+                  >
+                    <CartesianGrid horizontal={false} stroke="var(--border)" />
+                    <XAxis
+                      axisLine={false}
+                      tickFormatter={(value) => `KES ${Number(value).toLocaleString()}`}
+                      tickLine={false}
+                      type="number"
+                    />
+                    <YAxis
+                      axisLine={false}
+                      dataKey="name"
+                      tick={{ fill: "var(--text-muted)", fontSize: 12 }}
+                      tickFormatter={(value: string) =>
+                        value.length > 20 ? `${value.slice(0, 20)}…` : value
+                      }
+                      tickLine={false}
+                      type="category"
+                      width={125}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        background: "var(--surface-raised)",
+                        border: "1px solid var(--border)",
+                        borderRadius: "6px",
+                        color: "var(--text)",
+                      }}
+                      formatter={(value) => [formatKes(Number(value)), "Net revenue"]}
+                      labelFormatter={(label) => String(label)}
+                    />
+                    <Bar
+                      dataKey="revenue"
+                      fill="var(--brand)"
+                      name="Net revenue"
+                      radius={[0, 4, 4, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
             ) : (
               <p className="mt-6 text-sm text-[var(--text-muted)]">

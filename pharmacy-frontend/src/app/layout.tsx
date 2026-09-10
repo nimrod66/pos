@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
+import { AppProviders } from "@/components/providers/app-providers";
 import { AuthBootstrap } from "@/features/auth/components/auth-bootstrap";
 import { CartBootstrap } from "@/features/pos/components/cart-bootstrap";
 import { TerminalHeartbeat } from "@/features/terminals/components/terminal-heartbeat";
@@ -34,14 +35,17 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full">
-        <AuthBootstrap />
-        <CartBootstrap />
-        <TerminalHeartbeat />
-        <WorkspaceBootstrap />
-        {children}
+        <AppProviders>
+          <AuthBootstrap />
+          <CartBootstrap />
+          <TerminalHeartbeat />
+          <WorkspaceBootstrap />
+          {children}
+        </AppProviders>
       </body>
     </html>
   );

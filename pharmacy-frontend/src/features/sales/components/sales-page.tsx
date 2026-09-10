@@ -1,17 +1,27 @@
 "use client";
 
-import { ReceiptText, Search } from "lucide-react";
+import {
+  flexRender,
+  getCoreRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type ColumnDef,
+  type SortingState,
+} from "@tanstack/react-table";
+import { ArrowDownUp, ChevronDown, ChevronUp, ReceiptText, Search } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input, Select } from "@/components/ui/form-controls";
-import { PaginationControls, usePagination } from "@/components/ui/pagination";
+import { PaginationControls } from "@/components/ui/pagination";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { addMoney, formatKes } from "@/features/workspace/lib/money";
 import { useWorkspaceQuery } from "@/features/workspace/gateway/workspace-gateway";
 import { formatDateTime } from "@/lib/format";
+import type { Sale } from "@/features/workspace/types";
 
 function saleStatusTone(status: string) {
   if (status === "COMPLETED") return "success" as const;
@@ -20,12 +30,87 @@ function saleStatusTone(status: string) {
 }
 
 const reportableStatuses = new Set(["COMPLETED", "PARTIALLY_RETURNED", "RETURNED"]);
+const rightAlignedColumns = new Set(["items", "netTotal"]);
+
+const salesColumns: ColumnDef<Sale>[] = [
+  {
+    accessorKey: "receiptNumber",
+    header: "Receipt",
+    cell: ({ row }) => (
+      <Link
+        href={`/sales/${row.original.id}`}
+        className="font-semibold text-[var(--brand-strong)] hover:underline"
+      >
+        {row.original.receiptNumber}
+      </Link>
+    ),
+  },
+  {
+    accessorKey: "completedAt",
+    header: "Completed",
+    cell: ({ row }) => (
+      <span className="whitespace-nowrap text-[var(--text-muted)]">
+        {formatDateTime(row.original.completedAt)}
+      </span>
+    ),
+  },
+  { accessorKey: "cashierName", header: "Cashier" },
+  {
+    id: "payment",
+    accessorFn: (sale) =>
+      sale.payments.length > 1
+        ? "Mixed"
+        : sale.payments[0]?.method === "MPESA"
+          ? "M-Pesa"
+          : "Cash",
+    header: "Payment",
+    cell: ({ row }) => {
+      const payment = row.original.payments[0];
+      return (
+        <>
+          <p className="font-medium">{row.getValue("payment") as string}</p>
+          {payment?.reference ? (
+            <p className="mt-0.5 font-mono text-xs text-[var(--text-muted)]">
+              {payment.reference}
+            </p>
+          ) : null}
+        </>
+      );
+    },
+  },
+  {
+    id: "items",
+    accessorFn: (sale) => sale.items.reduce((sum, item) => sum + item.quantity, 0),
+    header: "Items",
+  },
+  {
+    id: "netTotal",
+    accessorFn: (sale) => Number(addMoney(sale.total, `-${sale.refundTotal}`)),
+    header: "Net total",
+    cell: ({ row }) => (
+      <span className="font-semibold">
+        {formatKes(addMoney(row.original.total, `-${row.original.refundTotal}`))}
+      </span>
+    ),
+  },
+  {
+    accessorKey: "status",
+    header: "Status",
+    enableSorting: false,
+    cell: ({ row }) => (
+      <StatusBadge tone={saleStatusTone(row.original.status)}>
+        {row.original.status.replaceAll("_", " ").toLowerCase()}
+      </StatusBadge>
+    ),
+  },
+];
 
 export function SalesPage() {
   const sales = useWorkspaceQuery((state) => state.sales);
   const [query, setQuery] = useState("");
   const [payment, setPayment] = useState("ALL");
   const [status, setStatus] = useState("ALL");
+  const [sorting, setSorting] = useState<SortingState>([]);
   const normalized = query.trim().toLowerCase();
   const visibleSales = useMemo(
     () =>
@@ -37,7 +122,19 @@ export function SalesPage() {
     [normalized, payment, sales, status],
   );
   const completedSales = sales.filter((sale) => reportableStatuses.has(sale.status));
-  const salesPage = usePagination(visibleSales, 25);
+  const table = useReactTable({
+    columns: salesColumns,
+    data: visibleSales,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    initialState: { pagination: { pageSize: 25 } },
+    onSortingChange: setSorting,
+    state: { sorting },
+  });
+  useEffect(() => {
+    table.setPageIndex(0);
+  }, [payment, query, status, table]);
   const netSales = addMoney(...completedSales.map((sale) => addMoney(sale.total, `-${sale.refundTotal}`)));
   const cashSales = addMoney(...completedSales.flatMap((sale) => sale.payments.filter((item) => item.method === "CASH").map((item) => item.amount)));
   const mpesaSales = addMoney(...completedSales.flatMap((sale) => sale.payments.filter((item) => item.method === "MPESA").map((item) => item.amount)));
@@ -59,27 +156,67 @@ export function SalesPage() {
         {visibleSales.length ? (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[940px] text-left text-sm">
-              <thead className="bg-[var(--surface-muted)] text-xs uppercase text-[var(--text-muted)]"><tr><th className="px-4 py-3 font-semibold">Receipt</th><th className="px-4 py-3 font-semibold">Completed</th><th className="px-4 py-3 font-semibold">Cashier</th><th className="px-4 py-3 font-semibold">Payment</th><th className="px-4 py-3 text-right font-semibold">Items</th><th className="px-4 py-3 text-right font-semibold">Net total</th><th className="px-4 py-3 font-semibold">Status</th></tr></thead>
-              <tbody className="divide-y divide-[var(--border)]">{salesPage.pageRows.map((sale) => (
-                <tr key={sale.id} className="hover:bg-[var(--surface-muted)]/60">
-                  <td className="px-4 py-3.5"><Link href={`/sales/${sale.id}`} className="font-semibold text-[var(--brand-strong)] hover:underline">{sale.receiptNumber}</Link></td>
-                  <td className="whitespace-nowrap px-4 py-3.5 text-[var(--text-muted)]">{formatDateTime(sale.completedAt)}</td>
-                  <td className="px-4 py-3.5">{sale.cashierName}</td>
-                  <td className="px-4 py-3.5"><p className="font-medium">{sale.payments.length > 1 ? "Mixed" : sale.payments[0]?.method === "MPESA" ? "M-Pesa" : "Cash"}</p>{sale.payments[0]?.reference ? <p className="mt-0.5 font-mono text-xs text-[var(--text-muted)]">{sale.payments[0].reference}</p> : null}</td>
-                  <td className="px-4 py-3.5 text-right">{sale.items.reduce((sum, item) => sum + item.quantity, 0)}</td>
-                  <td className="px-4 py-3.5 text-right font-semibold">{formatKes(addMoney(sale.total, `-${sale.refundTotal}`))}</td>
-                  <td className="px-4 py-3.5"><StatusBadge tone={saleStatusTone(sale.status)}>{sale.status.replaceAll("_", " ").toLowerCase()}</StatusBadge></td>
-                </tr>
-              ))}</tbody>
+              <thead className="bg-[var(--surface-muted)] text-xs uppercase text-[var(--text-muted)]">
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <tr key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => {
+                      const align = rightAlignedColumns.has(header.column.id);
+                      const sorted = header.column.getIsSorted();
+                      return (
+                        <th
+                          key={header.id}
+                          className={`px-4 py-3 font-semibold ${align ? "text-right" : ""}`}
+                        >
+                          {header.isPlaceholder ? null : header.column.getCanSort() ? (
+                            <button
+                              type="button"
+                              className={`inline-flex items-center gap-1 hover:text-[var(--text)] ${align ? "ml-auto" : ""}`}
+                              onClick={header.column.getToggleSortingHandler()}
+                            >
+                              {flexRender(
+                                header.column.columnDef.header,
+                                header.getContext(),
+                              )}
+                              {sorted === "asc" ? (
+                                <ChevronUp aria-hidden="true" size={14} />
+                              ) : sorted === "desc" ? (
+                                <ChevronDown aria-hidden="true" size={14} />
+                              ) : (
+                                <ArrowDownUp aria-hidden="true" size={13} />
+                              )}
+                            </button>
+                          ) : (
+                            flexRender(header.column.columnDef.header, header.getContext())
+                          )}
+                        </th>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </thead>
+              <tbody className="divide-y divide-[var(--border)]">
+                {table.getRowModel().rows.map((row) => (
+                  <tr key={row.id} className="hover:bg-[var(--surface-muted)]/60">
+                    {row.getVisibleCells().map((cell) => (
+                      <td
+                        key={cell.id}
+                        className={`px-4 py-3.5 ${rightAlignedColumns.has(cell.column.id) ? "text-right" : ""}`}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
             </table>
           </div>
         ) : <EmptyState icon={ReceiptText} title="No sales found" description="Adjust the filters or complete a sale in the POS." />}
         <PaginationControls
-          page={salesPage.page}
-          pageCount={salesPage.pageCount}
-          total={salesPage.total}
-          pageSize={salesPage.pageSize}
-          onPage={salesPage.setPage}
+          page={table.getState().pagination.pageIndex + 1}
+          pageCount={table.getPageCount()}
+          total={visibleSales.length}
+          pageSize={table.getState().pagination.pageSize}
+          onPage={(page) => table.setPageIndex(page - 1)}
         />
       </section>
     </div>

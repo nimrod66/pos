@@ -1,3 +1,10 @@
+import { isValid, parseISO } from "date-fns";
+
+function parseTimestamp(value: string) {
+  const parsed = parseISO(value);
+  return isValid(parsed) ? parsed : new Date(value);
+}
+
 export function formatDateTime(value: string) {
   return new Intl.DateTimeFormat("en-KE", {
     timeZone: "Africa/Nairobi",
@@ -6,7 +13,7 @@ export function formatDateTime(value: string) {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-  }).format(new Date(value));
+  }).format(parseTimestamp(value));
 }
 
 export function formatTime(value: string) {
@@ -14,7 +21,7 @@ export function formatTime(value: string) {
     timeZone: "Africa/Nairobi",
     hour: "2-digit",
     minute: "2-digit",
-  }).format(new Date(value));
+  }).format(parseTimestamp(value));
 }
 
 export function formatDate(value: string) {
