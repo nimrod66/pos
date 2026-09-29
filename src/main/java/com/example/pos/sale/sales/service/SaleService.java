@@ -636,6 +636,19 @@ public SaleService(SalesRepository salesRepository,
             return findDetailedSale(UUID.fromString(key.getResourceId()), branch.getId());
         }
         if (key.getStatus() == IdempotencyKey.Status.IN_PROGRESS) {
+            // A sale holding this key means the checkout did commit, so the
+            // key was never flipped to COMPLETED (e.g. the process died before
+            // the final update). Repair it and replay the sale instead of
+            // deleting a key the sale still references.
+            Sales linked = key.getSales().stream().findFirst().orElse(null);
+            if (linked != null) {
+                log.warn("Repairing IN_PROGRESS idempotency key {} linked to sale {}",
+                        idempotencyKey, linked.getId());
+                key.setResourceId(linked.getId().toString());
+                key.setStatus(IdempotencyKey.Status.COMPLETED);
+                idempotencyRepository.save(key);
+                return findDetailedSale(linked.getId(), branch.getId());
+            }
             // Check if the key is stale (created > 1 hour ago).
             // A checkout should complete within seconds. A stale IN_PROGRESS key
             // indicates the original transaction rolled back due to a crash.

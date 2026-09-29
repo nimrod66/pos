@@ -52,6 +52,10 @@ Start-Sleep -Seconds 1
 Write-Host "== STATE MACHINE VERIFICATION =="
 Write-Host ""
 
+# Unique per run: batch numbers are checked against the stored expiry date, so
+# reusing a fixed name on a later day would be rejected as a conflicting batch.
+$runTag = (Get-Date).ToString("yyyyMMddHHmmssfff")
+
 # Helper: login and get shift ID using direct Invoke-RestMethod
 function Login-And-GetShift($email, $passw) {
     $s = New-Object Microsoft.PowerShell.Commands.WebRequestSession
@@ -312,33 +316,39 @@ if ($suppliers.Count -gt 0) {
         $grnBody = @{
             supplierId = $supplierId
             purchaseOrdersId = $po.id
-            lines = @(@{ medicineId = $testMedId; purchaseOrderLineId = $poLineId; batchNumber = "GRN-TEST-001"; expiryDate = $expiryDate; quantity = 5; unitCost = 50 })
+            lines = @(@{ medicineId = $testMedId; purchaseOrderLineId = $poLineId; batchNumber = "GRN-TEST-$runTag-001"; expiryDate = $expiryDate; quantity = 5; unitCost = 50 })
         }
         $grn = Call POST "/goods-received" $storekeeper $grnBody
         # Check PO status after partial GRN
         $poAfter = Call GET "/purchase-orders/$($po.id)" $storekeeper
         $poAfterStatus = if ($poAfter.ok) { $poAfter.data.status } else { "UNKNOWN" }
-        if ($poAfterStatus -eq "IN_PROGRESS") { Ok "S4d-partial-grn-stays-inprogress" } else { Bad "S4d-partial-grn-stays-inprogress" "status=$poAfterStatus" }
+        if ($grn.ok -and $poAfterStatus -eq "IN_PROGRESS") { Ok "S4d-partial-grn-stays-inprogress" }
+        elseif (-not $grn.ok) { Bad "S4d-partial-grn-stays-inprogress" "grn failed: $($grn.error)" }
+        else { Bad "S4d-partial-grn-stays-inprogress" "status=$poAfterStatus" }
 
         # S4e: Receive remaining → DELIVERED
         $grnBody2 = @{
             supplierId = $supplierId
             purchaseOrdersId = $po.id
-            lines = @(@{ medicineId = $testMedId; purchaseOrderLineId = $poLineId; batchNumber = "GRN-TEST-002"; expiryDate = $expiryDate; quantity = 5; unitCost = 50 })
+            lines = @(@{ medicineId = $testMedId; purchaseOrderLineId = $poLineId; batchNumber = "GRN-TEST-$runTag-002"; expiryDate = $expiryDate; quantity = 5; unitCost = 50 })
         }
         $grn2 = Call POST "/goods-received" $storekeeper $grnBody2
         $poFinal = Call GET "/purchase-orders/$($po.id)" $storekeeper
         $poFinalStatus = if ($poFinal.ok) { $poFinal.data.status } else { "UNKNOWN" }
-        if ($poFinalStatus -eq "DELIVERED") { Ok "S4e-full-grn-delivers" } else { Bad "S4e-full-grn-delivers" "status=$poFinalStatus" }
+        if ($grn2.ok -and $poFinalStatus -eq "DELIVERED") { Ok "S4e-full-grn-delivers" }
+        elseif (-not $grn2.ok) { Bad "S4e-full-grn-delivers" "grn failed: $($grn2.error)" }
+        else { Bad "S4e-full-grn-delivers" "status=$poFinalStatus" }
 
         # S4f: Try to receive on a DELIVERED PO → should fail
         $grnBody3 = @{
             supplierId = $supplierId
             purchaseOrdersId = $po.id
-            lines = @(@{ medicineId = $testMedId; purchaseOrderLineId = $poLineId; batchNumber = "GRN-TEST-003"; expiryDate = $expiryDate; quantity = 1; unitCost = 50 })
+            lines = @(@{ medicineId = $testMedId; purchaseOrderLineId = $poLineId; batchNumber = "GRN-TEST-$runTag-003"; expiryDate = $expiryDate; quantity = 1; unitCost = 50 })
         }
         $r = Call POST "/goods-received" $storekeeper $grnBody3
-        if (-not $r.ok) { Ok "S4f-receive-delivered-blocked" } else { Bad "S4f-receive-delivered-blocked" "should fail" }
+        if (-not $r.ok -and $r.error -match "PURCHASE_ORDER_NOT_RECEIVABLE") { Ok "S4f-receive-delivered-blocked" }
+        elseif ($r.ok) { Bad "S4f-receive-delivered-blocked" "should fail" }
+        else { Bad "S4f-receive-delivered-blocked" "wrong error: $($r.error)" }
     } else { Bad "S4a-po-creates-ordered" "err=$($poResp.error)" }
 } else {
     Write-Host "  SKIP S4 (no suppliers)"

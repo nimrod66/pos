@@ -2,12 +2,14 @@ package com.example.pos.sale.idempotency.service;
 
 import com.example.pos.sale.idempotency.model.IdempotencyKey;
 import com.example.pos.sale.idempotency.repository.IdempotencyKeyRepository;
+import com.example.pos.sale.sales.model.Sales;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * Retention job: completed checkout keys stop being useful after a few days
@@ -18,6 +20,10 @@ import java.time.LocalDateTime;
  * more than 1 hour, the original transaction either committed (and the key
  * should be COMPLETED) or rolled back (and the key can be safely deleted
  * to allow retry).
+ *
+ * Sales hold a permanent foreign key to their checkout key, so a referenced
+ * key is never deleted: if the sale exists the checkout did complete and the
+ * key is marked COMPLETED instead.
  */
 @Slf4j
 @Service
@@ -33,7 +39,7 @@ public class IdempotencyCleanupService {
     @Transactional
     public void purgeExpiredKeys() {
         LocalDateTime cutoff = LocalDateTime.now().minusDays(7);
-        long removed = repo.deleteByStatusAndCreatedAtBefore(
+        int removed = repo.deleteUnreferencedByStatusAndCreatedAtBefore(
                 IdempotencyKey.Status.COMPLETED, cutoff);
         if (removed > 0) {
             log.info("Purged {} completed idempotency keys older than {}", removed, cutoff);
@@ -52,11 +58,25 @@ public class IdempotencyCleanupService {
     @Transactional
     public void recoverStaleInProgressKeys() {
         LocalDateTime staleThreshold = LocalDateTime.now().minusHours(1);
-        long recovered = repo.deleteByStatusAndCreatedAtBefore(
-                IdempotencyKey.Status.IN_PROGRESS, staleThreshold);
-        if (recovered > 0) {
-            log.warn("Recovered {} stale IN_PROGRESS idempotency keys older than {}",
-                    recovered, staleThreshold);
+        List<IdempotencyKey> stale =
+                repo.findByStatusAndCreatedAtBefore(IdempotencyKey.Status.IN_PROGRESS, staleThreshold);
+        int recovered = 0;
+        int deleted = 0;
+        for (IdempotencyKey key : stale) {
+            Sales sale = key.getSales().stream().findFirst().orElse(null);
+            if (sale != null) {
+                key.setResourceType("SALE");
+                key.setResourceId(sale.getId().toString());
+                key.setStatus(IdempotencyKey.Status.COMPLETED);
+                recovered++;
+            } else {
+                repo.delete(key);
+                deleted++;
+            }
+        }
+        if (recovered > 0 || deleted > 0) {
+            log.warn("Recovered {} stale IN_PROGRESS idempotency keys with a sale, deleted {} without (threshold {})",
+                    recovered, deleted, staleThreshold);
         }
     }
 }

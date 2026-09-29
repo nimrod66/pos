@@ -233,12 +233,7 @@ public class GoodsReceivedNotesService {
         BigDecimal previousCost = batch.getBuyingPrice() != null ? batch.getBuyingPrice() : BigDecimal.ZERO;
 
         // Convert buying units to selling units if packSize is set
-        int receivedSellingUnits = lineDto.getQuantity();
-        if (medicine.getPackSize() != null && medicine.getPackSize() > 0
-                && medicine.getBuyingUnit() != null
-                && !medicine.getBuyingUnit().getId().equals(medicine.getUnit() != null ? medicine.getUnit().getId() : null)) {
-            receivedSellingUnits = lineDto.getQuantity() * medicine.getPackSize();
-        }
+        int receivedSellingUnits = toSellingUnits(medicine, lineDto.getQuantity());
 
         int combinedQuantity = previousQuantity + receivedSellingUnits;
         BigDecimal weightedCost = previousCost.multiply(BigDecimal.valueOf(previousQuantity))
@@ -310,8 +305,12 @@ public class GoodsReceivedNotesService {
             throw new BadRequestException("Medicine does not match the purchase-order line",
                     "PURCHASE_ORDER_MEDICINE_MISMATCH");
         }
+        // GRN lines store quantities converted to selling units, while PO lines
+        // are ordered in buying units. Compare both sides in selling units.
         long alreadyReceived = lineRepo.sumQuantityByPurchaseOrderLineId(poLine.getId());
-        if (alreadyReceived + lineDto.getQuantity() > poLine.getQuantity()) {
+        int requested = toSellingUnits(medicine, lineDto.getQuantity());
+        int ordered = toSellingUnits(poLine.getMedicine(), poLine.getQuantity());
+        if (alreadyReceived + requested > ordered) {
             throw new ConflictException("Received quantity exceeds the outstanding purchase-order quantity",
                     "PURCHASE_ORDER_OVER_RECEIPT");
         }
@@ -319,8 +318,28 @@ public class GoodsReceivedNotesService {
 
     private boolean allPOLinesFulfilled(PurchaseOrders po) {
         return !po.getPurchaseOrderItems().isEmpty()
-                && po.getPurchaseOrderItems().stream().allMatch(line ->
-                lineRepo.sumQuantityByPurchaseOrderLineId(line.getId()) >= line.getQuantity());
+                && po.getPurchaseOrderItems().stream().allMatch(line -> {
+                    Medicine medicine = line.getMedicine();
+                    long received = lineRepo.sumQuantityByPurchaseOrderLineId(line.getId());
+                    return received >= toSellingUnits(medicine, line.getQuantity());
+                });
+    }
+
+    /**
+     * GRN lines record stock in selling units (a buying unit is expanded by
+     * pack size), but purchase-order lines are ordered in buying units.
+     * Both sides of every fulfilment check must be converted the same way or
+     * partial deliveries are mistaken for complete ones.
+     */
+    private int toSellingUnits(Medicine medicine, int buyingQuantity) {
+        if (medicine == null) return buyingQuantity;
+        if (medicine.getPackSize() != null && medicine.getPackSize() > 0
+                && medicine.getBuyingUnit() != null
+                && !medicine.getBuyingUnit().getId().equals(
+                        medicine.getUnit() != null ? medicine.getUnit().getId() : null)) {
+            return buyingQuantity * medicine.getPackSize();
+        }
+        return buyingQuantity;
     }
 
     @Transactional(readOnly = true)
